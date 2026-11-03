@@ -1,0 +1,25 @@
+{
+  "name": "licitante-facil-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "quasar dev",
+    "build": "quasar build",
+    "postinstall": "quasar prepare"
+  },
+  "dependencies": {
+    "@quasar/extras": "^1.17.0",
+    "axios": "^1.9.0",
+    "pinia": "^3.0.2",
+    "quasar": "^2.18.1",
+    "vue": "^3.5.13",
+    "vue-router": "^4.5.1",
+    "vuedraggable": "^4.1.0"
+  },
+  "devDependencies": {
+    "@quasar/app-vite": "^2.2.0",
+    "sass-embedded": "^1.86.0"
+  },
+  "engines": { "node": ">=22.13" }
+}

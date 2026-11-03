@@ -1,0 +1,22 @@
+{
+  "name": "licitante-facil-backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22.13" },
+  "scripts": {
+    "dev": "node --watch --disable-warning=ExperimentalWarning src/server.js",
+    "start": "node --disable-warning=ExperimentalWarning src/server.js",
+    "sync": "node --disable-warning=ExperimentalWarning src/jobs/sync.js",
+    "alertas": "node --disable-warning=ExperimentalWarning src/jobs/alertas.js",
+    "test": "node --disable-warning=ExperimentalWarning --test test/*.test.js"
+  },
+  "dependencies": {
+    "@fastify/cookie": "^11.0.2",
+    "@fastify/cors": "^11.0.1",
+    "@fastify/multipart": "^9.0.3",
+    "@fastify/static": "^8.1.1",
+    "fastify": "^5.3.2",
+    "nodemailer": "^6.10.1"
+  }
+}
