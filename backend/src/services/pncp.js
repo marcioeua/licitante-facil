@@ -28,11 +28,26 @@ function yyyymmdd(date) {
   return date.toISOString().slice(0, 10).replaceAll('-', '');
 }
 
-async function fetchJson(url, { fetchImpl = fetch, tentativas = 3 } = {}) {
+async function fetchJson(url, { fetchImpl = fetch, tentativas = 6, log = console.log } = {}) {
   for (let i = 1; ; i++) {
-    const res = await fetchImpl(url, { headers: { accept: 'application/json' } });
+    let res;
+    try {
+      res = await fetchImpl(url, { headers: { accept: 'application/json' }, signal: AbortSignal.timeout(60000) });
+    } catch (e) {
+      // Falha de rede ou timeout: tenta de novo com espera crescente.
+      if (i >= tentativas) throw new Error(`Sem resposta do PNCP (${e.cause?.code ?? e.message}) para ${url}`);
+      await new Promise((r) => setTimeout(r, 1000 * 2 ** i));
+      continue;
+    }
     if (res.status === 204) return null; // PNCP responde 204 quando não há registros
     if (res.ok) return res.json();
+    if (res.status === 429 && i < tentativas) {
+      // Limite de requisições do PNCP: espera o tempo pedido (ou 30s) e tenta de novo.
+      const espera = Number(res.headers.get('retry-after')) || 30;
+      log(`PNCP pediu para aguardar ${espera}s (limite de requisições)...`);
+      await new Promise((r) => setTimeout(r, espera * 1000));
+      continue;
+    }
     if (i >= tentativas || res.status < 500) {
       throw new Error(`PNCP respondeu ${res.status} para ${url}`);
     }
@@ -106,7 +121,8 @@ export function upsertOportunidades(db, registros) {
 export async function sincronizarPropostasAbertas(db, {
   modalidades = MODALIDADES_PADRAO,
   diasAFrente = 60,
-  maxPaginas = 40,
+  maxPaginas = 2000,
+  pausaMs = 1000,
   fetchImpl = fetch,
   log = console.log,
 } = {}) {
@@ -123,11 +139,12 @@ export async function sincronizarPropostasAbertas(db, {
           pagina: String(pagina),
           tamanhoPagina: String(PAGE_SIZE),
         });
-        const body = await fetchJson(url, { fetchImpl });
+        const body = await fetchJson(url, { fetchImpl, log });
         const itens = body?.data ?? [];
         total += upsertOportunidades(db, itens.map(mapContratacao));
         log(`PNCP modalidade ${modalidade} página ${pagina}: ${itens.length} registros`);
         if (!body || itens.length < PAGE_SIZE || (body.paginasRestantes ?? 0) <= 0) break;
+        await new Promise((r) => setTimeout(r, pausaMs)); // evita sobrecarregar a API pública
       }
     }
     db.prepare("UPDATE sincronizacoes SET finalizado_em = datetime('now'), importadas = ? WHERE id = ?")

@@ -50,7 +50,7 @@ before(async () => {
     if (u.searchParams.get('codigoModalidadeContratacao') !== '6') return new Response(null, { status: 204 });
     return Response.json({ data: FIXTURE, totalRegistros: 3, totalPaginas: 1, numeroPagina: 1, paginasRestantes: 0 });
   };
-  const r = await sincronizarPropostasAbertas(db, { fetchImpl: fakeFetch, log: () => {} });
+  const r = await sincronizarPropostasAbertas(db, { fetchImpl: fakeFetch, log: () => {}, pausaMs: 0 });
   assert.equal(r.importadas, 3);
 });
 
