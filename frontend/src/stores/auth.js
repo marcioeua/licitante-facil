@@ -18,8 +18,8 @@ export const useAuth = defineStore('auth', {
       this.usuario = (await api.post('/auth/login', { email, senha })).data;
       this.carregado = true;
     },
-    async cadastrar(nome, email, senha) {
-      this.usuario = (await api.post('/auth/cadastro', { nome, email, senha })).data;
+    async cadastrar(nome, email, senha, convite) {
+      this.usuario = (await api.post('/auth/cadastro', { nome, email, senha, convite: convite || undefined })).data;
       this.carregado = true;
     },
     async sair() {

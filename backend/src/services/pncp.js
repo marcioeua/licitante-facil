@@ -94,7 +94,11 @@ const COLS = [
   'data_encerramento', 'link_origem', 'link_pncp',
 ];
 
-export function upsertOportunidades(db, registros) {
+/**
+ * Grava/atualiza oportunidades. Com `soAbertasOuConhecidas`, ignora registros novos cujo prazo
+ * de proposta já acabou (a consulta de atualizações traz também compras encerradas).
+ */
+export function upsertOportunidades(db, registros, { soAbertasOuConhecidas = false } = {}) {
   const stmt = db.prepare(`
     INSERT INTO oportunidades (${COLS.join(', ')})
     VALUES (${COLS.map((c) => ':' + c).join(', ')})
@@ -102,10 +106,14 @@ export function upsertOportunidades(db, registros) {
       ${COLS.filter((c) => c !== 'numero_controle_pncp').map((c) => `${c} = excluded.${c}`).join(', ')},
       atualizado_em = datetime('now')
   `);
+  const existe = db.prepare('SELECT 1 FROM oportunidades WHERE numero_controle_pncp = ?');
+  const agora = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 19);
   return tx(db, () => {
     let n = 0;
     for (const r of registros) {
       if (!r.numero_controle_pncp || !r.objeto) continue;
+      if (soAbertasOuConhecidas && r.data_encerramento && r.data_encerramento < agora
+        && !existe.get(r.numero_controle_pncp)) continue;
       stmt.run(r);
       n++;
     }
@@ -113,46 +121,62 @@ export function upsertOportunidades(db, registros) {
   });
 }
 
-/**
- * Importa contratações com recebimento de propostas em aberto.
- * Usa GET /v1/contratacoes/proposta, que lista compras cujo prazo de proposta
- * ainda não terminou até `dataFinal`.
- */
-export async function sincronizarPropostasAbertas(db, {
-  modalidades = MODALIDADES_PADRAO,
-  diasAFrente = 60,
-  maxPaginas = 2000,
-  pausaMs = 1000,
-  fetchImpl = fetch,
-  log = console.log,
-} = {}) {
-  const sync = db.prepare('INSERT INTO sincronizacoes DEFAULT VALUES RETURNING id').get();
-  const dataFinal = yyyymmdd(new Date(Date.now() + diasAFrente * 86400000));
+async function importarPaginas(db, { endpoint, parametros, tipo, modalidades, maxPaginas, pausaMs, fetchImpl, log, opcoesUpsert }) {
+  const sync = db.prepare('INSERT INTO sincronizacoes (tipo) VALUES (?) RETURNING id').get(tipo);
   let total = 0;
   try {
     for (const modalidade of modalidades) {
       for (let pagina = 1; pagina <= maxPaginas; pagina++) {
-        const url = new URL(`${config.pncpBaseUrl}/v1/contratacoes/proposta`);
+        const url = new URL(`${config.pncpBaseUrl}/v1/contratacoes/${endpoint}`);
         url.search = new URLSearchParams({
-          dataFinal,
+          ...parametros,
           codigoModalidadeContratacao: String(modalidade),
           pagina: String(pagina),
           tamanhoPagina: String(PAGE_SIZE),
         });
         const body = await fetchJson(url, { fetchImpl, log });
         const itens = body?.data ?? [];
-        total += upsertOportunidades(db, itens.map(mapContratacao));
-        log(`PNCP modalidade ${modalidade} página ${pagina}: ${itens.length} registros`);
+        total += upsertOportunidades(db, itens.map(mapContratacao), opcoesUpsert);
+        log(`PNCP ${endpoint} modalidade ${modalidade} página ${pagina}: ${itens.length} registros`);
         if (!body || itens.length < PAGE_SIZE || (body.paginasRestantes ?? 0) <= 0) break;
         await new Promise((r) => setTimeout(r, pausaMs)); // evita sobrecarregar a API pública
       }
     }
-    db.prepare("UPDATE sincronizacoes SET finalizado_em = datetime('now'), importadas = ? WHERE id = ?")
-      .run(total, sync.id);
+    db.prepare("UPDATE sincronizacoes SET finalizado_em = datetime('now'), importadas = ? WHERE id = ?").run(total, sync.id);
     return { importadas: total };
   } catch (e) {
     db.prepare("UPDATE sincronizacoes SET finalizado_em = datetime('now'), importadas = ?, erro = ? WHERE id = ?")
       .run(total, String(e.message ?? e), sync.id);
     throw e;
   }
+}
+
+/**
+ * Carga completa: contratações com recebimento de propostas em aberto
+ * (GET /v1/contratacoes/proposta). Leva dezenas de minutos; rodar 1x por dia.
+ */
+export async function sincronizarPropostasAbertas(db, {
+  modalidades = MODALIDADES_PADRAO, diasAFrente = 60, maxPaginas = 2000, pausaMs = 1000,
+  fetchImpl = fetch, log = console.log,
+} = {}) {
+  return importarPaginas(db, {
+    endpoint: 'proposta', tipo: 'completa',
+    parametros: { dataFinal: yyyymmdd(new Date(Date.now() + diasAFrente * 86400000)) },
+    modalidades, maxPaginas, pausaMs, fetchImpl, log,
+  });
+}
+
+/**
+ * Atualização incremental: compras alteradas desde `desde` (GET /v1/contratacoes/atualizacao).
+ * Traz novas publicações e mudanças (datas, situação) das já conhecidas.
+ */
+export async function sincronizarAtualizacoes(db, {
+  desde = new Date(Date.now() - 86400000), modalidades = MODALIDADES_PADRAO, maxPaginas = 400, pausaMs = 1000,
+  fetchImpl = fetch, log = console.log,
+} = {}) {
+  return importarPaginas(db, {
+    endpoint: 'atualizacao', tipo: 'incremental',
+    parametros: { dataInicial: yyyymmdd(desde), dataFinal: yyyymmdd(new Date()) },
+    modalidades, maxPaginas, pausaMs, fetchImpl, log, opcoesUpsert: { soAbertasOuConhecidas: true },
+  });
 }

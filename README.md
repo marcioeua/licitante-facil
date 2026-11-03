@@ -45,19 +45,22 @@ cd frontend && npm install && npm run dev   # app em http://localhost:9000
 
 ## Produção
 
+A forma recomendada é o container Docker (`Dockerfile` na raiz), que compila o front-end e
+roda a API, a atualização automática do PNCP e os alertas num único processo. O banco e os
+arquivos ficam em `/data`, que deve ser um volume persistente.
+
+Passo a passo para o Railway: [PUBLICAR.md](PUBLICAR.md).
+
 ```bash
-cd frontend && npm install && npm run build
-cd ../backend && npm install --omit=dev
-cp .env.example .env   # preencha SESSION_SECRET e SMTP
-NODE_ENV=production npm start   # serve a API e o front-end compilado na mesma porta
+docker build -t licitante-facil .
+docker run -p 3333:3333 -v licitante-dados:/data -e ANTHROPIC_API_KEY=... licitante-facil
 ```
 
-Agende as tarefas (cron):
+Tarefas automáticas (desligue com `AGENDADOR=off`): atualização incremental do PNCP a cada
+2 horas, recarga completa às 3h e alertas por e-mail às 7h30 (horário de Brasília).
 
-```cron
-15 */2 * * *  cd /caminho/backend && npm run sync      # a cada 2 horas
-30 7 * * *    cd /caminho/backend && npm run alertas   # e-mails diários às 7h30
-```
+Em produção, o cadastro de contas fecha depois da primeira (a do dono). Para liberar sua equipe,
+defina `CODIGO_CONVITE`, ou `CADASTRO_ABERTO=true` para abrir a todos.
 
 ## Leitura de editais com IA
 

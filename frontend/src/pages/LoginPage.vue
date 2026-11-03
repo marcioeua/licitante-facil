@@ -20,6 +20,7 @@
               :rules="[(v) => aba === 'entrar' || v?.length >= 8 || 'Mínimo de 8 caracteres']">
               <template #append><q-icon :name="ver ? 'visibility_off' : 'visibility'" class="cursor-pointer" @click="ver = !ver" /></template>
             </q-input>
+            <q-input v-if="aba === 'cadastro'" v-model="convite" label="Código de convite (se recebeu um)" outlined autocomplete="off" />
             <q-btn type="submit" color="primary" unelevated no-caps size="lg" class="full-width" :loading="enviando"
               :label="aba === 'entrar' ? 'Entrar' : 'Criar conta grátis'" />
           </q-form>
@@ -41,6 +42,7 @@ const aba = ref('entrar');
 const nome = ref('');
 const email = ref('');
 const senha = ref('');
+const convite = ref('');
 const ver = ref(false);
 const enviando = ref(false);
 
@@ -48,7 +50,7 @@ async function enviar() {
   enviando.value = true;
   try {
     if (aba.value === 'entrar') await auth.login(email.value, senha.value);
-    else await auth.cadastrar(nome.value, email.value, senha.value);
+    else await auth.cadastrar(nome.value, email.value, senha.value, convite.value);
     router.replace(route.query.volta || { name: 'inicio' });
   } finally {
     enviando.value = false;

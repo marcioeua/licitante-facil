@@ -1,0 +1,9 @@
+**/node_modules
+**/dist
+frontend/.quasar
+backend/data
+backend/test
+.git
+*.log
+.env
+**/.env

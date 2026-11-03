@@ -34,7 +34,7 @@ export async function buildApp({ db, logger = false, serveFrontend = true, ia, f
   // Protege tudo em /api, exceto login/cadastro.
   app.addHook('preHandler', async (req, reply) => {
     const url = req.routeOptions.url ?? '';
-    if (url.startsWith('/api/') && !url.startsWith('/api/auth/') && !req.usuarioId) {
+    if (url.startsWith('/api/') && !url.startsWith('/api/auth/') && url !== '/api/saude' && !req.usuarioId) {
       return reply.code(401).send({ erro: 'Faça login para continuar.' });
     }
   });
@@ -44,6 +44,13 @@ export async function buildApp({ db, logger = false, serveFrontend = true, ia, f
     if (err.expose || (err.statusCode && err.statusCode < 500)) return reply.code(err.statusCode).send({ erro: err.message });
     req.log.error(err);
     reply.code(500).send({ erro: 'Erro interno. Tente novamente.' });
+  });
+
+  // Verificação de saúde para a hospedagem (pública, sem dados sensíveis).
+  app.get('/api/saude', async () => {
+    db.prepare('SELECT 1').get();
+    const u = db.prepare('SELECT finalizado_em, erro FROM sincronizacoes WHERE finalizado_em IS NOT NULL ORDER BY id DESC LIMIT 1').get();
+    return { ok: true, ultimaSincronizacao: u?.finalizado_em ?? null, ia: !!app.ia };
   });
 
   await app.register(authRoutes, { prefix: '/api/auth' });

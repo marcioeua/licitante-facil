@@ -22,11 +22,21 @@ export default async function (app) {
           nome: { type: 'string', minLength: 2, maxLength: 120 },
           email: { type: 'string', format: 'email', maxLength: 200 },
           senha: { type: 'string', minLength: 8, maxLength: 200 },
+          convite: { type: 'string', maxLength: 200 },
         },
       },
     },
   }, async (req, reply) => {
-    const { nome, email, senha } = req.body;
+    const { nome, email, senha, convite } = req.body;
+    // Em produção o cadastro fica fechado depois da primeira conta (a do dono),
+    // a não ser que haja código de convite ou CADASTRO_ABERTO=true.
+    const temUsuarios = !!db.prepare('SELECT 1 FROM usuarios LIMIT 1').get();
+    const codigo = process.env.CODIGO_CONVITE;
+    const aberto = process.env.CADASTRO_ABERTO === 'true' || (process.env.NODE_ENV !== 'production' && !codigo);
+    if (temUsuarios && !aberto) {
+      if (!codigo) throw httpError(403, 'O cadastro de novas contas está fechado. Peça acesso ao administrador.');
+      if (convite?.trim() !== codigo) throw httpError(403, 'Código de convite inválido.');
+    }
     if (db.prepare('SELECT 1 FROM usuarios WHERE email = ?').get(email)) {
       throw httpError(409, 'Já existe uma conta com este e-mail.');
     }

@@ -1,0 +1,92 @@
+// Tarefas automáticas dentro do próprio servidor (sem cron externo):
+// - carga completa do PNCP 1x por dia (madrugada) ou quando o banco está vazio;
+// - atualização incremental a cada 2 horas;
+// - e-mails de alertas 1x por dia às 7h30 (se o SMTP estiver configurado).
+import { config } from '../config.js';
+import { sincronizarPropostasAbertas, sincronizarAtualizacoes } from '../services/pncp.js';
+import { enviarAlertas } from '../services/alertas.js';
+
+const FUSO = 'America/Sao_Paulo';
+const HORA_COMPLETA = 3; // 3h da manhã
+const HORA_ALERTAS = 7;
+const MINUTO_ALERTAS = 30;
+const INTERVALO_INCREMENTAL_MS = 2 * 3600 * 1000;
+
+/** Data (AAAA-MM-DD), hora e minuto no horário de Brasília. */
+export function agoraBrasilia(d = new Date()) {
+  const p = Object.fromEntries(new Intl.DateTimeFormat('en-CA', {
+    timeZone: FUSO, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+  }).formatToParts(d).map((x) => [x.type, x.value]));
+  return { data: `${p.year}-${p.month}-${p.day}`, hora: Number(p.hour), minuto: Number(p.minute) };
+}
+
+const utc = (s) => (s ? new Date(s.replace(' ', 'T') + 'Z') : null);
+
+/** Decide o que rodar agora, a partir do histórico gravado no banco. Função pura para testes. */
+export function proximaTarefa(db, agora = new Date()) {
+  const ultima = (tipo, comSucesso) => db.prepare(`
+    SELECT iniciado_em FROM sincronizacoes WHERE tipo = ? ${comSucesso ? 'AND erro IS NULL AND finalizado_em IS NOT NULL' : ''}
+    ORDER BY id DESC LIMIT 1`).get(tipo)?.iniciado_em ?? null;
+  const br = agoraBrasilia(agora);
+  const completaOk = utc(ultima('completa', true));
+  const completaTentativa = utc(ultima('completa', false));
+  const qualquer = [completaTentativa, utc(ultima('incremental', false))].filter(Boolean).sort((a, b) => b - a)[0];
+
+  // Nunca carregou com sucesso: carga completa (tentando no máximo a cada 2h).
+  if (!completaOk) {
+    if (!completaTentativa || agora - completaTentativa >= INTERVALO_INCREMENTAL_MS) return { tipo: 'completa' };
+    return null;
+  }
+  // Carga completa diária na madrugada.
+  if (br.hora >= HORA_COMPLETA && br.hora < HORA_COMPLETA + 3 && agoraBrasilia(completaOk).data !== br.data
+    && (!completaTentativa || agoraBrasilia(completaTentativa).data !== br.data)) {
+    return { tipo: 'completa' };
+  }
+  if (!qualquer || agora - qualquer >= INTERVALO_INCREMENTAL_MS) {
+    // Busca alterações desde o dia da última sincronização bem-sucedida.
+    const desdeSync = [completaOk, utc(ultima('incremental', true))].filter(Boolean).sort((a, b) => b - a)[0];
+    return { tipo: 'incremental', desde: new Date(Math.min(desdeSync.getTime(), agora - 86400000)) };
+  }
+  return null;
+}
+
+export function alertasPendentes(db, agora = new Date()) {
+  const br = agoraBrasilia(agora);
+  if (br.hora * 60 + br.minuto < HORA_ALERTAS * 60 + MINUTO_ALERTAS) return false;
+  const ultima = db.prepare("SELECT ultima_execucao FROM tarefas WHERE nome = 'alertas'").get()?.ultima_execucao;
+  return ultima !== br.data;
+}
+
+export function iniciarAgendador(db, { log = console.log, intervaloMs = 5 * 60 * 1000 } = {}) {
+  let ocupado = false;
+  async function tick() {
+    if (ocupado) return;
+    ocupado = true;
+    try {
+      const t = proximaTarefa(db);
+      if (t?.tipo === 'completa') {
+        log('[agendador] carga completa do PNCP iniciada');
+        const r = await sincronizarPropostasAbertas(db, { log: () => {} });
+        log(`[agendador] carga completa concluída: ${r.importadas} registros`);
+      } else if (t?.tipo === 'incremental') {
+        log(`[agendador] atualização incremental desde ${t.desde.toISOString().slice(0, 10)}`);
+        const r = await sincronizarAtualizacoes(db, { desde: t.desde, log: () => {} });
+        log(`[agendador] atualização concluída: ${r.importadas} registros`);
+      }
+      if (alertasPendentes(db)) {
+        if (config.smtp.host) {
+          const r = await enviarAlertas(db);
+          log(`[agendador] alertas: ${r.enviados} e-mails enviados`);
+        }
+        db.prepare('INSERT OR REPLACE INTO tarefas (nome, ultima_execucao) VALUES (?, ?)').run('alertas', agoraBrasilia().data);
+      }
+    } catch (e) {
+      log(`[agendador] erro: ${e.message}`);
+    } finally {
+      ocupado = false;
+    }
+  }
+  const timer = setInterval(tick, intervaloMs);
+  setTimeout(tick, 5000); // primeira verificação logo após subir
+  return () => clearInterval(timer);
+}

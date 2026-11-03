@@ -186,3 +186,24 @@ test('isolamento entre usuários', async () => {
   const docs = await app.inject({ method: 'GET', url: '/api/documentos/1/arquivo', headers: { cookie: outro } });
   assert.equal(docs.statusCode, 404);
 });
+
+test('cadastro em produção: só a primeira conta, depois com convite', async () => {
+  const antigo = { ...process.env };
+  try {
+    const db2 = openDatabase(':memory:');
+    const app2 = await buildApp({ db: db2, serveFrontend: false, ia: null });
+    const cad = (email, convite) => app2.inject({ method: 'POST', url: '/api/auth/cadastro', payload: { nome: 'Fulano', email, senha: 'senha-segura-1', convite } });
+    process.env.NODE_ENV = 'production';
+    delete process.env.CODIGO_CONVITE;
+    delete process.env.CADASTRO_ABERTO;
+    assert.equal((await cad('dono@e.com')).statusCode, 200);
+    assert.equal((await cad('outro@e.com')).statusCode, 403);
+    process.env.CODIGO_CONVITE = 'equipe2026';
+    assert.equal((await cad('outro@e.com', 'errado')).statusCode, 403);
+    assert.equal((await cad('outro@e.com', 'equipe2026')).statusCode, 200);
+  } finally {
+    process.env.NODE_ENV = antigo.NODE_ENV ?? '';
+    if (antigo.NODE_ENV === undefined) delete process.env.NODE_ENV;
+    delete process.env.CODIGO_CONVITE;
+  }
+});

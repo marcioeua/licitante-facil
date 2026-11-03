@@ -194,6 +194,12 @@ CREATE TABLE IF NOT EXISTS edital_perguntas (
 );
 CREATE INDEX IF NOT EXISTS idx_edperg ON edital_perguntas(oportunidade_id, usuario_id);
 
+-- Última execução de tarefas agendadas (alertas diários etc.).
+CREATE TABLE IF NOT EXISTS tarefas (
+  nome TEXT PRIMARY KEY,
+  ultima_execucao TEXT NOT NULL
+);
+
 -- Registro de uso da IA (limite diário por usuário).
 CREATE TABLE IF NOT EXISTS ia_uso (
   id INTEGER PRIMARY KEY,
@@ -207,6 +213,7 @@ CREATE TABLE IF NOT EXISTS ia_uso (
 // Colunas adicionadas depois da primeira versão (bancos já existentes).
 const MIGRACOES = [
   "ALTER TABLE alertas ADD COLUMN municipios TEXT NOT NULL DEFAULT '[]'",
+  "ALTER TABLE sincronizacoes ADD COLUMN tipo TEXT NOT NULL DEFAULT 'completa'",
 ];
 
 export function openDatabase(path) {

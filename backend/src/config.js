@@ -8,7 +8,7 @@ export const config = {
   host: process.env.HOST ?? '0.0.0.0',
   dbPath: process.env.DB_PATH ?? resolve(root, 'data', 'licitante.db'),
   uploadDir: process.env.UPLOAD_DIR ?? resolve(root, 'data', 'uploads'),
-  // Em produção defina SESSION_SECRET; sem ele as sessões expiram a cada reinício.
+  // Se não for definido, server.js gera um e guarda no banco.
   sessionSecret: process.env.SESSION_SECRET ?? randomBytes(32).toString('hex'),
   sessionDays: 30,
   corsOrigin: process.env.CORS_ORIGIN ?? 'http://localhost:9000',
@@ -21,5 +21,7 @@ export const config = {
     pass: process.env.SMTP_PASS,
     from: process.env.SMTP_FROM ?? 'Licitante Fácil <nao-responda@licitantefacil.com.br>',
   },
-  appUrl: process.env.APP_URL ?? 'http://localhost:9000',
+  // No Railway, o domínio público vem em RAILWAY_PUBLIC_DOMAIN.
+  appUrl: process.env.APP_URL
+    ?? (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : 'http://localhost:9000'),
 };
