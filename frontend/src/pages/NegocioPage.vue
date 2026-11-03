@@ -65,7 +65,7 @@
             <q-item><q-item-section><q-item-label caption>Número</q-item-label>{{ n.numero_compra }}/{{ n.ano_compra }}</q-item-section></q-item>
           </q-list>
           <q-card-actions>
-            <q-btn flat no-caps color="primary" icon="info" label="Detalhes" :to="{ name: 'oportunidade', params: { id: n.oportunidade_id } }" />
+            <q-btn flat no-caps color="primary" icon="auto_awesome" label="Ler edital com IA" :to="{ name: 'oportunidade', params: { id: n.oportunidade_id } }" />
             <q-btn v-if="n.link_pncp" flat no-caps color="primary" icon="open_in_new" label="Edital" :href="n.link_pncp" target="_blank" rel="noopener" />
           </q-card-actions>
         </q-card>

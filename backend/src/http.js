@@ -1,6 +1,6 @@
 /** Erro HTTP com status, tratado pelo error handler do app. */
 export function httpError(status, message) {
-  return Object.assign(new Error(message), { statusCode: status });
+  return Object.assign(new Error(message), { statusCode: status, expose: true });
 }
 
 export function idParam(v) {

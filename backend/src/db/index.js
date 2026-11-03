@@ -152,12 +152,70 @@ CREATE TABLE IF NOT EXISTS sincronizacoes (
   importadas INTEGER NOT NULL DEFAULT 0,
   erro TEXT
 );
+
+CREATE INDEX IF NOT EXISTS idx_op_municipio ON oportunidades(uf, municipio);
+
+-- Arquivos do edital baixados do PNCP e enviados à Files API da Anthropic (compartilhados).
+CREATE TABLE IF NOT EXISTS edital_arquivos (
+  id INTEGER PRIMARY KEY,
+  oportunidade_id INTEGER NOT NULL REFERENCES oportunidades(id) ON DELETE CASCADE,
+  ordem INTEGER NOT NULL,
+  nome TEXT NOT NULL,
+  tipo TEXT NOT NULL CHECK (tipo IN ('pdf','texto')),
+  file_id TEXT NOT NULL,
+  paginas INTEGER,
+  tamanho INTEGER,
+  expira_em TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_edarq_op ON edital_arquivos(oportunidade_id);
+
+-- Arquivos que não puderam ser lidos (formato, tamanho), para avisar o usuário.
+CREATE TABLE IF NOT EXISTS edital_ignorados (
+  oportunidade_id INTEGER NOT NULL REFERENCES oportunidades(id) ON DELETE CASCADE,
+  nome TEXT NOT NULL,
+  motivo TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS edital_resumos (
+  oportunidade_id INTEGER PRIMARY KEY REFERENCES oportunidades(id) ON DELETE CASCADE,
+  resumo TEXT NOT NULL,
+  modelo TEXT NOT NULL,
+  criado_em TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS edital_perguntas (
+  id INTEGER PRIMARY KEY,
+  oportunidade_id INTEGER NOT NULL REFERENCES oportunidades(id) ON DELETE CASCADE,
+  usuario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+  pergunta TEXT NOT NULL,
+  resposta TEXT NOT NULL,
+  citacoes TEXT NOT NULL DEFAULT '[]',
+  criado_em TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_edperg ON edital_perguntas(oportunidade_id, usuario_id);
+
+-- Registro de uso da IA (limite diário por usuário).
+CREATE TABLE IF NOT EXISTS ia_uso (
+  id INTEGER PRIMARY KEY,
+  usuario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+  tipo TEXT NOT NULL,
+  input_tokens INTEGER, output_tokens INTEGER, cache_read_tokens INTEGER,
+  criado_em TEXT NOT NULL DEFAULT (datetime('now'))
+);
 `;
+
+// Colunas adicionadas depois da primeira versão (bancos já existentes).
+const MIGRACOES = [
+  "ALTER TABLE alertas ADD COLUMN municipios TEXT NOT NULL DEFAULT '[]'",
+];
 
 export function openDatabase(path) {
   if (path !== ':memory:') mkdirSync(dirname(path), { recursive: true });
   const db = new DatabaseSync(path);
   db.exec(SCHEMA);
+  for (const m of MIGRACOES) {
+    try { db.exec(m); } catch (e) { if (!/duplicate column/i.test(e.message)) throw e; }
+  }
   return db;
 }
 

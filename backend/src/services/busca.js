@@ -38,6 +38,17 @@ export function buscarOportunidades(db, filtros = {}, usuarioId = null) {
     where.push(`o.uf IN (${ufs.map((_, i) => `:uf${i}`).join(',')})`);
     ufs.forEach((u, i) => (params[`uf${i}`] = u.toUpperCase()));
   }
+  // Cidades no formato "UF:Município" (o mesmo nome existe em vários estados).
+  const cidades = lista(filtros.municipio)
+    .map((c) => String(c).split(':'))
+    .filter(([uf, nome]) => uf && nome);
+  if (cidades.length) {
+    where.push('(' + cidades.map((_, i) => `(o.uf = :cuf${i} AND o.municipio = :cmun${i} COLLATE NOCASE)`).join(' OR ') + ')');
+    cidades.forEach(([uf, nome], i) => {
+      params[`cuf${i}`] = uf.toUpperCase();
+      params[`cmun${i}`] = nome;
+    });
+  }
   const mods = lista(filtros.modalidade).map(Number).filter(Number.isFinite);
   if (mods.length) {
     where.push(`o.modalidade_id IN (${mods.map((_, i) => `:m${i}`).join(',')})`);
@@ -84,4 +95,26 @@ export function buscarOportunidades(db, filtros = {}, usuarioId = null) {
     LIMIT :lim OFFSET :off
   `).all(params);
   return { total, pagina, tamanho, itens };
+}
+
+/** Sugestões de cidades para o filtro (com quantidade de licitações abertas). Ignora acentos. */
+export function sugerirMunicipios(db, { q = '', uf = '' } = {}, limite = 20) {
+  const norm = (t) => String(t ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+  const termo = norm(q);
+  const ufs = new Set(String(uf).split(',').map((u) => u.trim().toUpperCase()).filter((u) => /^[A-Z]{2}$/.test(u)));
+  const linhas = db.prepare(`
+    SELECT uf, municipio, count(*) AS total FROM oportunidades
+    WHERE municipio IS NOT NULL
+      AND (data_encerramento IS NULL OR data_encerramento >= strftime('%Y-%m-%dT%H:%M:%S','now','localtime'))
+    GROUP BY uf, municipio`).all();
+  return linhas
+    .filter((r) => (!ufs.size || ufs.has(r.uf)) && (!termo || norm(r.municipio).includes(termo)))
+    .sort((a, b) => {
+      // Cidades que começam com o termo vêm primeiro; depois, as com mais licitações.
+      const pa = norm(a.municipio).startsWith(termo) ? 0 : 1;
+      const pb = norm(b.municipio).startsWith(termo) ? 0 : 1;
+      return pa - pb || b.total - a.total || a.municipio.localeCompare(b.municipio);
+    })
+    .slice(0, limite)
+    .map((r) => ({ valor: `${r.uf}:${r.municipio}`, nome: `${r.municipio}/${r.uf}`, total: r.total }));
 }

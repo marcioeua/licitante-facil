@@ -5,6 +5,7 @@ import fastifyStatic from '@fastify/static';
 import { existsSync } from 'node:fs';
 import { config } from './config.js';
 import { lerToken } from './services/auth.js';
+import { clienteIA } from './services/editalIA.js';
 import authRoutes from './routes/auth.js';
 import oportunidadesRoutes from './routes/oportunidades.js';
 import negociosRoutes from './routes/negocios.js';
@@ -16,9 +17,12 @@ import dashboardRoutes from './routes/dashboard.js';
 
 import { COOKIE } from './http.js';
 
-export async function buildApp({ db, logger = false, serveFrontend = true } = {}) {
+export async function buildApp({ db, logger = false, serveFrontend = true, ia, fetchImpl = fetch } = {}) {
   const app = Fastify({ logger });
   app.decorate('db', db);
+  // Cliente da IA (Claude) e fetch do PNCP: injetáveis nos testes.
+  app.decorate('ia', ia === undefined ? clienteIA() : ia);
+  app.decorate('fetchPncp', fetchImpl);
 
   await app.register(cookie);
   await app.register(multipart, { limits: { fileSize: 25 * 1024 * 1024, files: 1 } });
@@ -37,7 +41,7 @@ export async function buildApp({ db, logger = false, serveFrontend = true } = {}
 
   app.setErrorHandler((err, req, reply) => {
     if (err.validation) return reply.code(400).send({ erro: 'Dados inválidos.', detalhes: err.validation });
-    if (err.statusCode && err.statusCode < 500) return reply.code(err.statusCode).send({ erro: err.message });
+    if (err.expose || (err.statusCode && err.statusCode < 500)) return reply.code(err.statusCode).send({ erro: err.message });
     req.log.error(err);
     reply.code(500).send({ erro: 'Erro interno. Tente novamente.' });
   });

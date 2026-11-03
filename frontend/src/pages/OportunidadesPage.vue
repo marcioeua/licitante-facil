@@ -21,6 +21,9 @@
           <q-select v-model="f.modalidade" :options="filtros.modalidades" option-value="id" option-label="nome" emit-value map-options
             multiple outlined dense label="Modalidade" options-dense :display-value="f.modalidade.length ? `${f.modalidade.length} selecionada(s)` : ''" />
         </div>
+        <div class="col-12 col-md-4">
+          <CidadesSelect v-model="f.municipio" :ufs="f.uf" dense label="Cidades" />
+        </div>
         <div class="col-12 col-md-2">
           <q-select v-model="f.ordem" :options="ordens" emit-value map-options outlined dense label="Ordenar por" />
         </div>
@@ -60,6 +63,7 @@ import { api } from 'boot/axios';
 import { useFiltros } from 'stores/filtros';
 import { dataHora } from 'src/format';
 import OportunidadeCard from 'components/OportunidadeCard.vue';
+import CidadesSelect from 'components/CidadesSelect.vue';
 
 const $q = useQuasar();
 const route = useRoute();
@@ -69,6 +73,7 @@ const lista = (v) => (v ? String(v).split(',').filter(Boolean) : []);
 const f = reactive({
   q: route.query.q ?? '',
   uf: lista(route.query.uf),
+  municipio: lista(route.query.municipio),
   modalidade: lista(route.query.modalidade).map(Number),
   valorMin: route.query.valorMin ?? null,
   valorMax: route.query.valorMax ?? null,
@@ -87,7 +92,7 @@ const carregando = ref(false);
 const paginas = computed(() => Math.ceil(resultado.value.total / resultado.value.tamanho));
 
 function params() {
-  const p = { ...f, uf: f.uf.join(','), modalidade: f.modalidade.join(',') };
+  const p = { ...f, uf: f.uf.join(','), municipio: f.municipio.join(','), modalidade: f.modalidade.join(',') };
   return Object.fromEntries(Object.entries(p).filter(([, v]) => v !== '' && v !== null && v !== false));
 }
 
@@ -102,7 +107,7 @@ async function buscar() {
   }
 }
 
-watch(() => [f.q, f.uf, f.modalidade, f.valorMin, f.valorMax, f.srp, f.ordem], () => {
+watch(() => [f.q, f.uf, f.municipio, f.modalidade, f.valorMin, f.valorMax, f.srp, f.ordem], () => {
   if (f.pagina !== 1) f.pagina = 1;
   else buscar();
 }, { deep: true });
@@ -112,7 +117,7 @@ function salvarAlerta() {
   $q.dialog({ title: 'Novo alerta', message: 'Nome do alerta', prompt: { model: f.q, type: 'text' }, cancel: true })
     .onOk(async (nome) => {
       await api.post('/alertas', {
-        nome: nome || f.q, palavras: f.q, ufs: f.uf, modalidades: f.modalidade,
+        nome: nome || f.q, palavras: f.q, ufs: f.uf, municipios: f.municipio, modalidades: f.modalidade,
         valor_min: f.valorMin || null, valor_max: f.valorMax || null,
       });
       $q.notify({ type: 'positive', message: 'Alerta criado. Você receberá as novidades por e-mail.' });

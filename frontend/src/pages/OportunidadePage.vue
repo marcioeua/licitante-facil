@@ -28,6 +28,7 @@
         <q-btn v-if="op.link_origem" flat no-caps color="primary" icon="launch" label="Sistema de origem" :href="op.link_origem" target="_blank" rel="noopener" />
       </q-card-actions>
     </q-card>
+    <EditalIA v-if="op" :oportunidade-id="op.id" :negocio-id="op.negocio_id" class="q-mt-md" />
   </q-page>
 </template>
 
@@ -36,6 +37,7 @@ import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { api } from 'boot/axios';
 import { brl, cnpj, dataHora } from 'src/format';
+import EditalIA from 'components/EditalIA.vue';
 
 const route = useRoute();
 const router = useRouter();

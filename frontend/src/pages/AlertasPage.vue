@@ -23,14 +23,14 @@
               <q-chip v-for="p in a.palavras.split(',')" :key="p" dense color="blue-1" text-color="primary">{{ p.trim() }}</q-chip>
             </div>
             <div class="text-caption text-grey-7 q-mt-xs">
-              {{ a.ufs.length ? a.ufs.join(', ') : 'Todo o Brasil' }} ·
+              {{ a.municipios?.length ? a.municipios.map((m) => m.split(':').reverse().join('/')).join(', ') : a.ufs.length ? a.ufs.join(', ') : 'Todo o Brasil' }} ·
               {{ a.modalidades.length ? `${a.modalidades.length} modalidade(s)` : 'Todas as modalidades' }}
               <span v-if="a.valor_min || a.valor_max"> · {{ brl(a.valor_min ?? 0) }} a {{ a.valor_max ? brl(a.valor_max) : 'sem limite' }}</span>
             </div>
           </q-card-section>
           <q-card-actions>
             <q-btn flat no-caps color="primary" icon="travel_explore" label="Ver resultados"
-              :to="{ name: 'oportunidades', query: { q: a.palavras.split(',')[0].trim(), uf: a.ufs.join(',') || undefined } }" />
+              :to="{ name: 'oportunidades', query: { q: a.palavras.split(',')[0].trim(), uf: a.ufs.join(',') || undefined, municipio: a.municipios?.join(',') || undefined } }" />
             <q-space />
             <q-btn flat round icon="edit" @click="abrir(a)" />
             <q-btn flat round icon="delete" color="negative" @click="remover(a)" />
@@ -48,6 +48,7 @@
             <q-input v-model="form.palavras" outlined label="Palavras-chave" hint="Separe por vírgula. Ex.: notebook, computador, impressora"
               :rules="[(v) => v?.length >= 2 || 'Informe ao menos uma palavra']" />
             <q-select v-model="form.ufs" :options="filtros.ufs" multiple use-chips outlined label="Estados (vazio = todos)" />
+            <CidadesSelect v-model="form.municipios" :ufs="form.ufs" label="Cidades (vazio = todas)" />
             <q-select v-model="form.modalidades" :options="filtros.modalidades" option-value="id" option-label="nome" emit-value map-options
               multiple use-chips outlined label="Modalidades (vazio = todas)" />
             <div class="row q-col-gutter-sm">
@@ -72,6 +73,7 @@ import { useQuasar } from 'quasar';
 import { api } from 'boot/axios';
 import { useFiltros } from 'stores/filtros';
 import { brl } from 'src/format';
+import CidadesSelect from 'components/CidadesSelect.vue';
 
 const $q = useQuasar();
 const filtros = useFiltros();
@@ -85,13 +87,13 @@ async function carregar() {
 function abrir(a) {
   Object.keys(form).forEach((k) => delete form[k]);
   Object.assign(form, a
-    ? { ...a, ufs: [...a.ufs], modalidades: [...a.modalidades] }
-    : { nome: '', palavras: '', ufs: [], modalidades: [], valor_min: null, valor_max: null, email_ativo: true });
+    ? { ...a, ufs: [...a.ufs], modalidades: [...a.modalidades], municipios: [...(a.municipios ?? [])] }
+    : { nome: '', palavras: '', ufs: [], municipios: [], modalidades: [], valor_min: null, valor_max: null, email_ativo: true });
   dialogo.value = true;
 }
 async function salvar(a, fechar = false) {
   const body = {
-    nome: a.nome, palavras: a.palavras, ufs: a.ufs, modalidades: a.modalidades,
+    nome: a.nome, palavras: a.palavras, ufs: a.ufs, municipios: a.municipios ?? [], modalidades: a.modalidades,
     valor_min: a.valor_min === '' ? null : a.valor_min ?? null, valor_max: a.valor_max === '' ? null : a.valor_max ?? null,
     email_ativo: a.email_ativo,
   };
