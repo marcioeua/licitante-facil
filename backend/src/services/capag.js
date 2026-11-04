@@ -81,24 +81,27 @@ export function* linhasXlsx(xml, compartilhadas, limite = Infinity) {
 }
 
 export function lerXlsxMunicipios(buf) {
-  const arquivos = unzipSync(new Uint8Array(buf), {
-    filter: (f) => f.name === 'xl/sharedStrings.xml' || f.name === 'xl/workbook.xml'
-      || f.name === 'xl/_rels/workbook.xml.rels' || /^xl\/worksheets\/sheet\d+\.xml$/.test(f.name) && f.originalSize < 200e6,
-  });
-  const compartilhadas = arquivos['xl/sharedStrings.xml']
-    ? [...strFromU8(arquivos['xl/sharedStrings.xml']).matchAll(/<si>([\s\S]*?)<\/si>/g)]
+  const zip = new Uint8Array(buf);
+  // Extrai só o necessário: índice de abas e textos; depois uma aba por vez
+  // (a planilha do Tesouro tem abas de 100 MB+ que não interessam).
+  const extrair = (nomes) => unzipSync(zip, { filter: (f) => nomes.includes(f.name) });
+  const base = extrair(['xl/sharedStrings.xml', 'xl/workbook.xml', 'xl/_rels/workbook.xml.rels']);
+  const compartilhadas = base['xl/sharedStrings.xml']
+    ? [...strFromU8(base['xl/sharedStrings.xml']).matchAll(/<si>([\s\S]*?)<\/si>/g)]
       .map((m) => ent((m[1].match(/<t[^>]*>([\s\S]*?)<\/t>/g) ?? []).map((t) => t.replace(/<[^>]+>/g, '')).join('')))
     : [];
+  delete base['xl/sharedStrings.xml'];
   // Ordem das abas como no arquivo; usa a primeira que tiver o cabeçalho da CAPAG.
-  const wb = strFromU8(arquivos['xl/workbook.xml']);
-  const rels = strFromU8(arquivos['xl/_rels/workbook.xml.rels']);
+  const wb = strFromU8(base['xl/workbook.xml']);
+  const rels = strFromU8(base['xl/_rels/workbook.xml.rels']);
   const abas = [...wb.matchAll(/<sheet\b[^>]*?name="([^"]+)"[^>]*?r:id="([^"]+)"/g)].map(([, nome, rid]) => {
     const alvo = rels.match(new RegExp(`<Relationship[^>]*Id="${rid}"[^>]*Target="([^"]+)"`))?.[1]
       ?? rels.match(new RegExp(`<Relationship[^>]*Target="([^"]+)"[^>]*Id="${rid}"`))?.[1];
     return { nome: ent(nome), caminho: alvo ? `xl/${alvo.replace(/^\/?(xl\/)?/, '')}` : null };
   });
   for (const aba of abas) {
-    const bytes = aba.caminho && arquivos[aba.caminho];
+    if (!aba.caminho) continue;
+    const bytes = extrair([aba.caminho])[aba.caminho];
     if (!bytes) continue;
     const xml = strFromU8(bytes);
     let cab = null;

@@ -36,6 +36,18 @@ export function proximaTarefa(db, agora = new Date()) {
     ORDER BY id DESC LIMIT 1`).get()?.iniciado_em ?? null);
   const qualquer = [completaTentativa, utc(ultima('incremental', false))].filter(Boolean).sort((a, b) => b - a)[0];
 
+  // Carga completa cortada por reinício nas últimas 12h: continua de onde parou.
+  const cortada = db.prepare(`
+    SELECT id, iniciado_em, progresso FROM sincronizacoes
+    WHERE tipo = 'completa' AND erro LIKE 'interrompida%' AND progresso IS NOT NULL
+    ORDER BY id DESC LIMIT 1`).get();
+  const cortadaEm = utc(cortada?.iniciado_em);
+  if (cortada && agora - cortadaEm < 12 * 3600000 && (!completaOk || cortadaEm > completaOk)
+    && !db.prepare("SELECT 1 FROM sincronizacoes WHERE tipo = 'completa' AND id > ? AND erro IS NULL").get(cortada.id)) {
+    try {
+      return { tipo: 'completa', retomar: JSON.parse(cortada.progresso) };
+    } catch { /* progresso inválido: segue a regra normal */ }
+  }
   // Nunca carregou com sucesso: carga completa (tentando no máximo a cada 2h).
   if (!completaOk) {
     if (!completaTentativa || agora - completaTentativa >= INTERVALO_INCREMENTAL_MS) return { tipo: 'completa' };
@@ -97,8 +109,10 @@ export function iniciarAgendador(db, { log = console.log, intervaloMs = 5 * 60 *
       }
       const t = proximaTarefa(db);
       if (t?.tipo === 'completa') {
-        log('[agendador] carga completa do PNCP iniciada');
-        const r = await sincronizarPropostasAbertas(db, { log: () => {} });
+        log(t.retomar
+          ? `[agendador] retomando carga completa do PNCP (modalidade ${t.retomar.modalidade}, página ${t.retomar.pagina})`
+          : '[agendador] carga completa do PNCP iniciada');
+        const r = await sincronizarPropostasAbertas(db, { log: () => {}, retomar: t.retomar });
         log(`[agendador] carga completa concluída: ${r.importadas} registros`);
       } else if (t?.tipo === 'incremental') {
         log(`[agendador] atualização incremental desde ${t.desde.toISOString().slice(0, 10)}`);

@@ -62,3 +62,30 @@ test('carga interrompida por reinício é retomada sem esperar 2h', async () => 
   assert.equal(marcarInterrompidas(db), 1);
   assert.equal(proximaTarefa(db, t('2026-11-04T15:10:00')).tipo, 'completa');
 });
+
+test('carga completa retoma da página onde parou', async () => {
+  const { marcarInterrompidas } = await import('../src/jobs/agendador.js');
+  const { sincronizarPropostasAbertas } = await import('../src/services/pncp.js');
+  const db = openDatabase(':memory:');
+  const chamadas = [];
+  let falhar = true;
+  const fake = async (url) => {
+    const u = new URL(url);
+    const m = Number(u.searchParams.get('codigoModalidadeContratacao'));
+    const pg = Number(u.searchParams.get('pagina'));
+    chamadas.push(`${m}:${pg}`);
+    if (falhar && m === 6 && pg === 2) throw Object.assign(new Error('derrubado'), { statusCode: 400 });
+    const data = Array.from({ length: pg < 3 ? 50 : 10 }, (_, i) => ({ numeroControlePNCP: `${m}-${pg}-${i}`, objetoCompra: 'x', modalidadeId: m, orgaoEntidade: {}, unidadeOrgao: {} }));
+    return Response.json({ data, paginasRestantes: pg < 3 ? 1 : 0 });
+  };
+  // Simula queda do servidor no meio: a sincronização fica sem fim registrado.
+  await assert.rejects(sincronizarPropostasAbertas(db, { modalidades: [4, 6], fetchImpl: fake, log: () => {}, pausaMs: 0 }));
+  db.prepare("UPDATE sincronizacoes SET finalizado_em = NULL, erro = NULL").run();
+  marcarInterrompidas(db);
+  const t2 = proximaTarefa(db, new Date());
+  assert.deepEqual(t2, { tipo: 'completa', retomar: { modalidade: 6, pagina: 2 } });
+  falhar = false;
+  chamadas.length = 0;
+  await sincronizarPropostasAbertas(db, { modalidades: [4, 6], fetchImpl: fake, log: () => {}, pausaMs: 0, retomar: t2.retomar });
+  assert.deepEqual(chamadas, ['6:2', '6:3'], 'não repete modalidade 4 nem a página 1');
+});

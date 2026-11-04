@@ -235,6 +235,7 @@ const MIGRACOES = [
   'ALTER TABLE oportunidades ADD COLUMN esfera TEXT',
   'ALTER TABLE oportunidades ADD COLUMN poder TEXT',
   'ALTER TABLE oportunidades ADD COLUMN codigo_ibge TEXT',
+  'ALTER TABLE sincronizacoes ADD COLUMN progresso TEXT',
 ];
 
 export function openDatabase(path) {

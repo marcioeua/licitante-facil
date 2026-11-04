@@ -124,12 +124,18 @@ export function upsertOportunidades(db, registros, { soAbertasOuConhecidas = fal
   });
 }
 
-async function importarPaginas(db, { endpoint, parametros, tipo, modalidades, maxPaginas, pausaMs, fetchImpl, log, opcoesUpsert }) {
+async function importarPaginas(db, { endpoint, parametros, tipo, modalidades, maxPaginas, pausaMs, fetchImpl, log, opcoesUpsert, retomar }) {
   const sync = db.prepare('INSERT INTO sincronizacoes (tipo) VALUES (?) RETURNING id').get(tipo);
+  const progresso = db.prepare('UPDATE sincronizacoes SET progresso = ? WHERE id = ?');
+  // Retomada após reinício: pula as modalidades/páginas já importadas.
+  const inicio = retomar && modalidades.includes(retomar.modalidade) ? retomar : null;
   let total = 0;
   try {
     for (const modalidade of modalidades) {
-      for (let pagina = 1; pagina <= maxPaginas; pagina++) {
+      if (inicio && modalidades.indexOf(modalidade) < modalidades.indexOf(inicio.modalidade)) continue;
+      const primeira = inicio && modalidade === inicio.modalidade ? Math.max(1, inicio.pagina) : 1;
+      for (let pagina = primeira; pagina <= maxPaginas; pagina++) {
+        progresso.run(JSON.stringify({ modalidade, pagina }), sync.id);
         const url = new URL(`${config.pncpBaseUrl}/v1/contratacoes/${endpoint}`);
         url.search = new URLSearchParams({
           ...parametros,
@@ -160,10 +166,10 @@ async function importarPaginas(db, { endpoint, parametros, tipo, modalidades, ma
  */
 export async function sincronizarPropostasAbertas(db, {
   modalidades = MODALIDADES_PADRAO, diasAFrente = 60, maxPaginas = 2000, pausaMs = 1000,
-  fetchImpl = fetch, log = console.log,
+  fetchImpl = fetch, log = console.log, retomar = null,
 } = {}) {
   return importarPaginas(db, {
-    endpoint: 'proposta', tipo: 'completa',
+    endpoint: 'proposta', tipo: 'completa', retomar,
     parametros: { dataFinal: yyyymmdd(new Date(Date.now() + diasAFrente * 86400000)) },
     modalidades, maxPaginas, pausaMs, fetchImpl, log,
   });
