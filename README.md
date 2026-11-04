@@ -81,6 +81,11 @@ cd backend && npm test
 
 ## Próximos passos
 
+- Assistente de disputa (sem lance automático): preço mínimo por item, calculadora do próximo
+  lance respeitando o intervalo do portal, histórico de preços praticados (PNCP) e lembretes
+  antes da sessão. Antes de qualquer automação de lances, validar as regras do portal com um
+  especialista em licitações.
+
 - Análise de preços praticados a partir dos contratos e atas publicados no PNCP
 - Alertas por WhatsApp
 - App Android/iOS com Capacitor (o Quasar já gera)
