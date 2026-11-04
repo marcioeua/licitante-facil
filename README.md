@@ -84,6 +84,10 @@ cd backend && npm test
 
 ## Próximos passos
 
+- Filtro e selo por portal de disputa (Compras.gov.br, Portal de Compras Públicas, BLL, Licitanet,
+  BNC, Licitações-e etc.), identificado pelo domínio de `linkSistemaOrigem` e pelo `usuarioNome`
+  que o PNCP informa como sistema de origem.
+
 - Assistente de disputa (sem lance automático): preço mínimo por item, calculadora do próximo
   lance respeitando o intervalo do portal, histórico de preços praticados (PNCP) e lembretes
   antes da sessão. Antes de qualquer automação de lances, validar as regras do portal com um
