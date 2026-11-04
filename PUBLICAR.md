@@ -52,6 +52,21 @@ isso, e o segredo de login é gerado sozinho no primeiro início e guardado no v
 3. A primeira carga de licitações do PNCP começa sozinha e leva cerca de 40 minutos.
    Enquanto isso o sistema já funciona e as licitações vão aparecendo.
 
+## Domínio próprio (opcional)
+
+1. Compre o domínio (para `.com.br`: https://registro.br, cerca de R$ 40/ano).
+2. No Railway: serviço → **Settings** → **Networking** → **Custom Domain**. Use um subdomínio,
+   por exemplo `app.seudominio.com.br`.
+3. O Railway mostra um registro **CNAME** (e às vezes um **TXT** de verificação). No painel DNS
+   do domínio (no Registro.br: "Editar zona"), crie exatamente esses registros:
+   tipo `CNAME`, nome `app`, valor o endereço indicado pelo Railway.
+4. Aguarde de minutos a algumas horas, até o Railway mostrar o domínio como ativo. O https é automático.
+5. Crie a variável `APP_URL` com o novo endereço (ex.: `https://app.seudominio.com.br`) para os
+   links dos e-mails de alerta usarem o seu domínio.
+
+O domínio "puro" (sem `app.`) exige um DNS com CNAME flattening, como a Cloudflare (gratuita);
+o Registro.br não oferece esse recurso.
+
 ## Rotina automática
 
 | Quando | O quê |
