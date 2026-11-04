@@ -84,6 +84,9 @@ export function mapContratacao(c) {
     data_encerramento: c.dataEncerramentoProposta ?? null,
     link_origem: c.linkSistemaOrigem ?? null,
     link_pncp: linkPncp,
+    esfera: c.orgaoEntidade?.esferaId ?? null,
+    poder: c.orgaoEntidade?.poderId ?? null,
+    codigo_ibge: c.unidadeOrgao?.codigoIbge ? String(c.unidadeOrgao.codigoIbge) : null,
   };
 }
 
@@ -91,7 +94,7 @@ const COLS = [
   'numero_controle_pncp', 'objeto', 'modalidade_id', 'modalidade', 'modo_disputa', 'situacao',
   'orgao_cnpj', 'orgao_nome', 'unidade_nome', 'uf', 'municipio', 'numero_compra', 'ano_compra',
   'sequencial_compra', 'valor_estimado', 'registro_preco', 'data_publicacao', 'data_abertura',
-  'data_encerramento', 'link_origem', 'link_pncp',
+  'data_encerramento', 'link_origem', 'link_pncp', 'esfera', 'poder', 'codigo_ibge',
 ];
 
 /**

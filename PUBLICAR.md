@@ -74,6 +74,7 @@ o Registro.br não oferece esse recurso.
 | A cada 2 horas | Busca no PNCP só as licitações que mudaram |
 | Todo dia às 3h | Recarga completa das licitações abertas |
 | Todo dia às 7h30 | Envia os alertas por e-mail (se o SMTP estiver configurado) |
+| Toda semana | Atualiza as notas CAPAG do Pagômetro (Tesouro Transparente) |
 
 Para conferir se está tudo bem, abra `https://SEU-ENDERECO/api/saude`: mostra a última
 sincronização com o PNCP e se a IA está configurada.

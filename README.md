@@ -15,6 +15,9 @@ Plataforma para empresas encontrarem licitações públicas e organizarem a part
 - **Checklist** por negócio, já criado com as etapas típicas de um pregão.
 - **Documentos**: certidões, contrato social, atestados etc., com upload, validade e aviso de vencimento.
 - **Agenda**: datas de disputa, vencimentos de documentos e compromissos próprios.
+- **Pagômetro**: indica se o órgão tende a pagar em dia, pela nota CAPAG (capacidade de pagamento)
+  que o Tesouro Nacional publica para estados e municípios. Aparece em cada licitação, como selo na
+  busca e numa página de consulta. Dados atualizados toda semana do Tesouro Transparente.
 - **Alertas**: palavras-chave + filtros (inclusive cidades); as novidades aparecem no início e chegam por e-mail.
 - **Empresas**: vários CNPJs por conta (com validação do CNPJ).
 
@@ -25,7 +28,7 @@ Plataforma para empresas encontrarem licitações públicas e organizarem a part
 | Front-end | Vue 3 + Quasar 2 (Vite), Pinia, vuedraggable |
 | Back-end | Node.js 22+ com Fastify 5 |
 | Banco | SQLite embutido no Node (`node:sqlite`) com busca FTS5 |
-| Dados | API pública de consultas do PNCP |
+| Dados | API pública de consultas do PNCP; CAPAG do Tesouro Transparente |
 | IA | Claude (Anthropic) via `@anthropic-ai/sdk`, com Files API, saída estruturada e citações |
 
 ## Rodando localmente

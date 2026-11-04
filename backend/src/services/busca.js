@@ -1,3 +1,4 @@
+import { nivelRisco } from './capag.js';
 // Busca de oportunidades com texto livre (FTS5) e filtros.
 
 /** Transforma o texto digitado em consulta FTS5 segura: cada termo vira prefixo. */
@@ -87,13 +88,19 @@ export function buscarOportunidades(db, filtros = {}, usuarioId = null) {
   params.off = (pagina - 1) * tamanho;
   params.uid = usuarioId ?? -1;
   const itens = db.prepare(`
-    SELECT o.*, n.id AS negocio_id, n.etapa AS negocio_etapa
+    SELECT o.*, n.id AS negocio_id, n.etapa AS negocio_etapa,
+      coalesce(cm.capag, ce.capag) AS capag, coalesce(cm.nota3, ce.nota3) AS capag_nota3
     FROM oportunidades o ${join}
     LEFT JOIN negocios n ON n.oportunidade_id = o.id AND n.usuario_id = :uid
+    LEFT JOIN capag_entes cm ON o.esfera = 'M' AND cm.tipo = 'municipio' AND cm.codigo = o.codigo_ibge
+    LEFT JOIN capag_entes ce ON o.esfera IN ('E', 'D') AND ce.tipo = 'estado' AND ce.codigo = o.uf
     ${whereSql}
     ORDER BY ${ordem}
     LIMIT :lim OFFSET :off
-  `).all(params);
+  `).all(params).map((o) => ({
+    ...o,
+    pagometro: o.esfera === 'F' ? 'federal' : o.capag ? nivelRisco({ capag: o.capag, nota3: o.capag_nota3 }) : null,
+  }));
   return { total, pagina, tamanho, itens };
 }
 

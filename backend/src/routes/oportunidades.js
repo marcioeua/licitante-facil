@@ -1,5 +1,6 @@
 import { buscarOportunidades, sugerirMunicipios } from '../services/busca.js';
 import { MODALIDADES } from '../services/pncp.js';
+import { pagometroDaOportunidade } from '../services/capag.js';
 import { httpError, idParam } from '../http.js';
 import { resumirEdital, perguntarEdital, historico, infoArquivos, comMensagensClaras, MODELO } from '../services/editalIA.js';
 
@@ -53,6 +54,8 @@ export default async function (app) {
     const p = await comMensagensClaras(() => perguntarEdital(db, op, req.usuarioId, req.body.pergunta.trim(), opcoesIA()));
     return { ...p, citacoes: JSON.parse(p.citacoes) };
   });
+
+  app.get('/:id/pagometro', async (req) => pagometroDaOportunidade(db, carregar(req.params.id)));
 
   app.get('/:id', async (req) => {
     const op = db.prepare(`

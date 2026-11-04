@@ -13,6 +13,7 @@ import documentosRoutes from './routes/documentos.js';
 import empresasRoutes from './routes/empresas.js';
 import alertasRoutes from './routes/alertas.js';
 import agendaRoutes from './routes/agenda.js';
+import { buscarEntes } from './services/capag.js';
 import dashboardRoutes from './routes/dashboard.js';
 
 import { COOKIE } from './http.js';
@@ -52,6 +53,9 @@ export async function buildApp({ db, logger = false, serveFrontend = true, ia, f
     const u = db.prepare('SELECT finalizado_em, erro FROM sincronizacoes WHERE finalizado_em IS NOT NULL ORDER BY id DESC LIMIT 1').get();
     return { ok: true, ultimaSincronizacao: u?.finalizado_em ?? null, ia: !!app.ia };
   });
+
+  // Pagômetro: busca de estados e municípios pela nota de capacidade de pagamento.
+  app.get('/api/pagometro', async (req) => buscarEntes(db, req.query));
 
   await app.register(authRoutes, { prefix: '/api/auth' });
   await app.register(dashboardRoutes, { prefix: '/api/dashboard' });

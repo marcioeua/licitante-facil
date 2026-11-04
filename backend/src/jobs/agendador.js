@@ -5,6 +5,7 @@
 import { config } from '../config.js';
 import { sincronizarPropostasAbertas, sincronizarAtualizacoes } from '../services/pncp.js';
 import { enviarAlertas } from '../services/alertas.js';
+import { atualizarCapag } from '../services/capag.js';
 
 const FUSO = 'America/Sao_Paulo';
 const HORA_COMPLETA = 3; // 3h da manhã
@@ -53,6 +54,16 @@ export function proximaTarefa(db, agora = new Date()) {
   return null;
 }
 
+/** CAPAG: carrega se a tabela estiver vazia e depois atualiza 1x por semana. */
+export function capagPendente(db, agora = new Date()) {
+  if (!db.prepare('SELECT 1 FROM capag_entes LIMIT 1').get()) {
+    const tentou = db.prepare("SELECT ultima_execucao FROM tarefas WHERE nome = 'capag_tentativa'").get()?.ultima_execucao;
+    return !tentou || agora - utc(tentou) >= INTERVALO_INCREMENTAL_MS; // após falha, tenta de novo em 2h
+  }
+  const ultima = db.prepare("SELECT ultima_execucao FROM tarefas WHERE nome = 'capag'").get()?.ultima_execucao;
+  return !ultima || agora - utc(ultima) >= 7 * 86400000;
+}
+
 export function alertasPendentes(db, agora = new Date()) {
   const br = agoraBrasilia(agora);
   if (br.hora * 60 + br.minuto < HORA_ALERTAS * 60 + MINUTO_ALERTAS) return false;
@@ -74,6 +85,16 @@ export function iniciarAgendador(db, { log = console.log, intervaloMs = 5 * 60 *
     if (ocupado) return;
     ocupado = true;
     try {
+      // CAPAG primeiro: é rápida (cerca de 1 min) e a carga do PNCP pode levar 40 min.
+      if (capagPendente(db)) {
+        db.prepare("INSERT OR REPLACE INTO tarefas (nome, ultima_execucao) VALUES ('capag_tentativa', datetime('now'))").run();
+        try {
+          await atualizarCapag(db, { log });
+          db.prepare("INSERT OR REPLACE INTO tarefas (nome, ultima_execucao) VALUES ('capag', datetime('now'))").run();
+        } catch (e) {
+          log(`[agendador] CAPAG: ${e.message}`);
+        }
+      }
       const t = proximaTarefa(db);
       if (t?.tipo === 'completa') {
         log('[agendador] carga completa do PNCP iniciada');

@@ -6,6 +6,7 @@
         <q-badge v-if="op.uf" color="grey-3" text-color="grey-9" :label="op.uf" />
         <q-badge v-if="op.registro_preco" color="teal-1" text-color="teal-9" label="Registro de preço" />
         <q-badge v-if="prazo !== null && prazo <= 3 && prazo >= 0" color="orange-2" text-color="orange-10" :label="prazo === 0 ? 'Encerra hoje' : `Encerra em ${prazo} dia(s)`" />
+        <q-badge v-if="pag" :color="pag.cor" text-color="white" :label="pag.rotulo"><q-tooltip>Pagômetro (CAPAG do Tesouro Nacional)</q-tooltip></q-badge>
         <q-badge v-if="op.alerta" color="amber-2" text-color="amber-10" :label="`Alerta: ${op.alerta}`" />
       </div>
       <router-link :to="{ name: 'oportunidade', params: { id: op.id } }" class="text-subtitle1 text-weight-medium text-dark text-objeto ellipsis-3" style="text-decoration: none">
@@ -37,6 +38,12 @@ const props = defineProps({ op: { type: Object, required: true } });
 const emit = defineEmits(['adicionado']);
 const salvando = ref(false);
 const prazo = computed(() => diasAte(props.op.data_encerramento));
+const pag = computed(() => ({
+  baixo: { cor: 'positive', rotulo: 'Paga em dia' },
+  medio: { cor: 'orange-8', rotulo: 'Pagamento: atenção' },
+  alto: { cor: 'negative', rotulo: 'Risco de atraso' },
+  federal: { cor: 'primary', rotulo: 'Federal' },
+}[props.op.pagometro] ?? null));
 
 async function adicionar() {
   salvando.value = true;

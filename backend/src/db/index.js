@@ -194,6 +194,24 @@ CREATE TABLE IF NOT EXISTS edital_perguntas (
 );
 CREATE INDEX IF NOT EXISTS idx_edperg ON edital_perguntas(oportunidade_id, usuario_id);
 
+-- CAPAG (capacidade de pagamento) de estados e municípios, do Tesouro Transparente.
+CREATE TABLE IF NOT EXISTS capag_entes (
+  tipo TEXT NOT NULL CHECK (tipo IN ('estado','municipio')),
+  codigo TEXT NOT NULL,           -- UF (estado) ou código IBGE de 7 dígitos (município)
+  nome TEXT NOT NULL,
+  nome_norm TEXT NOT NULL,
+  uf TEXT NOT NULL,
+  capag TEXT,
+  ind1 REAL, nota1 TEXT,
+  ind2 REAL, nota2 TEXT,
+  ind3 REAL, nota3 TEXT,
+  icf TEXT,
+  referencia TEXT,
+  atualizado_em TEXT NOT NULL,
+  PRIMARY KEY (tipo, codigo)
+);
+CREATE INDEX IF NOT EXISTS idx_capag_nome ON capag_entes(nome_norm);
+
 -- Última execução de tarefas agendadas (alertas diários etc.).
 CREATE TABLE IF NOT EXISTS tarefas (
   nome TEXT PRIMARY KEY,
@@ -214,6 +232,9 @@ CREATE TABLE IF NOT EXISTS ia_uso (
 const MIGRACOES = [
   "ALTER TABLE alertas ADD COLUMN municipios TEXT NOT NULL DEFAULT '[]'",
   "ALTER TABLE sincronizacoes ADD COLUMN tipo TEXT NOT NULL DEFAULT 'completa'",
+  'ALTER TABLE oportunidades ADD COLUMN esfera TEXT',
+  'ALTER TABLE oportunidades ADD COLUMN poder TEXT',
+  'ALTER TABLE oportunidades ADD COLUMN codigo_ibge TEXT',
 ];
 
 export function openDatabase(path) {

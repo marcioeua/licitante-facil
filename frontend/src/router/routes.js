@@ -12,6 +12,7 @@ export default [
       { path: 'documentos', name: 'documentos', component: () => import('pages/DocumentosPage.vue') },
       { path: 'alertas', name: 'alertas', component: () => import('pages/AlertasPage.vue') },
       { path: 'empresas', name: 'empresas', component: () => import('pages/EmpresasPage.vue') },
+      { path: 'pagometro', name: 'pagometro', component: () => import('pages/PagometroPage.vue') },
     ],
   },
   { path: '/entrar', name: 'login', meta: { publica: true }, component: () => import('pages/LoginPage.vue') },
