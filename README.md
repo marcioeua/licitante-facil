@@ -1,4 +1,4 @@
-# Facilita Pregão
+# Busca Pregão IA
 
 Plataforma para empresas encontrarem licitações públicas e organizarem a participação nelas.
 

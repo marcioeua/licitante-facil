@@ -1,4 +1,4 @@
-# Como publicar o Facilita Pregão (Railway)
+# Como publicar o Busca Pregão IA (Railway)
 
 O sistema roda num único serviço: a mesma aplicação entrega o site, a API, a atualização
 automática do PNCP e os alertas por e-mail. O banco de dados (SQLite) e os arquivos enviados
@@ -44,7 +44,7 @@ isso, e o segredo de login é gerado sozinho no primeiro início e guardado no v
 
 1. No serviço, abra **Settings** → **Networking** → **Generate Domain**.
 2. O Railway cria um endereço como `licitante-facil-production.up.railway.app`.
-3. (Opcional) Em **Custom Domain** você pode usar um domínio próprio, como `app.facilitapregao.com.br`.
+3. (Opcional) Em **Custom Domain** você pode usar um domínio próprio, como `app.buscapregaoia.com.br`.
 
 ## 5. Primeiro acesso
 
