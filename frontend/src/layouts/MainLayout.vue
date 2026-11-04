@@ -49,6 +49,7 @@ const itens = [
   { to: 'agenda', nome: 'Agenda', icone: 'event' },
   { to: 'documentos', nome: 'Documentos', icone: 'folder_shared' },
   { to: 'alertas', nome: 'Alertas', icone: 'notifications_active' },
+  { to: 'mercado', nome: 'Análise de mercado', icone: 'insights' },
   { to: 'historico', nome: 'Histórico de compras', icone: 'query_stats' },
   { to: 'pagometro', nome: 'Pagômetro', icone: 'speed' },
   { to: 'empresas', nome: 'Empresas', icone: 'business' },

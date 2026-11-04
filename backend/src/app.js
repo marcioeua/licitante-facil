@@ -15,6 +15,7 @@ import alertasRoutes from './routes/alertas.js';
 import agendaRoutes from './routes/agenda.js';
 import { buscarEntes } from './services/capag.js';
 import { consultarContratos, pesquisarPrecos } from './services/historico.js';
+import { analisarMercado, analisarEmpresa } from './services/mercado.js';
 import dashboardRoutes from './routes/dashboard.js';
 
 import { COOKIE } from './http.js';
@@ -68,6 +69,13 @@ export async function buildApp({ db, logger = false, serveFrontend = true, ia, f
       req.log.warn(e);
       return reply.code(502).send({ erro: 'Não foi possível consultar o PNCP agora. Tente novamente em instantes.' });
     }
+  });
+
+  // Análise de mercado (contratos do PNCP).
+  app.get('/api/mercado', async (req) => analisarMercado(db, req.query));
+  app.get('/api/mercado/empresa/:ni', async (req, reply) => {
+    if (String(req.params.ni).replace(/\D/g, '').length < 11) return reply.code(400).send({ erro: 'CNPJ inválido.' });
+    return analisarEmpresa(db, req.params.ni, req.query);
   });
 
   await app.register(authRoutes, { prefix: '/api/auth' });

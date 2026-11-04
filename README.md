@@ -18,6 +18,9 @@ Plataforma para empresas encontrarem licitações públicas e organizarem a part
 - **Pagômetro**: indica se o órgão tende a pagar em dia, pela nota CAPAG (capacidade de pagamento)
   que o Tesouro Nacional publica para estados e municípios. Aparece em cada licitação, como selo na
   busca e numa página de consulta. Dados atualizados toda semana do Tesouro Transparente.
+- **Análise de mercado**: por segmento e estado, valor contratado, contrato típico (mediana), evolução
+  semanal, participação por esfera e por estado, concentração do mercado (por valor ou nº de contratos),
+  maiores fornecedores e compradores, e perfil de cada empresa (inclusive a sua).
 - **Histórico de compras**: quem comprou, quem venceu e por quanto. Contratos do PNCP (últimos
   `HISTORICO_DIAS` dias, padrão 30) com os fornecedores que mais vencem e os órgãos que mais compram,
   e pesquisa de preços unitários homologados por item (menor, mediana e maior, por unidade).
