@@ -29,7 +29,10 @@ export function proximaTarefa(db, agora = new Date()) {
     ORDER BY id DESC LIMIT 1`).get(tipo)?.iniciado_em ?? null;
   const br = agoraBrasilia(agora);
   const completaOk = utc(ultima('completa', true));
-  const completaTentativa = utc(ultima('completa', false));
+  // Cargas interrompidas por reinício não contam para a espera de 2h: retoma logo.
+  const completaTentativa = utc(db.prepare(`
+    SELECT iniciado_em FROM sincronizacoes WHERE tipo = 'completa' AND (erro IS NULL OR erro NOT LIKE 'interrompida%')
+    ORDER BY id DESC LIMIT 1`).get()?.iniciado_em ?? null);
   const qualquer = [completaTentativa, utc(ultima('incremental', false))].filter(Boolean).sort((a, b) => b - a)[0];
 
   // Nunca carregou com sucesso: carga completa (tentando no máximo a cada 2h).
@@ -57,7 +60,15 @@ export function alertasPendentes(db, agora = new Date()) {
   return ultima !== br.data;
 }
 
+/** Sincronizações sem fim registrado foram cortadas por um reinício do servidor. */
+export function marcarInterrompidas(db) {
+  return db.prepare(`UPDATE sincronizacoes SET finalizado_em = datetime('now'), erro = 'interrompida (reinício do servidor)'
+    WHERE finalizado_em IS NULL`).run().changes;
+}
+
 export function iniciarAgendador(db, { log = console.log, intervaloMs = 5 * 60 * 1000 } = {}) {
+  const n = marcarInterrompidas(db);
+  if (n) log(`[agendador] ${n} sincronização(ões) interrompida(s) pelo reinício; retomando`);
   let ocupado = false;
   async function tick() {
     if (ocupado) return;

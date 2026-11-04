@@ -54,3 +54,11 @@ test('incremental ignora compras novas já encerradas, mas atualiza as conhecida
     [{ numero_controle_pncp: 'X-2', objeto: 'conhecida atualizada' }, { numero_controle_pncp: 'X-3', objeto: 'nova aberta' }]);
   assert.equal(db.prepare('SELECT tipo FROM sincronizacoes').get().tipo, 'incremental');
 });
+
+test('carga interrompida por reinício é retomada sem esperar 2h', async () => {
+  const { marcarInterrompidas } = await import('../src/jobs/agendador.js');
+  const db = openDatabase(':memory:');
+  db.prepare("INSERT INTO sincronizacoes (tipo, iniciado_em) VALUES ('completa', '2026-11-04 15:00:00')").run();
+  assert.equal(marcarInterrompidas(db), 1);
+  assert.equal(proximaTarefa(db, t('2026-11-04T15:10:00')).tipo, 'completa');
+});
