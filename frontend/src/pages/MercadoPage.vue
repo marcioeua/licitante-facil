@@ -15,6 +15,14 @@
         <div class="col-12 col-md-4">
           <q-select v-model="f.uf" :options="filtros.ufs" multiple use-chips outlined dense clearable label="Estados (vazio = Brasil)" />
         </div>
+        <div class="col-12">
+          <div class="row items-center q-gutter-sm">
+            <span class="text-caption text-grey-7">Período:</span>
+            <q-btn-toggle v-model="periodo" no-caps unelevated dense toggle-color="primary" color="grey-2" text-color="grey-9"
+              :options="PERIODOS.map((x) => ({ label: x.nome, value: x.valor }))" />
+            <span class="text-caption text-grey-7">{{ data(intervalo.de) }} a {{ data(intervalo.ate) }}</span>
+          </div>
+        </div>
         <div class="col-12 col-md-2">
           <q-btn-toggle v-model="medida" spread no-caps unelevated toggle-color="primary" color="grey-2" text-color="grey-9"
             :options="[{ label: 'Valor', value: 'valor' }, { label: 'Contratos', value: 'contratos' }]" />
@@ -27,14 +35,29 @@
     <template v-if="m">
       <div v-if="!m.periodo?.dias" class="text-grey-7 q-pa-md">Os contratos ainda estão sendo carregados do PNCP. Volte em algumas horas.</div>
 
-      <!-- Indicadores -->
+      <!-- Destaque: valor total -->
+      <q-card flat bordered class="lf-card q-mb-md text-center">
+        <q-card-section>
+          <div class="text-caption text-grey-7">Valor total contratado{{ f.q ? ` em "${f.q}"` : '' }}{{ f.uf.length ? ` · ${f.uf.join(', ')}` : '' }}</div>
+          <div class="text-h3 text-weight-bold text-primary" style="line-height: 1.2">{{ brl(m.resumo.valor) }}</div>
+          <div class="text-body2 text-grey-7">
+            {{ num(m.resumo.contratos) }} contratos · contrato típico {{ brlCurto(m.resumo.ticketMediano ?? 0) }} (mediana)
+          </div>
+          <q-btn flat dense no-caps color="primary" icon="history" label="ver histórico de compras" class="q-mt-xs" :to="{ name: 'historico', query: { aba: 'contratos', q: f.q || undefined } }" />
+        </q-card-section>
+      </q-card>
+
+      <!-- Ângulos de análise -->
+      <div class="row items-center q-mb-sm"><div class="text-overline text-grey-7">Ângulos de análise</div></div>
       <div class="row q-col-gutter-md q-mb-md">
-        <div v-for="k in kpis" :key="k.nome" class="col-6 col-md">
-          <q-card flat bordered class="lf-card full-height">
+        <div v-for="a in angulos" :key="a.tipo" class="col-6 col-md">
+          <q-card flat bordered class="lf-card full-height text-center cursor-pointer" @click="abrirRanking(a)">
             <q-card-section>
-              <div class="text-caption text-grey-7">{{ k.nome }}</div>
-              <div class="text-h5 text-weight-bold">{{ k.valor }}</div>
-              <div v-if="k.sub" class="text-caption text-grey-6">{{ k.sub }}</div>
+              <q-icon :name="a.icone" color="primary" size="28px" />
+              <div class="text-subtitle2 q-mt-xs">{{ a.nome }}</div>
+              <div class="text-h5 text-weight-bold">{{ num(a.valor) }}</div>
+              <div class="text-caption text-grey-7">{{ a.sub }}</div>
+              <div class="text-primary text-body2 q-mt-xs">Analisar <q-icon name="arrow_forward" /></div>
             </q-card-section>
           </q-card>
         </div>
@@ -50,11 +73,15 @@
         <div class="col-12 col-md-8 q-gutter-y-md">
           <q-card flat bordered class="lf-card">
             <q-card-section class="text-subtitle1 text-weight-medium q-pb-sm">
-              {{ medida === 'valor' ? 'Valor contratado' : 'Contratos' }} por semana
+              {{ medida === 'valor' ? 'Valor contratado' : 'Contratos' }} por {{ porMes ? 'mês' : 'semana' }}
             </q-card-section>
             <q-card-section class="q-pt-none">
-              <BarrasVerticais :itens="semanas" :formatar="fmt" titulo="Evolução semanal" />
-              <div class="text-caption text-grey-6 q-mt-sm">Pela data de publicação no PNCP. Período: {{ data(m.periodo?.de) }} a {{ data(m.periodo?.ate) }}.</div>
+              <BarrasVerticais :itens="serieTempo" :formatar="fmt" titulo="Evolução no período" :altura="220" />
+              <div class="text-caption text-grey-6 q-mt-sm">
+                Pela data de publicação no PNCP.
+                <span v-if="porMes && serieTempo.some((x) => x.parcial)">Barras listradas: meses em consolidação, o valor ainda deve crescer conforme novos contratos são publicados.</span>
+                <span v-if="m.periodo?.de">Contratos disponíveis desde {{ data(m.periodo.de) }}.</span>
+              </div>
             </q-card-section>
           </q-card>
 
@@ -84,7 +111,9 @@
           <q-card flat bordered class="lf-card">
             <q-card-section class="text-subtitle1 text-weight-medium q-pb-sm">Onde estão as compras</q-card-section>
             <q-card-section class="q-pt-none">
-              <BarrasHorizontais :itens="ufs" :formatar="fmt" :limite="10" clicavel titulo="Por estado" @escolher="(it) => (f.uf = [it.chave])" />
+              <MapaBrasil :dados="Object.fromEntries(ufs.map((u) => [u.chave, u.valor]))" :formatar="fmt" :selecionadas="f.uf"
+                @escolher="(uf) => (f.uf = f.uf.includes(uf) ? f.uf.filter((x) => x !== uf) : [...f.uf, uf])" />
+              <div class="text-caption text-grey-6">Clique em um estado para filtrar.</div>
             </q-card-section>
           </q-card>
           <q-card flat bordered class="lf-card">
@@ -103,6 +132,9 @@
         <q-table flat :rows="m.fornecedores" :columns="colunas" row-key="ni" :pagination="{ rowsPerPage: 15 }" />
       </q-expansion-item>
     </template>
+
+    <RankingDialog v-model="rankingAberto" :tipo="ranking.tipo" :titulo="ranking.titulo" :filtros="parametros"
+      @escolher="(it) => (ranking.tipo === 'fornecedor' ? abrirEmpresa({ chave: it.chave }) : (f.uf = [it.chave], (rankingAberto = false)))" />
 
     <!-- Perfil da empresa -->
     <q-dialog v-model="dialogo" maximized-on-mobile>
@@ -164,6 +196,8 @@ import { brl, cnpj, data } from 'src/format';
 import BarrasVerticais from 'components/graficos/BarrasVerticais.vue';
 import BarrasHorizontais from 'components/graficos/BarrasHorizontais.vue';
 import BarraParticipacao from 'components/graficos/BarraParticipacao.vue';
+import MapaBrasil from 'components/graficos/MapaBrasil.vue';
+import RankingDialog from 'components/graficos/RankingDialog.vue';
 
 // Cor fixa por esfera (validada para daltonismo); a cor segue a categoria, não a posição.
 const CORES_ESFERA = { M: '#2a78d6', E: '#eb6834', F: '#1baf7a', D: '#eda100', N: '#6250d6' };
@@ -177,6 +211,17 @@ const route = useRoute();
 const filtros = useFiltros();
 const f = reactive({ q: route.query.q ?? '', uf: route.query.uf ? String(route.query.uf).split(',') : [] });
 const medida = ref('valor');
+const PERIODOS = [{ nome: '30 dias', valor: 30 }, { nome: '90 dias', valor: 90 }, { nome: '6 meses', valor: 182 }, { nome: '12 meses', valor: 365 }];
+const periodo = ref(Number(route.query.dias) || 365);
+const intervalo = computed(() => {
+  const ate = new Date();
+  const de = new Date(Date.now() - periodo.value * 86400000);
+  return { de: de.toISOString().slice(0, 10), ate: ate.toISOString().slice(0, 10) };
+});
+const parametros = computed(() => ({ q: f.q || undefined, uf: f.uf.join(',') || undefined, de: intervalo.value.de, ate: intervalo.value.ate }));
+const porMes = computed(() => periodo.value > 70);
+const rankingAberto = ref(false);
+const ranking = reactive({ tipo: 'uf', titulo: '' });
 const m = ref(null);
 const carregando = ref(false);
 const dialogo = ref(false);
@@ -189,18 +234,32 @@ const brlCurto = (v) => (v >= 1e9 ? `R$ ${(v / 1e9).toLocaleString('pt-BR', { ma
     : v >= 1e3 ? `R$ ${(v / 1e3).toLocaleString('pt-BR', { maximumFractionDigits: 0 })} mil` : brl(v));
 const fmt = (v) => (medida.value === 'valor' ? brlCurto(v) : num(Math.round(v)));
 
-const kpis = computed(() => [
-  { nome: 'Valor contratado', valor: brlCurto(m.value.resumo.valor) },
-  { nome: 'Contratos', valor: num(m.value.resumo.contratos) },
-  { nome: 'Contrato típico (mediana)', valor: brlCurto(m.value.resumo.ticketMediano ?? 0), sub: `média ${brlCurto(m.value.resumo.ticketMedio)}` },
-  { nome: 'Fornecedores', valor: num(m.value.resumo.fornecedores) },
-  { nome: 'Órgãos compradores', valor: num(m.value.resumo.compradores) },
+const MESES = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
+const serieTempo = computed(() => {
+  if (!m.value) return [];
+  const det = (x) => (medida.value === 'valor' ? `${num(x.contratos)} contrato(s)` : brl(x.valor));
+  if (porMes.value) {
+    return m.value.porMes.map((x) => ({
+      rotulo: MESES[Number(x.mes.slice(5, 7)) - 1], rotuloLongo: `${MESES[Number(x.mes.slice(5, 7)) - 1]}/${x.mes.slice(0, 4)}`,
+      valor: medida.value === 'valor' ? x.valor : x.contratos, detalhe: det(x), parcial: x.consolidando,
+    }));
+  }
+  return m.value.porSemana.map((x) => ({
+    rotulo: data(x.semana).slice(0, 5), rotuloLongo: `Semana de ${data(x.semana)}`,
+    valor: medida.value === 'valor' ? x.valor : x.contratos, detalhe: det(x),
+  }));
+});
+const angulos = computed(() => [
+  { tipo: 'uf', nome: 'Estados', icone: 'place', valor: m.value.resumo.estados, sub: 'estados com compras', titulo: 'Ranking de estados' },
+  { tipo: 'municipio', nome: 'Municípios', icone: 'location_city', valor: m.value.resumo.municipios, sub: 'cidades com compras', titulo: 'Ranking de municípios' },
+  { tipo: 'orgao', nome: 'Órgãos', icone: 'account_balance', valor: m.value.resumo.compradores, sub: 'órgãos compradores', titulo: 'Ranking de órgãos' },
+  { tipo: 'fornecedor', nome: 'Fornecedores', icone: 'storefront', valor: m.value.resumo.fornecedores, sub: 'empresas que venderam', titulo: 'Ranking de fornecedores' },
+  { tipo: 'categoria', nome: 'Categorias', icone: 'category', valor: m.value.porCategoria.length, sub: 'compras, serviços, obras', titulo: 'Ranking de categorias' },
 ]);
-const semanas = computed(() => (m.value?.porSemana ?? []).map((s) => ({
-  rotulo: data(s.semana).slice(0, 5), rotuloLongo: `Semana de ${data(s.semana)}`,
-  valor: medida.value === 'valor' ? s.valor : s.contratos,
-  detalhe: medida.value === 'valor' ? `${num(s.contratos)} contrato(s)` : brl(s.valor),
-})));
+function abrirRanking(a) {
+  Object.assign(ranking, { tipo: a.tipo, titulo: a.titulo });
+  rankingAberto.value = true;
+}
 const conc = computed(() => (m.value ? (medida.value === 'valor' ? m.value.concentracao.porValor : m.value.concentracao.porContratos) : null));
 const fornecedores = computed(() => {
   const lista = medida.value === 'valor' ? m.value.fornecedores : m.value.fornecedoresPorContratos;
@@ -231,7 +290,7 @@ const kpisEmpresa = computed(() => [
 async function carregar() {
   carregando.value = true;
   try {
-    m.value = (await api.get('/mercado', { params: { q: f.q || undefined, uf: f.uf.join(',') || undefined } })).data;
+    m.value = (await api.get('/mercado', { params: parametros.value, timeout: 120000 })).data;
   } finally {
     carregando.value = false;
   }
@@ -239,10 +298,10 @@ async function carregar() {
 async function abrirEmpresa(it) {
   empresa.value = null;
   dialogo.value = true;
-  empresa.value = (await api.get(`/mercado/empresa/${it.chave}`, { params: { q: f.q || undefined, uf: f.uf.join(',') || undefined } })).data;
+  empresa.value = (await api.get(`/mercado/empresa/${it.chave}`, { params: parametros.value })).data;
 }
 
-watch(() => [f.q, f.uf], carregar, { deep: true });
+watch(() => [f.q, f.uf, periodo.value], carregar, { deep: true });
 onMounted(async () => {
   await filtros.carregar();
   carregar();

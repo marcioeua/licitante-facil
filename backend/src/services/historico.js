@@ -7,7 +7,9 @@ import { tx } from '../db/index.js';
 import { ftsQuery } from './busca.js';
 
 const PAGE_SIZE = 50;
-export const DIAS_HISTORICO = Number(process.env.HISTORICO_DIAS ?? 30);
+export const DIAS_HISTORICO = Number(process.env.HISTORICO_DIAS ?? 365);
+// Trava de segurança: para de buscar dias antigos se o banco passar deste tamanho (MB).
+export const LIMITE_BANCO_MB = Number(process.env.HISTORICO_LIMITE_MB ?? 3500);
 
 const norm = (t) => String(t ?? '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 const yyyymmdd = (d) => d.toISOString().slice(0, 10).replaceAll('-', '');
@@ -40,7 +42,7 @@ export function mapContrato(c) {
   return {
     numero_controle_pncp: c.numeroControlePNCP,
     compra_controle: c.numeroControlePncpCompra ?? null,
-    objeto: String(c.objetoContrato ?? '').trim().slice(0, 1500),
+    objeto: String(c.objetoContrato ?? '').trim().slice(0, 600),
     categoria: c.categoriaProcesso?.nome ?? null,
     tipo: c.tipoContrato?.nome ?? null,
     valor_global: c.valorGlobal ?? c.valorInicial ?? null,
@@ -90,6 +92,16 @@ export async function importarContratosDoDia(db, dia, { fetchImpl = fetch, pausa
   return total;
 }
 
+function bancoMb(db) {
+  try {
+    const { page_count: pc } = db.prepare('PRAGMA page_count').get();
+    const { page_size: ps } = db.prepare('PRAGMA page_size').get();
+    return (pc * ps) / 1048576;
+  } catch {
+    return 0;
+  }
+}
+
 /** Próximo dia a importar: hoje/ontem primeiro (atualização), depois os dias passados até DIAS_HISTORICO. */
 export function proximoDiaContratos(db, agora = new Date()) {
   const dia = (n) => new Date(agora.getTime() - n * 86400000).toISOString().slice(0, 10);
@@ -99,6 +111,7 @@ export function proximoDiaContratos(db, agora = new Date()) {
     const r = feito.get(dia(n));
     if (!r || agora - new Date(r.importado_em.replace(' ', 'T') + 'Z') > 6 * 3600000) return dia(n);
   }
+  if (bancoMb(db) >= LIMITE_BANCO_MB) return null; // disco: não busca mais dias antigos
   for (let n = 2; n <= DIAS_HISTORICO; n++) if (!feito.get(dia(n))) return dia(n);
   return null;
 }

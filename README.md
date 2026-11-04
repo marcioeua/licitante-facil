@@ -18,7 +18,9 @@ Plataforma para empresas encontrarem licitações públicas e organizarem a part
 - **Pagômetro**: indica se o órgão tende a pagar em dia, pela nota CAPAG (capacidade de pagamento)
   que o Tesouro Nacional publica para estados e municípios. Aparece em cada licitação, como selo na
   busca e numa página de consulta. Dados atualizados toda semana do Tesouro Transparente.
-- **Análise de mercado**: por segmento e estado, valor contratado, contrato típico (mediana), evolução
+- **Análise de mercado**: por segmento, estado e período (até 12 meses), valor total, mapa do Brasil,
+  evolução mensal (meses recentes marcados como em consolidação), ângulos de análise com rankings
+  completos (estados, municípios, órgãos, fornecedores, categorias), valor contratado, contrato típico (mediana), evolução
   semanal, participação por esfera e por estado, concentração do mercado (por valor ou nº de contratos),
   maiores fornecedores e compradores, e perfil de cada empresa (inclusive a sua).
 - **Histórico de compras**: quem comprou, quem venceu e por quanto. Contratos do PNCP (últimos
@@ -35,6 +37,7 @@ Plataforma para empresas encontrarem licitações públicas e organizarem a part
 | Back-end | Node.js 22+ com Fastify 5 |
 | Banco | SQLite embutido no Node (`node:sqlite`) com busca FTS5 |
 | Dados | API pública de consultas do PNCP; CAPAG do Tesouro Transparente |
+| Mapa | [svg-maps/brazil](https://github.com/VictorCazanave/svg-maps) (CC BY 4.0) |
 | IA | Claude (Anthropic) via `@anthropic-ai/sdk`, com Files API, saída estruturada e citações |
 
 ## Rodando localmente

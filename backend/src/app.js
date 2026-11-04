@@ -15,7 +15,7 @@ import alertasRoutes from './routes/alertas.js';
 import agendaRoutes from './routes/agenda.js';
 import { buscarEntes } from './services/capag.js';
 import { consultarContratos, pesquisarPrecos } from './services/historico.js';
-import { analisarMercado, analisarEmpresa } from './services/mercado.js';
+import { analisarMercado, analisarEmpresa, rankingMercado } from './services/mercado.js';
 import dashboardRoutes from './routes/dashboard.js';
 
 import { COOKIE } from './http.js';
@@ -72,7 +72,21 @@ export async function buildApp({ db, logger = false, serveFrontend = true, ia, f
   });
 
   // Análise de mercado (contratos do PNCP).
-  app.get('/api/mercado', async (req) => analisarMercado(db, req.query));
+  // Cache curto: as agregações sobre um ano de contratos são pesadas e os dados mudam poucas vezes ao dia.
+  const cacheMercado = new Map();
+  const comCache = (chave, fn) => {
+    const c = cacheMercado.get(chave);
+    if (c && Date.now() - c.em < 30 * 60000) return c.valor;
+    const valor = fn();
+    if (cacheMercado.size > 300) cacheMercado.delete(cacheMercado.keys().next().value);
+    cacheMercado.set(chave, { valor, em: Date.now() });
+    return valor;
+  };
+  const chaveQ = (prefixo, q) => prefixo + JSON.stringify(Object.entries(q).sort());
+  app.get('/api/mercado', async (req) => comCache(chaveQ('m', req.query), () => analisarMercado(db, req.query)));
+  app.get('/api/mercado/ranking/:tipo', async (req, reply) =>
+    comCache(chaveQ(`r${req.params.tipo}`, req.query), () => rankingMercado(db, req.params.tipo, req.query))
+    ?? reply.code(404).send({ erro: 'Ângulo de análise desconhecido.' }));
   app.get('/api/mercado/empresa/:ni', async (req, reply) => {
     if (String(req.params.ni).replace(/\D/g, '').length < 11) return reply.code(400).send({ erro: 'CNPJ inválido.' });
     return analisarEmpresa(db, req.params.ni, req.query);

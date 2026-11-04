@@ -52,3 +52,22 @@ test('análise de mercado: totais, mediana, concentração, contrato dominante e
   assert.equal(e.clientes.length, 2);
   assert.equal((await app.inject({ method: 'GET', url: '/api/mercado/empresa/123', headers: { cookie } })).statusCode, 400);
 });
+
+test('período, meses em consolidação e rankings paginados', async () => {
+  const { analisarMercado, rankingMercado } = await import('../src/services/mercado.js');
+  const db = openDatabase(':memory:');
+  const hoje = new Date().toISOString().slice(0, 10);
+  gravarContratos(db, [
+    ct(11, 'Limpeza', A, '1', 'SP', 'M', 100, '2026-01-10'),
+    ct(12, 'Limpeza', B, '2', 'MG', 'E', 200, '2026-03-05'),
+    ct(13, 'Limpeza', B, '3', 'MG', 'E', 300, hoje),
+  ]);
+  const m = analisarMercado(db, { q: 'limpeza' });
+  assert.deepEqual(m.porMes.map((x) => [x.mes, x.consolidando]), [['2026-01', false], ['2026-03', false], [hoje.slice(0, 7), true]]);
+  assert.equal(m.resumo.estados, 2);
+  assert.equal(analisarMercado(db, { q: 'limpeza', de: '2026-02-01', ate: '2026-03-31' }).resumo.contratos, 1);
+  const r = rankingMercado(db, 'uf', { q: 'limpeza', tamanho: 1 });
+  assert.deepEqual([r.total, r.itens[0].chave, r.itens[0].valor], [2, 'MG', 500]);
+  assert.equal(rankingMercado(db, 'orgao', { q: 'limpeza', pagina: 2, tamanho: 2 }).itens.length, 1);
+  assert.equal(rankingMercado(db, 'xyz', {}), null);
+});

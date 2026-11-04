@@ -32,7 +32,7 @@ test('ordem de importação dos dias e limpeza', () => {
   db.prepare("INSERT INTO contratos_dias VALUES ('2026-11-04', 10, '2026-11-04 11:30:00')").run();
   assert.equal(proximoDiaContratos(db, agora), '2026-11-02'); // depois os dias passados
   assert.equal(proximoDiaContratos(db, new Date('2026-11-04T18:00:00Z')), '2026-11-03', 'reimporta ontem após 6h');
-  gravarContratos(db, [mapContrato({ ...contrato(9, 'velho', FA, P1, 1, null), dataPublicacaoPncp: '2026-01-01T00:00:00' })]);
+  gravarContratos(db, [mapContrato({ ...contrato(9, 'velho', FA, P1, 1, null), dataPublicacaoPncp: '2025-01-01T00:00:00' })]);
   assert.equal(limparHistoricoAntigo(db, agora), 1);
 });
 

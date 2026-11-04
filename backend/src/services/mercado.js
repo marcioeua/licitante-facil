@@ -20,6 +20,10 @@ function montarFiltro(q = {}) {
   }
   if (q.esfera && ESFERAS[q.esfera]) { where.push('c.esfera = :esf'); p.esf = q.esfera; }
   if (q.fornecedor) { where.push('c.fornecedor_ni = :forn'); p.forn = String(q.fornecedor).replace(/\D/g, ''); }
+  if (q.orgao) { where.push('c.orgao_cnpj = :org'); p.org = String(q.orgao).replace(/\D/g, ''); }
+  // Período pela data de publicação no PNCP (AAAA-MM-DD).
+  if (/^\d{4}-\d{2}-\d{2}$/.test(q.de ?? '')) { where.push('c.data_publicacao >= :de'); p.de = q.de; }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(q.ate ?? '')) { where.push('c.data_publicacao < :ate'); p.ate = `${q.ate}T99`; }
   // Valores nulos/zerados não entram em somas de mercado.
   where.push('c.valor_global > 0');
   return { from: `FROM contratos c ${join} WHERE ${where.join(' AND ')}`, p };
@@ -44,6 +48,12 @@ export function analisarMercado(db, q = {}) {
   const porSemana = db.prepare(`SELECT date(substr(c.data_publicacao, 1, 10), '-6 days', 'weekday 1') AS semana,
       count(*) AS contratos, sum(c.valor_global) AS valor
     ${from} AND c.data_publicacao IS NOT NULL GROUP BY semana ORDER BY semana`).all(p);
+  // Meses recentes ainda recebem contratos publicados com atraso: marcados como "em consolidação".
+  const limiteConsolidacao = new Date(Date.now() - 45 * 86400000).toISOString().slice(0, 7);
+  const porMes = db.prepare(`SELECT substr(c.data_publicacao, 1, 7) AS mes, count(*) AS contratos, sum(c.valor_global) AS valor
+    ${from} AND c.data_publicacao IS NOT NULL GROUP BY mes ORDER BY mes`).all(p)
+    .map((x) => ({ ...x, consolidando: x.mes >= limiteConsolidacao }));
+  const totais = db.prepare(`SELECT count(DISTINCT c.uf) AS estados, count(DISTINCT c.municipio || c.uf) AS municipios ${from}`).get(p);
   const porUf = db.prepare(`SELECT c.uf, count(*) AS contratos, sum(c.valor_global) AS valor
     ${from} AND c.uf IS NOT NULL GROUP BY c.uf ORDER BY valor DESC`).all(p);
   const porEsfera = db.prepare(`SELECT coalesce(c.esfera, 'N') AS esfera, count(*) AS contratos, sum(c.valor_global) AS valor
@@ -82,8 +92,9 @@ export function analisarMercado(db, q = {}) {
     resumo: {
       contratos: r.contratos, valor: total, ticketMedio: r.contratos ? total / r.contratos : 0,
       ticketMediano: mediana(db, from, p, r.contratos), fornecedores: r.fornecedores, compradores: r.compradores,
+      estados: totais.estados, municipios: totais.municipios,
     },
-    concentracao, contratoDominante, porSemana, porUf, porEsfera, porCategoria, fornecedores, fornecedoresPorContratos, compradores, periodo,
+    concentracao, contratoDominante, porSemana, porMes, porUf, porEsfera, porCategoria, fornecedores, fornecedoresPorContratos, compradores, periodo,
   };
 }
 
@@ -96,7 +107,7 @@ export function analisarEmpresa(db, ni, q = {}) {
   const recentes = db.prepare(`SELECT c.id, c.objeto, c.valor_global, c.orgao_nome, c.uf, c.municipio, c.data_assinatura
     ${from} ORDER BY c.data_assinatura DESC LIMIT 20`).all(p);
   // Participação da empresa no mercado do mesmo segmento/região (sem o filtro de fornecedor).
-  const mercado = q.q || q.uf ? analisarMercado(db, { q: q.q, uf: q.uf }).resumo.valor : null;
+  const mercado = q.q || q.uf ? analisarMercado(db, { ...q, fornecedor: undefined }).resumo.valor : null;
   return {
     ni: cnpj, nome,
     resumo: geral.resumo,
@@ -104,4 +115,29 @@ export function analisarEmpresa(db, ni, q = {}) {
     porSemana: geral.porSemana, porUf: geral.porUf, porEsfera: geral.porEsfera,
     clientes: geral.compradores, recentes, periodo: geral.periodo,
   };
+}
+
+const RANKINGS = {
+  uf: { chave: 'c.uf', nome: 'c.uf', extra: "'' AS detalhe" },
+  municipio: { chave: "c.municipio || '/' || c.uf", nome: "c.municipio || '/' || c.uf", extra: 'max(c.uf) AS detalhe' },
+  orgao: { chave: 'c.orgao_cnpj', nome: 'max(c.orgao_nome)', extra: "max(c.uf) AS detalhe" },
+  fornecedor: { chave: 'c.fornecedor_ni', nome: 'max(c.fornecedor_nome)', extra: 'count(DISTINCT c.orgao_cnpj) AS detalhe' },
+  categoria: { chave: "coalesce(c.categoria, 'Não informada')", nome: "coalesce(c.categoria, 'Não informada')", extra: "'' AS detalhe" },
+};
+
+/** Ranking completo e paginado de um "ângulo de análise". */
+export function rankingMercado(db, tipo, q = {}) {
+  const def = RANKINGS[tipo];
+  if (!def) return null;
+  const { from, p } = montarFiltro(q);
+  const ordem = q.ordem === 'contratos' ? 'contratos DESC, valor DESC' : 'valor DESC, contratos DESC';
+  const pagina = Math.max(1, Number(q.pagina) || 1);
+  const tamanho = Math.min(100, Math.max(1, Number(q.tamanho) || 25));
+  const base = `${from} AND ${def.chave} IS NOT NULL GROUP BY ${def.chave}`;
+  const total = db.prepare(`SELECT count(*) AS n FROM (SELECT 1 ${base})`).get(p).n;
+  const soma = db.prepare(`SELECT coalesce(sum(c.valor_global), 0) AS v ${from}`).get(p).v || 1;
+  const itens = db.prepare(`SELECT ${def.chave} AS chave, ${def.nome} AS nome, ${def.extra}, count(*) AS contratos, sum(c.valor_global) AS valor
+    ${base} ORDER BY ${ordem} LIMIT :lim OFFSET :off`).all({ ...p, lim: tamanho, off: (pagina - 1) * tamanho })
+    .map((x) => ({ ...x, participacao: x.valor / soma }));
+  return { tipo, total, pagina, tamanho, itens };
 }

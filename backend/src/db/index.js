@@ -229,6 +229,7 @@ CREATE INDEX IF NOT EXISTS idx_ct_compra ON contratos(compra_controle);
 CREATE INDEX IF NOT EXISTS idx_ct_forn ON contratos(fornecedor_ni);
 CREATE INDEX IF NOT EXISTS idx_ct_orgao ON contratos(orgao_cnpj);
 CREATE INDEX IF NOT EXISTS idx_ct_pub ON contratos(data_publicacao);
+CREATE INDEX IF NOT EXISTS idx_ct_uf ON contratos(uf, data_publicacao);
 CREATE VIRTUAL TABLE IF NOT EXISTS contratos_fts USING fts5(
   objeto, fornecedor_nome, orgao_nome, content='contratos', content_rowid='id', tokenize = 'unicode61 remove_diacritics 2'
 );

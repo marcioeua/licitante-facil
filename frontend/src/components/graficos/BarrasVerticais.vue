@@ -11,11 +11,12 @@
       <div class="bv-barras">
         <div v-for="(it, i) in itens" :key="it.rotulo" class="bv-col">
           <div class="bv-alvo">
-            <div class="bv-barra" :style="{ height: Math.max(2, (it.valor / max) * 100) + '%' }" />
+            <div class="bv-barra" :class="{ 'bv-parcial': it.parcial }" :style="{ height: Math.max(2, (it.valor / max) * 100) + '%' }" />
             <q-tooltip class="bg-grey-10 text-body2">
               <div class="text-weight-medium">{{ it.rotuloLongo ?? it.rotulo }}</div>
               <div>{{ formatar(it.valor) }}</div>
               <div v-if="it.detalhe" class="text-grey-5">{{ it.detalhe }}</div>
+              <div v-if="it.parcial" class="text-amber-4">Em consolidação: o valor ainda deve crescer</div>
             </q-tooltip>
           </div>
           <div class="bv-rotulo text-caption text-grey-7">{{ mostrarRotulo(i) ? it.rotulo : '' }}</div>
@@ -52,5 +53,6 @@ const mostrarRotulo = (i) => i % passo.value === 0 || i === props.itens.length -
 .bv-alvo { flex: 1; display: flex; align-items: flex-end; justify-content: center; cursor: default; }
 .bv-alvo:hover .bv-barra { background: #1e40af; }
 .bv-barra { width: min(28px, 70%); background: var(--q-primary); border-radius: 4px 4px 0 0; transition: background 0.15s; }
+.bv-parcial { background: repeating-linear-gradient(135deg, #8fb0ea 0 4px, #c6d6f4 4px 8px); }
 .bv-rotulo { position: absolute; bottom: -20px; left: 50%; transform: translateX(-50%); white-space: nowrap; }
 </style>
