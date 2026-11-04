@@ -21,8 +21,10 @@ RUN npm ci --omit=dev --no-audit --no-fund && npm cache clean --force
 COPY backend/src ./src
 COPY --from=frontend /app/frontend/dist/spa /app/frontend/dist/spa
 # Banco SQLite e arquivos enviados ficam em /data (monte um volume persistente aqui).
+# O entrypoint ajusta a permissão do volume e roda a aplicação como o usuário "node".
+COPY --chmod=755 docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN mkdir -p /data && chown -R node:node /data
-USER node
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 EXPOSE 3333
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s \
   CMD node -e "fetch('http://127.0.0.1:'+process.env.PORT+'/api/saude').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
