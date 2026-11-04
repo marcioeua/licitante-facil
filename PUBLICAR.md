@@ -35,6 +35,7 @@ No serviço, abra a aba **Variables** e adicione:
 | `CODIGO_CONVITE` | Recomendada | Um código que você vai passar para sua equipe se cadastrar |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` | Para alertas por e-mail | Dados do seu serviço de e-mail (Gmail, Brevo, Amazon SES…) |
 | `IA_LIMITE_DIARIO` | Opcional | Análises com IA por usuário por dia (padrão 30) |
+| `HISTORICO_DIAS` | Opcional | Dias de contratos guardados no histórico de compras (padrão 30; cerca de 250 MB por mês de disco) |
 
 Não é preciso configurar porta, banco, fuso horário nem `SESSION_SECRET`: a imagem já define
 isso, e o segredo de login é gerado sozinho no primeiro início e guardado no volume.
@@ -75,6 +76,7 @@ o Registro.br não oferece esse recurso.
 | Todo dia às 3h | Recarga completa das licitações abertas |
 | Todo dia às 7h30 | Envia os alertas por e-mail (se o SMTP estiver configurado) |
 | Toda semana | Atualiza as notas CAPAG do Pagômetro (Tesouro Transparente) |
+| Nos intervalos livres | Importa os contratos do PNCP para o histórico de compras (hoje e ontem a cada 6h; dias passados até `HISTORICO_DIAS`) |
 
 Para conferir se está tudo bem, abra `https://SEU-ENDERECO/api/saude`: mostra a última
 sincronização com o PNCP e se a IA está configurada.

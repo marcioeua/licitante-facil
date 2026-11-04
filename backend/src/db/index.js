@@ -212,6 +212,72 @@ CREATE TABLE IF NOT EXISTS capag_entes (
 );
 CREATE INDEX IF NOT EXISTS idx_capag_nome ON capag_entes(nome_norm);
 
+-- Histórico de compras: contratos publicados no PNCP (últimos HISTORICO_DIAS dias).
+CREATE TABLE IF NOT EXISTS contratos (
+  id INTEGER PRIMARY KEY,
+  numero_controle_pncp TEXT NOT NULL UNIQUE,
+  compra_controle TEXT,
+  objeto TEXT NOT NULL,
+  categoria TEXT, tipo TEXT,
+  valor_global REAL,
+  fornecedor_ni TEXT, fornecedor_nome TEXT,
+  orgao_cnpj TEXT, orgao_nome TEXT, esfera TEXT, unidade_nome TEXT,
+  uf TEXT, municipio TEXT, codigo_ibge TEXT,
+  data_assinatura TEXT, data_publicacao TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_ct_compra ON contratos(compra_controle);
+CREATE INDEX IF NOT EXISTS idx_ct_forn ON contratos(fornecedor_ni);
+CREATE INDEX IF NOT EXISTS idx_ct_orgao ON contratos(orgao_cnpj);
+CREATE INDEX IF NOT EXISTS idx_ct_pub ON contratos(data_publicacao);
+CREATE VIRTUAL TABLE IF NOT EXISTS contratos_fts USING fts5(
+  objeto, fornecedor_nome, orgao_nome, content='contratos', content_rowid='id', tokenize = 'unicode61 remove_diacritics 2'
+);
+CREATE TRIGGER IF NOT EXISTS ct_ai AFTER INSERT ON contratos BEGIN
+  INSERT INTO contratos_fts(rowid, objeto, fornecedor_nome, orgao_nome) VALUES (new.id, new.objeto, new.fornecedor_nome, new.orgao_nome);
+END;
+CREATE TRIGGER IF NOT EXISTS ct_ad AFTER DELETE ON contratos BEGIN
+  INSERT INTO contratos_fts(contratos_fts, rowid, objeto, fornecedor_nome, orgao_nome) VALUES ('delete', old.id, old.objeto, old.fornecedor_nome, old.orgao_nome);
+END;
+CREATE TRIGGER IF NOT EXISTS ct_au AFTER UPDATE ON contratos BEGIN
+  INSERT INTO contratos_fts(contratos_fts, rowid, objeto, fornecedor_nome, orgao_nome) VALUES ('delete', old.id, old.objeto, old.fornecedor_nome, old.orgao_nome);
+  INSERT INTO contratos_fts(rowid, objeto, fornecedor_nome, orgao_nome) VALUES (new.id, new.objeto, new.fornecedor_nome, new.orgao_nome);
+END;
+CREATE TABLE IF NOT EXISTS contratos_dias (dia TEXT PRIMARY KEY, importados INTEGER NOT NULL, importado_em TEXT NOT NULL);
+
+-- Itens das compras e preços homologados (buscados sob demanda na pesquisa de preços).
+CREATE TABLE IF NOT EXISTS compra_itens (
+  id INTEGER PRIMARY KEY,
+  compra_controle TEXT NOT NULL,
+  numero_item INTEGER NOT NULL,
+  descricao TEXT NOT NULL,
+  unidade TEXT, quantidade REAL, valor_unit_estimado REAL,
+  tem_resultado INTEGER NOT NULL DEFAULT 0,
+  resultado_buscado INTEGER NOT NULL DEFAULT 0,
+  UNIQUE (compra_controle, numero_item)
+);
+CREATE VIRTUAL TABLE IF NOT EXISTS compra_itens_fts USING fts5(
+  descricao, content='compra_itens', content_rowid='id', tokenize = 'unicode61 remove_diacritics 2'
+);
+CREATE TRIGGER IF NOT EXISTS ci_ai AFTER INSERT ON compra_itens BEGIN
+  INSERT INTO compra_itens_fts(rowid, descricao) VALUES (new.id, new.descricao);
+END;
+CREATE TRIGGER IF NOT EXISTS ci_ad AFTER DELETE ON compra_itens BEGIN
+  INSERT INTO compra_itens_fts(compra_itens_fts, rowid, descricao) VALUES ('delete', old.id, old.descricao);
+END;
+CREATE TRIGGER IF NOT EXISTS ci_au AFTER UPDATE OF descricao ON compra_itens BEGIN
+  INSERT INTO compra_itens_fts(compra_itens_fts, rowid, descricao) VALUES ('delete', old.id, old.descricao);
+  INSERT INTO compra_itens_fts(rowid, descricao) VALUES (new.id, new.descricao);
+END;
+CREATE TABLE IF NOT EXISTS item_resultados (
+  compra_controle TEXT NOT NULL,
+  numero_item INTEGER NOT NULL,
+  sequencial INTEGER NOT NULL,
+  fornecedor_ni TEXT, fornecedor_nome TEXT, porte TEXT,
+  quantidade REAL, valor_unitario REAL, valor_total REAL, data_resultado TEXT,
+  PRIMARY KEY (compra_controle, numero_item, sequencial)
+);
+CREATE TABLE IF NOT EXISTS compras_consultadas (compra_controle TEXT PRIMARY KEY, consultado_em TEXT NOT NULL);
+
 -- Última execução de tarefas agendadas (alertas diários etc.).
 CREATE TABLE IF NOT EXISTS tarefas (
   nome TEXT PRIMARY KEY,

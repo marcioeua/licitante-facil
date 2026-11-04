@@ -6,6 +6,7 @@ import { config } from '../config.js';
 import { sincronizarPropostasAbertas, sincronizarAtualizacoes } from '../services/pncp.js';
 import { enviarAlertas } from '../services/alertas.js';
 import { atualizarCapag } from '../services/capag.js';
+import { proximoDiaContratos, importarContratosDoDia, limparHistoricoAntigo } from '../services/historico.js';
 
 const FUSO = 'America/Sao_Paulo';
 const HORA_COMPLETA = 3; // 3h da manhã
@@ -118,6 +119,15 @@ export function iniciarAgendador(db, { log = console.log, intervaloMs = 5 * 60 *
         log(`[agendador] atualização incremental desde ${t.desde.toISOString().slice(0, 10)}`);
         const r = await sincronizarAtualizacoes(db, { desde: t.desde, log: () => {} });
         log(`[agendador] atualização concluída: ${r.importadas} registros`);
+      }
+      // Contratos (histórico de compras) quando não há carga de licitações nesta rodada.
+      if (!t) {
+        const dia = proximoDiaContratos(db);
+        if (dia) {
+          const n = await importarContratosDoDia(db, dia);
+          log(`[agendador] contratos de ${dia}: ${n}`);
+          limparHistoricoAntigo(db);
+        }
       }
       if (alertasPendentes(db)) {
         if (config.smtp.host) {

@@ -24,6 +24,7 @@
       <q-card-actions class="q-pa-md q-gutter-sm">
         <q-btn v-if="op.negocio_id" unelevated no-caps color="positive" icon="view_kanban" label="Abrir no funil" :to="{ name: 'negocio', params: { id: op.negocio_id } }" />
         <q-btn v-else unelevated no-caps color="primary" icon="add" label="Adicionar ao funil" :loading="salvando" @click="adicionar" />
+        <q-btn flat no-caps color="primary" icon="query_stats" label="Quem já vendeu isso?" :to="{ name: 'historico', query: { aba: 'contratos', q: termoHistorico } }" />
         <q-btn v-if="op.link_pncp" outline no-caps color="primary" icon="open_in_new" label="Ver edital no PNCP" :href="op.link_pncp" target="_blank" rel="noopener" />
         <q-btn v-if="op.link_origem" flat no-caps color="primary" icon="launch" label="Sistema de origem" :href="op.link_origem" target="_blank" rel="noopener" />
       </q-card-actions>
@@ -45,6 +46,10 @@ const route = useRoute();
 const router = useRouter();
 const op = ref(null);
 const salvando = ref(false);
+// Palavras principais do objeto para buscar no histórico (sem "aquisição", "contratação" etc.).
+const PARADAS = new Set(['aquisicao', 'contratacao', 'registro', 'precos', 'futura', 'eventual', 'empresa', 'para', 'fornecimento', 'servicos', 'especializada', 'prestacao', 'atender', 'secretaria', 'municipal', 'conforme']);
+const termoHistorico = computed(() => (op.value?.objeto ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  .match(/[a-z]{4,}/g)?.filter((w) => !PARADAS.has(w)).slice(0, 3).join(' ') ?? '');
 const campos = computed(() => [
   { nome: 'Órgão', valor: op.value.orgao_nome },
   { nome: 'CNPJ do órgão', valor: cnpj(op.value.orgao_cnpj) },

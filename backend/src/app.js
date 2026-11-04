@@ -14,6 +14,7 @@ import empresasRoutes from './routes/empresas.js';
 import alertasRoutes from './routes/alertas.js';
 import agendaRoutes from './routes/agenda.js';
 import { buscarEntes } from './services/capag.js';
+import { consultarContratos, pesquisarPrecos } from './services/historico.js';
 import dashboardRoutes from './routes/dashboard.js';
 
 import { COOKIE } from './http.js';
@@ -56,6 +57,18 @@ export async function buildApp({ db, logger = false, serveFrontend = true, ia, f
 
   // Pagômetro: busca de estados e municípios pela nota de capacidade de pagamento.
   app.get('/api/pagometro', async (req) => buscarEntes(db, req.query));
+
+  // Histórico de compras: quem comprou, quem venceu e por quanto.
+  app.get('/api/historico/contratos', async (req) => consultarContratos(db, req.query));
+  app.get('/api/historico/precos', async (req, reply) => {
+    if (String(req.query.q ?? '').trim().length < 3) return reply.code(400).send({ erro: 'Digite pelo menos 3 letras do item.' });
+    try {
+      return await pesquisarPrecos(db, req.query, { fetchImpl: app.fetchPncp });
+    } catch (e) {
+      req.log.warn(e);
+      return reply.code(502).send({ erro: 'Não foi possível consultar o PNCP agora. Tente novamente em instantes.' });
+    }
+  });
 
   await app.register(authRoutes, { prefix: '/api/auth' });
   await app.register(dashboardRoutes, { prefix: '/api/dashboard' });
