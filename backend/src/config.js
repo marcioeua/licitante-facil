@@ -19,7 +19,7 @@ export const config = {
     port: Number(process.env.SMTP_PORT ?? 587),
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
-    from: process.env.SMTP_FROM ?? 'Licitante Fácil <nao-responda@licitantefacil.com.br>',
+    from: process.env.SMTP_FROM ?? 'Facilita Pregão <nao-responda@facilitapregao.com.br>',
   },
   // No Railway, o domínio público vem em RAILWAY_PUBLIC_DOMAIN.
   appUrl: process.env.APP_URL

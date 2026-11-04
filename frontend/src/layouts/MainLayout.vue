@@ -5,7 +5,7 @@
         <q-btn flat round dense icon="menu" class="lt-md" aria-label="Menu" @click="menu = !menu" />
         <q-toolbar-title class="row items-center no-wrap">
           <img src="/favicon.svg" alt="" width="28" height="28" class="q-mr-sm" />
-          <span class="text-weight-bold">Licitante <span class="text-primary">Fácil</span></span>
+          <span class="text-weight-bold">Facilita <span class="text-primary">Pregão</span></span>
         </q-toolbar-title>
         <q-btn flat no-caps icon="account_circle" :label="$q.screen.gt.xs ? auth.usuario?.nome : ''">
           <q-menu>

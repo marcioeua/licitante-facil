@@ -13,15 +13,15 @@ export function montarEmail(alerta, itens) {
       <div style="font-weight:600;color:#0f172a">${esc(o.objeto.slice(0, 300))}</div>
       <div style="color:#475569;font-size:13px;margin-top:4px">${esc(o.orgao_nome)} · ${esc(o.municipio)}/${esc(o.uf)} · ${esc(o.modalidade)}</div>
       <div style="color:#475569;font-size:13px">Valor estimado: ${brl(o.valor_estimado)} · Propostas até ${dataBr(o.data_encerramento)}</div>
-      <a href="${esc(config.appUrl)}/#/oportunidades/${o.id}" style="color:#1d4ed8;font-size:13px">Ver no Licitante Fácil</a>
+      <a href="${esc(config.appUrl)}/#/oportunidades/${o.id}" style="color:#1d4ed8;font-size:13px">Ver no Facilita Pregão</a>
     </td></tr>`).join('');
   return {
     subject: `${itens.length} nova(s) licitação(ões) para "${alerta.nome}"`,
     html: `<div style="font-family:Arial,sans-serif;max-width:640px;margin:auto">
-      <h2 style="color:#1d4ed8">Licitante Fácil</h2>
+      <h2 style="color:#1d4ed8">Facilita Pregão</h2>
       <p>Encontramos <b>${itens.length}</b> oportunidade(s) nova(s) para o alerta <b>${esc(alerta.nome)}</b>.</p>
       <table style="width:100%;border-collapse:collapse">${linhas}</table>
-      <p style="color:#94a3b8;font-size:12px">Você recebe este e-mail porque ativou o alerta no Licitante Fácil.</p></div>`,
+      <p style="color:#94a3b8;font-size:12px">Você recebe este e-mail porque ativou o alerta no Facilita Pregão.</p></div>`,
   };
 }
 

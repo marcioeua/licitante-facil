@@ -5,7 +5,7 @@
         <q-card class="lf-card" style="width: 100%; max-width: 400px">
           <q-card-section class="text-center q-pt-lg">
             <img src="/favicon.svg" alt="" width="48" height="48" />
-            <div class="text-h5 text-weight-bold q-mt-sm">Licitante <span class="text-primary">Fácil</span></div>
+            <div class="text-h5 text-weight-bold q-mt-sm">Facilita <span class="text-primary">Pregão</span></div>
             <div class="text-grey-7">Encontre licitações e organize suas propostas</div>
           </q-card-section>
           <q-tabs v-model="aba" dense class="text-grey-8" active-color="primary" indicator-color="primary" no-caps>

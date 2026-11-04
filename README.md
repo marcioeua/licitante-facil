@@ -1,4 +1,4 @@
-# Licitante Fácil
+# Facilita Pregão
 
 Plataforma para empresas encontrarem licitações públicas e organizarem a participação nelas.
 
@@ -86,6 +86,9 @@ cd backend && npm test
 ```
 
 ## Próximos passos
+
+- Assistente de chat dentro do sistema (perguntas sobre licitações, preços e funil em linguagem natural)
+  e conector MCP para usar o sistema direto no Claude ou no ChatGPT.
 
 - Filtro e selo por portal de disputa (Compras.gov.br, Portal de Compras Públicas, BLL, Licitanet,
   BNC, Licitações-e etc.), identificado pelo domínio de `linkSistemaOrigem` e pelo `usuarioNome`
