@@ -17,6 +17,7 @@ export default [
       { path: 'mercado', name: 'mercado', component: () => import('pages/MercadoPage.vue') },
       { path: 'analise-empresas/:cnpj?', name: 'analise-empresas', component: () => import('pages/AnaliseEmpresasPage.vue') },
       { path: 'agentes', name: 'agentes', component: () => import('pages/AgentesPage.vue') },
+      { path: 'chat', name: 'chat', component: () => import('pages/ChatPage.vue') },
     ],
   },
   { path: '/entrar', name: 'login', meta: { publica: true }, component: () => import('pages/LoginPage.vue') },

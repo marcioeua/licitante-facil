@@ -18,6 +18,7 @@ import { consultarContratos, pesquisarPrecos, disco } from './services/historico
 import { analisarMercado, analisarEmpresa, rankingMercado } from './services/mercado.js';
 import { sugerirEmpresas, perfilEmpresa, compararEmpresas } from './services/empresas.js';
 import { vitoriasDoFornecedor } from './services/vitorias.js';
+import { gerarToken, usuarioDoToken, tratarMensagem } from './services/conector.js';
 import dashboardRoutes from './routes/dashboard.js';
 import agentesRoutes, { notificacoesRoutes } from './routes/agentes.js';
 
@@ -114,6 +115,34 @@ export async function buildApp({ db, logger = false, serveFrontend = true, ia, f
     if (String(req.params.ni).replace(/\D/g, '').length < 11) return reply.code(400).send({ erro: 'CNPJ inválido.' });
     return perfilEmpresa(db, req.params.ni, req.query, { fetchImpl: app.fetchCnpj ?? fetch });
   });
+
+  // Busca Pregão no Chat: conector MCP para Claude e ChatGPT (link pessoal com token).
+  app.get('/api/conector', async (req) => {
+    const r = db.prepare('SELECT criado_em, ultimo_uso, chamadas FROM conector_tokens WHERE usuario_id = ?').get(req.usuarioId);
+    return { ativo: !!r, ...(r ?? {}), ia: !!app.ia };
+  });
+  app.post('/api/conector', async (req) => ({ token: gerarToken(db, req.usuarioId) }));
+  app.delete('/api/conector', async (req) => {
+    db.prepare('DELETE FROM conector_tokens WHERE usuario_id = ?').run(req.usuarioId);
+    return { ok: true };
+  });
+  const baseUrl = (req) => (process.env.APP_URL
+    ?? `${String(req.headers['x-forwarded-proto'] ?? req.protocol).split(',')[0]}://${req.headers['x-forwarded-host'] ?? req.headers.host}`).replace(/\/$/, '');
+  app.post('/mcp/:token', async (req, reply) => {
+    const uid = usuarioDoToken(db, req.params.token);
+    if (!uid) return reply.code(401).send({ jsonrpc: '2.0', id: null, error: { code: -32001, message: 'Link do conector inválido ou desativado. Gere um novo link no Busca Pregão IA.' } });
+    const ctx = { db, uid, ia: app.ia, fetchImpl: app.fetchPncp, appUrl: baseUrl(req), log: req.log };
+    const lote = Array.isArray(req.body);
+    const respostas = [];
+    for (const m of lote ? req.body : [req.body]) {
+      const r = await tratarMensagem(m, ctx);
+      if (r) respostas.push(r);
+    }
+    if (!respostas.length) return reply.code(202).send();
+    return lote ? respostas : respostas[0];
+  });
+  // Sem fluxo SSE: o servidor só responde a POST.
+  app.route({ method: ['GET', 'DELETE'], url: '/mcp/:token', handler: async (req, reply) => reply.code(405).header('allow', 'POST').send() });
 
   await app.register(authRoutes, { prefix: '/api/auth' });
   await app.register(dashboardRoutes, { prefix: '/api/dashboard' });

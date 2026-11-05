@@ -33,8 +33,9 @@ Para retomar, é só abrir a conversa e dizer qual item quer fazer.
       redige rascunhos de pedido de esclarecimento, impugnação e recurso, sempre para revisão de advogado.
 - [ ] **Agente Fornecedor**: sugere quem vende cada item (pelo histórico de compras) e monta a planilha
       e o e-mail de cotação.
-- [ ] **Busca Pregão no Chat**: assistente de chat dentro do sistema e conector (MCP) para usar no
-      Claude e no ChatGPT.
+- [x] **Busca Pregão no Chat** (conector MCP para Claude e ChatGPT, página *Busca no Chat*, link pessoal).
+- [ ] Testar o conector no Claude/ChatGPT com o link gerado em produção.
+- [ ] (Opcional) Assistente de chat dentro do próprio sistema.
 
 ## 4. Outras melhorias anotadas
 

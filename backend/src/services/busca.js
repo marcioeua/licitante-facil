@@ -71,6 +71,7 @@ export function buscarOportunidades(db, filtros = {}, usuarioId = null) {
     params.desde = filtros.publicadasDesde;
   }
   if (filtros.srp === true || filtros.srp === 'true') where.push('o.registro_preco = 1');
+  if (filtros.comResumo) where.push('o.id IN (SELECT oportunidade_id FROM edital_resumos)');
 
   const ordem = {
     encerramento: 'o.data_encerramento IS NULL, o.data_encerramento ASC',

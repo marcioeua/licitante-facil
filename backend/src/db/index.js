@@ -176,6 +176,14 @@ CREATE TABLE IF NOT EXISTS edital_ignorados (
   motivo TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS conector_tokens (
+  usuario_id INTEGER PRIMARY KEY REFERENCES usuarios(id) ON DELETE CASCADE,
+  token_hash TEXT NOT NULL UNIQUE,
+  criado_em TEXT NOT NULL DEFAULT (datetime('now')),
+  ultimo_uso TEXT,
+  chamadas INTEGER NOT NULL DEFAULT 0
+);
+
 CREATE TABLE IF NOT EXISTS edital_resumos (
   oportunidade_id INTEGER PRIMARY KEY REFERENCES oportunidades(id) ON DELETE CASCADE,
   resumo TEXT NOT NULL,

@@ -47,6 +47,7 @@ const menu = ref(false);
 const itens = [
   { to: 'inicio', nome: 'Início', icone: 'space_dashboard' },
   { to: 'agentes', nome: 'Agentes', icone: 'smart_toy' },
+  { to: 'chat', nome: 'Busca no Chat', icone: 'forum' },
   { to: 'oportunidades', nome: 'Oportunidades', icone: 'travel_explore' },
   { to: 'negocios', nome: 'Meus negócios', icone: 'view_kanban' },
   { to: 'agenda', nome: 'Agenda', icone: 'event' },

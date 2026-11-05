@@ -40,6 +40,10 @@ export const ResumoSchema = z.object({
     grupo: z.enum(['juridica', 'fiscal_trabalhista', 'economico_financeira', 'tecnica', 'outros']),
     descricao: z.string(),
   })).describe('Documentos exigidos para habilitação'),
+  qualificacao_tecnica: z.object({
+    exige_atestado: z.enum(['sim', 'nao', 'nao_informado']).describe('O edital exige atestado de capacidade técnica (ou comprovação de experiência anterior) para habilitação? Use "nao_informado" se o edital não deixar claro'),
+    detalhe: textoOuNulo.describe('O que exatamente é exigido (quantidade mínima, parcela relevante etc.) ou o trecho que dispensa, com item/página'),
+  }).describe('Qualificação técnica exigida na habilitação'),
   requisitos_proposta: z.array(z.string()).describe('O que a proposta precisa conter (amostras, catálogos, prazos de validade etc.)'),
   prazo_entrega_execucao: textoOuNulo,
   condicoes_pagamento: textoOuNulo,
@@ -248,4 +252,19 @@ export async function perguntarEdital(db, op, uid, pergunta, { client, fetchImpl
   return db.prepare(`INSERT INTO edital_perguntas (oportunidade_id, usuario_id, pergunta, resposta, citacoes)
     VALUES (?, ?, ?, ?, ?) RETURNING id, pergunta, resposta, citacoes, criado_em`)
     .get(op.id, uid, pergunta, texto, JSON.stringify(citacoes));
+}
+
+/**
+ * Exigência de atestado de capacidade técnica a partir do resumo do edital.
+ * Só afirma "exige" ou "não exige" quando o edital foi lido pela IA.
+ */
+export function exigenciaAtestado(resumo) {
+  if (!resumo) return { situacao: 'nao_verificado', detalhe: 'Edital ainda não lido pela IA.' };
+  const q = resumo.qualificacao_tecnica;
+  if (q?.exige_atestado === 'sim') return { situacao: 'exige', detalhe: q.detalhe ?? null };
+  if (q?.exige_atestado === 'nao') return { situacao: 'nao_exige', detalhe: q.detalhe ?? null };
+  const docs = (resumo.documentos_habilitacao ?? []).filter((d) => /atestado|capacidade t[eé]cnica|acervo t[eé]cnico/i.test(d.descricao));
+  if (docs.length) return { situacao: 'exige', detalhe: docs.map((d) => d.descricao).join('; ') };
+  if (q?.exige_atestado === 'nao_informado') return { situacao: 'nao_informado', detalhe: q.detalhe ?? 'O edital não deixa claro.' };
+  return { situacao: 'nao_listado', detalhe: 'A IA leu o edital e não listou atestado entre os documentos de habilitação.' };
 }
