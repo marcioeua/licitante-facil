@@ -125,28 +125,72 @@
             <q-card-section v-if="vit.porAno.length > 1" class="q-pt-none">
               <BarrasVerticais :itens="vit.porAno.map((a) => ({ rotulo: a.chave, valor: a.valor, detalhe: `${a.itens} item(ns) em ${a.compras} compra(s)` }))" :formatar="brlCurto" :altura="150" titulo="Valor vencido por ano" />
             </q-card-section>
-            <q-markup-table flat dense separator="horizontal">
-              <thead><tr><th class="text-left">Item vencido</th><th class="text-right">Preço unit.</th><th class="text-right">Qtd.</th><th class="text-right">Total</th><th class="text-left">Órgão</th><th class="text-right">Data</th><th /></tr></thead>
-              <tbody>
-                <tr v-for="(i, k) in vit.itens.slice(0, mostrarItens)" :key="k">
-                  <td class="text-left" style="white-space: normal; max-width: 340px">
-                    {{ i.descricao || `Item ${i.item} da compra` }}
-                    <q-badge v-if="i.beneficioMeEpp" color="teal-1" text-color="teal-9" label="ME/EPP" class="q-ml-xs" />
-                  </td>
-                  <td class="text-right">{{ brl2(i.valorUnitario) }}<div v-if="i.unidade" class="text-caption text-grey-6">{{ i.unidade }}</div></td>
-                  <td class="text-right">{{ num(i.quantidade) }}</td>
-                  <td class="text-right">{{ brl(i.valorTotal) }}</td>
-                  <td class="text-left" style="white-space: normal">{{ i.orgao ?? `CNPJ ${cnpj(i.orgaoCnpj)}` }} · {{ i.uf }}</td>
-                  <td class="text-right">{{ data(i.data) }}</td>
-                  <td><q-btn v-if="linkPncp(i.compra)" flat round dense size="sm" icon="open_in_new" :href="linkPncp(i.compra)" target="_blank" rel="noopener" /></td>
-                </tr>
-              </tbody>
-            </q-markup-table>
-            <q-card-actions v-if="vit.itens.length > mostrarItens"><q-btn flat no-caps color="primary" label="Ver mais itens" @click="mostrarItens += 20" /></q-card-actions>
+            <q-card-section class="q-pt-none row q-col-gutter-sm items-center">
+              <div class="col-12 col-sm"><q-input v-model="filtroItens" dense outlined clearable placeholder="Filtrar por item, órgão, cidade ou portal" @update:model-value="mostrarItens = 20"><template #prepend><q-icon name="search" /></template></q-input></div>
+              <div class="col-12 col-sm-auto"><q-btn-toggle v-model="ordemItens" no-caps unelevated dense toggle-color="primary" color="grey-2" text-color="grey-9"
+                :options="[{ label: 'Mais recentes', value: 'data' }, { label: 'Maior valor', value: 'valor' }, { label: 'Maior desconto', value: 'desconto' }]" /></div>
+              <div v-if="vit.porPortal?.length" class="col-12 text-caption text-grey-7">
+                Portais: <span v-for="(pt, k) in vit.porPortal" :key="pt.chave">{{ k ? ' · ' : '' }}{{ pt.chave }} ({{ num(pt.itens) }})</span>
+              </div>
+            </q-card-section>
+            <q-card-section class="q-pt-none">
+              <div v-if="!itensFiltrados.length" class="text-grey-7">Nenhum item encontrado com esse filtro.</div>
+              <div v-for="(i, k) in itensFiltrados.slice(0, mostrarItens)" :key="`${i.compra}-${i.item}-${k}`" class="vit-item q-mb-md">
+                <div class="row items-start no-wrap q-gutter-x-sm">
+                  <div class="col">
+                    <div class="text-caption text-grey-7 vit-origem">
+                      <span class="text-weight-medium text-primary">{{ i.portal || 'Portal não identificado' }}</span>
+                      <span v-if="i.unidadeCompradora || i.orgao"> · {{ i.unidadeCompradora || i.orgao }}</span>
+                      <span v-if="i.modalidade"> · {{ i.modalidade }}</span>
+                      <span v-if="i.numeroCompra"> Nº {{ i.numeroCompra }}/{{ i.anoCompra }}</span>
+                    </div>
+                    <div v-if="i.unidadeCompradora && i.orgao && i.unidadeCompradora !== i.orgao" class="text-caption text-grey-6">{{ i.orgao }}</div>
+                  </div>
+                  <q-badge outline color="grey-8" :label="i.municipio ? `${i.municipio} / ${i.uf}` : i.uf" />
+                </div>
+                <div class="row items-center q-mt-xs q-gutter-x-sm">
+                  <div class="text-subtitle1 text-weight-bold">Item {{ i.item }} — {{ i.titulo || 'Descrição não informada' }}</div>
+                  <q-badge v-if="i.situacaoItem" color="green-1" text-color="green-9" :label="i.situacaoItem" />
+                  <q-badge v-if="i.beneficioMeEpp" color="teal-1" text-color="teal-9" label="Benefício ME/EPP" />
+                </div>
+                <div v-if="i.descricao && i.descricao.trim() !== i.titulo" class="text-body2 text-grey-8 q-mt-xs">{{ i.descricao }}</div>
+                <div class="row q-col-gutter-sm q-mt-sm">
+                  <div class="col-12 col-md-5">
+                    <div class="vit-caixa">
+                      <div class="row q-col-gutter-sm">
+                        <div class="col-4"><div class="vit-rotulo">Abertura</div><div>{{ i.abertura ? dataHora(i.abertura) : '—' }}</div></div>
+                        <div class="col-4"><div class="vit-rotulo">Quantidade</div><div>{{ num(i.quantidade) }}</div></div>
+                        <div class="col-4"><div class="vit-rotulo">Unidade</div><div>{{ i.unidade || '—' }}</div></div>
+                      </div>
+                      <div class="text-caption text-grey-6 q-mt-xs">Resultado publicado em {{ data(i.data) }}<span v-if="i.criterio"> · {{ i.criterio }}</span></div>
+                    </div>
+                  </div>
+                  <div class="col-12 col-md-7">
+                    <div class="vit-caixa vit-vencedor">
+                      <div class="vit-rotulo">Vencedor</div>
+                      <div class="text-weight-medium">{{ cnpj(i.fornecedorNi) }}<span v-if="i.fornecedor"> — {{ i.fornecedor }}</span></div>
+                      <div v-if="i.porte" class="text-caption text-grey-7">Porte: {{ i.porte }}</div>
+                      <div class="row q-col-gutter-sm q-mt-xs">
+                        <div class="col-6"><div class="vit-rotulo">Valor homologado (unit.)</div><div class="text-subtitle1 text-weight-bold text-positive">{{ brl2(i.valorUnitario) }}</div></div>
+                        <div class="col-6"><div class="vit-rotulo">Valor total homologado</div><div class="text-subtitle1 text-weight-bold">{{ brl2(i.valorTotal) }}</div></div>
+                      </div>
+                      <div v-if="i.valorEstimado" class="text-caption text-grey-7">
+                        Estimado pelo órgão: {{ brl2(i.valorEstimado) }} por unidade<span v-if="i.desconto != null && i.desconto > 0"> · <b class="text-positive">{{ pct(i.desconto) }} abaixo do estimado</b></span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="row q-gutter-sm q-mt-xs">
+                  <q-btn v-if="i.linkPncp || linkPncp(i.compra)" flat dense no-caps size="sm" color="primary" icon="open_in_new" label="Ver no PNCP" :href="i.linkPncp || linkPncp(i.compra)" target="_blank" rel="noopener" />
+                  <q-btn v-if="i.linkOrigem" flat dense no-caps size="sm" color="primary" icon="launch" :label="`Abrir no ${i.portal || 'portal'}`" :href="i.linkOrigem" target="_blank" rel="noopener" />
+                </div>
+              </div>
+            </q-card-section>
+            <q-card-actions v-if="itensFiltrados.length > mostrarItens"><q-btn flat no-caps color="primary" :label="`Ver mais itens (${num(itensFiltrados.length - mostrarItens)} restantes)`" @click="mostrarItens += 20" /></q-card-actions>
           </template>
           <q-card-section class="text-caption text-grey-6">
             Fonte: {{ vit.fonte }}. Mostra apenas vitórias (os dados públicos não informam participações nem derrotas).
-            <span v-if="vit.descricoesPendentes">Algumas descrições de itens ainda estão carregando do PNCP; abra de novo em alguns minutos.</span>
+            <span v-if="vit.detalhesPendentes">Os detalhes de alguns itens ainda estão carregando do PNCP; abra de novo em alguns minutos.</span>
             <span v-if="vit.falhas.length">Não foi possível consultar parte do período agora.</span>
           </q-card-section>
         </template>
@@ -254,7 +298,7 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { api } from 'boot/axios';
-import { brl, cnpj, data } from 'src/format';
+import { brl, cnpj, data, dataHora } from 'src/format';
 import BarrasVerticais from 'components/graficos/BarrasVerticais.vue';
 import MapaBrasil from 'components/graficos/MapaBrasil.vue';
 import BarraParticipacao from 'components/graficos/BarraParticipacao.vue';
@@ -277,6 +321,8 @@ const carregandoVitorias = ref(false);
 const erroVitorias = ref('');
 const anosVitorias = ref(3);
 const mostrarItens = ref(20);
+const filtroItens = ref('');
+const ordemItens = ref('data');
 const tabelaComparacao = ref([]);
 
 const num = (v) => Number(v ?? 0).toLocaleString('pt-BR');
@@ -303,7 +349,19 @@ const kpisVitorias = computed(() => [
   { nome: 'Valor vencido', valor: brlCurto(vit.value.resumo.valor) },
   { nome: 'Órgãos', valor: num(vit.value.resumo.orgaos) },
   { nome: 'Com benefício ME/EPP', valor: num(vit.value.resumo.beneficioMeEpp) },
+  ...(vit.value.resumo.descontoMedio != null ? [{ nome: 'Desconto médio s/ estimado', valor: pct(vit.value.resumo.descontoMedio) }] : []),
 ]);
+const semAcento = (t) => String(t ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+const itensFiltrados = computed(() => {
+  const termos = semAcento(filtroItens.value).split(/\s+/).filter(Boolean);
+  const lista = (vit.value?.itens ?? []).filter((i) => {
+    if (!termos.length) return true;
+    const texto = semAcento([i.titulo, i.descricao, i.orgao, i.unidadeCompradora, i.municipio, i.uf, i.portal, i.modalidade, i.numeroCompra].join(' '));
+    return termos.every((t) => texto.includes(t));
+  });
+  const chave = { data: (i) => i.data ?? '', valor: (i) => i.valorTotal ?? 0, desconto: (i) => i.desconto ?? -1 }[ordemItens.value];
+  return [...lista].sort((a, b) => (chave(a) < chave(b) ? 1 : chave(a) > chave(b) ? -1 : 0));
+});
 function linkPncp(controle) {
   const m = String(controle ?? '').match(/^(\d{14})-\d+-0*(\d+)\/(\d{4})$/);
   return m ? `https://pncp.gov.br/app/editais/${m[1]}/${m[3]}/${m[2]}` : null;
@@ -314,6 +372,7 @@ async function carregarVitorias(ni) {
   if (!ni) return;
   carregandoVitorias.value = true;
   mostrarItens.value = 20;
+  filtroItens.value = '';
   try {
     vit.value = (await api.get(`/analise-empresas/${ni}/vitorias`, { params: { anos: anosVitorias.value }, timeout: 180000, silencioso: true })).data;
   } catch {
@@ -365,3 +424,11 @@ onMounted(async () => {
   if (route.params.cnpj) { carregar(route.params.cnpj); carregarVitorias(route.params.cnpj); }
 });
 </script>
+
+<style scoped>
+.vit-item { border: 1px solid #e3e6ea; border-radius: 10px; padding: 14px 16px; }
+.vit-caixa { background: #f6f8fa; border-radius: 8px; padding: 10px 12px; height: 100%; }
+.vit-vencedor { background: #f1f8f4; }
+.vit-rotulo { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: #6b7280; }
+.vit-origem { line-height: 1.4; }
+</style>

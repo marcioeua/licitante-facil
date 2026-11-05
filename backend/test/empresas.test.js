@@ -103,13 +103,19 @@ test('vitórias: janelas de 365 dias, paginação, cancelados fora, cache e desc
       return Response.json({ resultado: [res('05853163000130-1-000099/2025', 1, 54078, '2025-03-20')], paginasRestantes: 0 });
     }
     chamadas.pncp++;
-    if (u.pathname.includes('/2026/155/')) return Response.json([{ numeroItem: 1, descricao: 'Peça de trator', unidadeMedida: 'Unidade', temResultado: true }, { numeroItem: 2, descricao: 'Pneu agrícola', unidadeMedida: 'Unidade', temResultado: true }]);
+    if (u.pathname.endsWith('/compras/2026/155')) return Response.json({ orgaoEntidade: { razaoSocial: 'MUNICIPIO DE MARABA' }, unidadeOrgao: { ufSigla: 'PA', municipioNome: 'Marabá', nomeUnidade: 'Secretaria de Obras' }, modalidadeNome: 'Pregão - Eletrônico', numeroCompra: '90074', anoCompra: 2026, dataAberturaProposta: '2026-06-10T09:00:00', linkSistemaOrigem: 'https://cnetmobile.estaleiro.serpro.gov.br/comprasnet-web/x' });
+    if (u.pathname.includes('/2026/155/itens')) return Response.json([{ numeroItem: 1, descricao: 'Caneta Esferográfica Material: Acrílico, Cor: Vermelha', unidadeMedida: 'Unidade', quantidade: 5000, valorUnitarioEstimado: 230000, situacaoCompraItemNome: 'Homologado', temResultado: true }, { numeroItem: 2, descricao: 'Pneu agrícola', unidadeMedida: 'Unidade', temResultado: true }]);
     return new Response(null, { status: 500 });
   };
   const v = await vitoriasDoFornecedor(db, '31650693000191', { anos: 2, fetchImpl: fake });
-  assert.deepEqual(v.resumo, { itens: 3, compras: 2, valor: 267578, orgaos: 1, beneficioMeEpp: 2 });
+  assert.deepEqual({ ...v.resumo, descontoMedio: Math.round(v.resumo.descontoMedio * 1000) / 1000 }, { itens: 3, compras: 2, valor: 267578, orgaos: 1, beneficioMeEpp: 2, descontoMedio: 0.5 });
   assert.deepEqual(v.porAno.map((a) => [a.chave, a.valor]), [['2025', 54078], ['2026', 213500]]);
-  assert.equal(v.itens.find((i) => i.valorUnitario === 115000).descricao, 'Peça de trator');
+  const card = v.itens.find((i) => i.valorUnitario === 115000);
+  assert.equal(card.titulo, 'Caneta Esferográfica');
+  assert.equal(card.situacaoItem, 'Homologado');
+  assert.equal(card.desconto, 0.5);
+  assert.deepEqual([card.orgao, card.modalidade, card.numeroCompra, card.anoCompra, card.portal, card.municipio], ['MUNICIPIO DE MARABA', 'Pregão - Eletrônico', '90074', 2026, 'Compras.gov.br', 'Marabá']);
+  assert.match(card.linkPncp, /editais\/05853163000130\/2026\/155$/);
   assert.equal(v.itens.find((i) => i.valorUnitario === 54078).descricao, null, 'PNCP falhou: segue sem descrição');
 
   const antes = { ...chamadas };

@@ -1,13 +1,17 @@
-// Vitórias em licitações de um fornecedor, com dados abertos oficiais do Compras.gov.br
-// (resultados de itens das contratações da Lei 14.133 publicadas no PNCP).
-// Só mostra o que é público: itens vencidos e valores homologados. Não estima participações nem derrotas.
+// Vitórias em licitações de um fornecedor, com dados abertos oficiais:
+// - resultados dos itens (Compras.gov.br Dados Abertos, Lei 14.133): quem venceu e por quanto;
+// - cabeçalho da compra e dados do item (PNCP): órgão, modalidade, número, abertura, portal,
+//   descrição, quantidade, unidade, situação e preço estimado.
+// Só mostra o que é público: não estima participações nem derrotas.
 import { config } from '../config.js';
 import { tx } from '../db/index.js';
+import { portalDoLink } from './portais.js';
 
 const DADOS_ABERTOS = process.env.DADOS_ABERTOS_URL ?? 'https://dadosabertos.compras.gov.br';
 const ENDPOINT = '/modulo-contratacoes/3_consultarResultadoItensContratacoes_PNCP_14133';
 const so = (v) => String(v ?? '').replace(/\D/g, '');
 const dia = (d) => d.toISOString().slice(0, 10);
+const PARTES = /^(\d{14})-\d+-0*(\d+)\/(\d{4})$/;
 
 /** Janelas de até 365 dias (limite da API), da mais recente para a mais antiga. */
 export function janelas(anos, hoje = new Date()) {
@@ -39,13 +43,15 @@ async function buscarJanela(cnpj, j, fetchImpl) {
       item: r.numeroItemPncp,
       orgaoCnpj: r.orgaoEntidadeCnpj ?? null,
       uf: r.unidadeOrgaoUfSigla ?? null,
+      fornecedorNi: r.niFornecedor ?? null,
+      fornecedor: r.nomeRazaoSocialFornecedor ?? null,
       quantidade: r.quantidadeHomologada ?? null,
       valorUnitario: r.valorUnitarioHomologado ?? null,
       valorTotal: r.valorTotalHomologado ?? 0,
       data: (r.dataResultadoPncp ?? '').slice(0, 10) || null,
       porte: r.porteFornecedorNome ?? null,
       beneficioMeEpp: !!r.aplicacaoBeneficioMeepp,
-      desconto: r.percentualDesconto ?? null,
+      ordemSrp: r.ordemClassificacaoSrp ?? null,
     }));
 }
 
@@ -74,37 +80,70 @@ async function vitoriasBrutas(db, cnpj, anos, fetchImpl) {
 const falhasPncp = new Map();
 const emAndamento = new Set();
 
+function cabecalhoLocal(db, controle) {
+  const salvo = db.prepare('SELECT dados FROM compras_cabecalho WHERE controle = ?').get(controle);
+  if (salvo) return JSON.parse(salvo.dados);
+  // Licitação que já passou pela base de oportunidades: usa sem consultar o PNCP.
+  const o = db.prepare('SELECT * FROM oportunidades WHERE numero_controle_pncp = ?').get(controle);
+  return o ? {
+    orgao: o.orgao_nome, unidade: o.unidade_nome, municipio: o.municipio, uf: o.uf, modalidade: o.modalidade,
+    numero: o.numero_compra, ano: o.ano_compra, abertura: o.data_abertura, linkOrigem: o.link_origem, objeto: o.objeto,
+  } : null;
+}
+
+async function buscarCompra(db, controle, fetchImpl, timeoutMs) {
+  const m = controle.match(PARTES);
+  if (!m) return;
+  const base = config.pncpBaseUrl;
+  const pncp = base.replace(/\/api\/consulta$/, '/api/pncp');
+  const sinal = () => AbortSignal.timeout(timeoutMs);
+  const precisaCabecalho = !cabecalhoLocal(db, controle);
+  const precisaItens = !db.prepare('SELECT 1 FROM compras_consultadas WHERE compra_controle = ?').get(controle);
+  if (precisaCabecalho) {
+    const r = await fetchImpl(`${base}/v1/orgaos/${m[1]}/compras/${m[3]}/${m[2]}`, { headers: { accept: 'application/json' }, signal: sinal() });
+    if (!r.ok) throw new Error(`PNCP ${r.status}`);
+    const c = await r.json();
+    const dados = {
+      orgao: c.orgaoEntidade?.razaoSocial ?? null, unidade: c.unidadeOrgao?.nomeUnidade ?? null,
+      municipio: c.unidadeOrgao?.municipioNome ?? null, uf: c.unidadeOrgao?.ufSigla ?? null,
+      modalidade: c.modalidadeNome ?? null, numero: c.numeroCompra ?? null, ano: c.anoCompra ?? null,
+      abertura: c.dataAberturaProposta ?? null, linkOrigem: c.linkSistemaOrigem ?? null,
+      objeto: String(c.objetoCompra ?? '').slice(0, 500), situacao: c.situacaoCompraNome ?? null,
+    };
+    db.prepare("INSERT OR REPLACE INTO compras_cabecalho (controle, dados, buscado_em) VALUES (?, ?, datetime('now'))").run(controle, JSON.stringify(dados));
+  }
+  if (precisaItens) {
+    const r = await fetchImpl(`${pncp}/v1/orgaos/${m[1]}/compras/${m[3]}/${m[2]}/itens?pagina=1&tamanhoPagina=500`, { headers: { accept: 'application/json' }, signal: sinal() });
+    if (!r.ok && r.status !== 204) throw new Error(`PNCP ${r.status}`);
+    const lista = r.status === 204 ? [] : await r.json();
+    const ins = db.prepare(`INSERT INTO compra_itens (compra_controle, numero_item, descricao, unidade, quantidade, valor_unit_estimado, tem_resultado, situacao, criterio)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(compra_controle, numero_item) DO UPDATE SET situacao = excluded.situacao, criterio = excluded.criterio`);
+    tx(db, () => {
+      for (const it of lista) {
+        ins.run(controle, it.numeroItem, String(it.descricao ?? '').slice(0, 1000), it.unidadeMedida ?? null, it.quantidade ?? null,
+          it.valorUnitarioEstimado ?? null, it.temResultado ? 1 : 0, it.situacaoCompraItemNome ?? null, it.criterioJulgamentoNome ?? null);
+      }
+      db.prepare("INSERT OR REPLACE INTO compras_consultadas (compra_controle, consultado_em) VALUES (?, datetime('now'))").run(controle);
+    });
+  }
+}
+
 /**
- * Descrição dos itens: busca no PNCP (com cache em compra_itens) para as compras ainda não vistas,
- * dentro de um orçamento de tempo. Devolve quantas compras ficaram pendentes.
+ * Completa cabeçalho e itens das compras no PNCP, dentro de um orçamento de tempo.
+ * Devolve quantas compras ficaram pendentes.
  */
-export async function completarDescricoes(db, itens, fetchImpl, { orcamentoMs = 8000, maxCompras = 40 } = {}) {
-  const pncp = config.pncpBaseUrl.replace(/\/api\/consulta$/, '/api/pncp');
+export async function completarCompras(db, compras, fetchImpl, { orcamentoMs = 8000, maxCompras = 60 } = {}) {
   const prazo = Date.now() + orcamentoMs;
-  const faltando = [...new Set(itens.map((i) => i.compra))].filter((c) => c
-    && !db.prepare('SELECT 1 FROM compras_consultadas WHERE compra_controle = ?').get(c)
+  const faltando = [...new Set(compras)].filter((c) => c
+    && (!cabecalhoLocal(db, c) || !db.prepare('SELECT 1 FROM compras_consultadas WHERE compra_controle = ?').get(c))
     && !(falhasPncp.get(c) > Date.now() - 6 * 3600000) && !emAndamento.has(c)).slice(0, maxCompras);
-  const ins = db.prepare(`INSERT INTO compra_itens (compra_controle, numero_item, descricao, unidade, quantidade, valor_unit_estimado, tem_resultado)
-    VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(compra_controle, numero_item) DO NOTHING`);
   let feitas = 0;
   for (let i = 0; i < faltando.length && Date.now() < prazo; i += 4) {
-    const restante = Math.max(1000, prazo - Date.now());
+    const restante = Math.max(1000, Math.min(15000, prazo - Date.now()));
     await Promise.allSettled(faltando.slice(i, i + 4).map(async (controle) => {
-      const m = controle.match(/^(\d{14})-\d+-0*(\d+)\/(\d{4})$/);
-      if (!m) return;
       emAndamento.add(controle);
       try {
-        const res = await fetchImpl(`${pncp}/v1/orgaos/${m[1]}/compras/${m[3]}/${m[2]}/itens?pagina=1&tamanhoPagina=500`,
-          { headers: { accept: 'application/json' }, signal: AbortSignal.timeout(Math.min(15000, restante)) });
-        if (!res.ok && res.status !== 204) throw new Error(`PNCP ${res.status}`);
-        const lista = res.status === 204 ? [] : await res.json();
-        tx(db, () => {
-          for (const it of lista) {
-            ins.run(controle, it.numeroItem, String(it.descricao ?? '').slice(0, 1000), it.unidadeMedida ?? null,
-              it.quantidade ?? null, it.valorUnitarioEstimado ?? null, it.temResultado ? 1 : 0);
-          }
-          db.prepare("INSERT OR REPLACE INTO compras_consultadas (compra_controle, consultado_em) VALUES (?, datetime('now'))").run(controle);
-        });
+        await buscarCompra(db, controle, fetchImpl, restante);
         feitas++;
       } catch {
         falhasPncp.set(controle, Date.now());
@@ -116,43 +155,74 @@ export async function completarDescricoes(db, itens, fetchImpl, { orcamentoMs = 
   return Math.max(0, faltando.length - feitas);
 }
 
+/** Título curto do item ("Caneta Esferográfica") a partir da descrição do catálogo. */
+export function tituloItem(descricao) {
+  if (!descricao) return null;
+  const t = String(descricao).split(/\s+(?:Material|Tipo|Modelo|Características|Especificação|Marca|Cor|Tamanho|Dimens)\b|[,;:]/i)[0].trim();
+  return (t.length > 3 ? t : String(descricao)).slice(0, 90);
+}
+
 export async function vitoriasDoFornecedor(db, ni, { anos = 3, fetchImpl = fetch } = {}) {
   const cnpj = so(ni);
   const nAnos = Math.min(5, Math.max(1, Number(anos) || 3));
   const { itens, falhas } = await vitoriasBrutas(db, cnpj, nAnos, fetchImpl);
-  // Descrições: um pouco agora; o resto continua em segundo plano e aparece na próxima consulta.
-  const pendentes = await completarDescricoes(db, itens, fetchImpl, { orcamentoMs: 5000 });
-  if (pendentes) completarDescricoes(db, itens, fetchImpl, { orcamentoMs: 180000 }).catch(() => {});
-  const desc = db.prepare('SELECT descricao, unidade, valor_unit_estimado FROM compra_itens WHERE compra_controle = ? AND numero_item = ?');
-  const nomeOrgao = db.prepare(`SELECT nome FROM (SELECT orgao_nome AS nome FROM contratos WHERE orgao_cnpj = ?
-    UNION ALL SELECT orgao_nome FROM oportunidades WHERE orgao_cnpj = ?) WHERE nome IS NOT NULL LIMIT 1`);
+  // Detalhes do PNCP: um pouco agora; o resto continua em segundo plano e aparece na próxima consulta.
+  const comprasRecentes = [...itens].sort((a, b) => String(b.data).localeCompare(String(a.data))).map((i) => i.compra);
+  const pendentes = await completarCompras(db, comprasRecentes, fetchImpl, { orcamentoMs: 6000 });
+  if (pendentes) completarCompras(db, comprasRecentes, fetchImpl, { orcamentoMs: 240000, maxCompras: 300 }).catch(() => {});
 
+  const det = db.prepare('SELECT descricao, unidade, quantidade, valor_unit_estimado, situacao, criterio FROM compra_itens WHERE compra_controle = ? AND numero_item = ?');
   const completos = itens.map((i) => {
-    const d = desc.get(i.compra, i.item);
-    return { ...i, descricao: d?.descricao ?? null, unidade: d?.unidade ?? null, valorEstimado: d?.valor_unit_estimado ?? null,
-      orgao: (i.orgaoCnpj && nomeOrgao.get(i.orgaoCnpj, i.orgaoCnpj)?.nome) || null };
-  }).sort((a, b) => String(b.data).localeCompare(String(a.data)));
+    const d = det.get(i.compra, i.item);
+    const c = cabecalhoLocal(db, i.compra);
+    const m = String(i.compra ?? '').match(PARTES);
+    const estimado = d?.valor_unit_estimado ?? null;
+    return {
+      ...i,
+      titulo: tituloItem(d?.descricao),
+      descricao: d?.descricao ?? null,
+      unidade: d?.unidade ?? null,
+      quantidadeEstimada: d?.quantidade ?? null,
+      valorEstimado: estimado,
+      desconto: estimado && i.valorUnitario != null && estimado > 0 ? 1 - i.valorUnitario / estimado : null,
+      situacaoItem: d?.situacao ?? null,
+      criterio: d?.criterio ?? null,
+      orgao: c?.orgao ?? null,
+      unidadeCompradora: c?.unidade ?? null,
+      municipio: c?.municipio ?? null,
+      uf: c?.uf ?? i.uf,
+      modalidade: c?.modalidade ?? null,
+      numeroCompra: c?.numero ?? null,
+      anoCompra: c?.ano ?? (m ? Number(m[3]) : null),
+      abertura: c?.abertura ?? null,
+      portal: portalDoLink(c?.linkOrigem),
+      linkOrigem: c?.linkOrigem ?? null,
+      linkPncp: m ? `https://pncp.gov.br/app/editais/${m[1]}/${m[3]}/${m[2]}` : null,
+    };
+  }).sort((a, b) => String(b.data).localeCompare(String(a.data)) || a.item - b.item);
 
   const soma = (lista) => lista.reduce((a, i) => a + (i.valorTotal || 0), 0);
   const agrupar = (chave) => [...Map.groupBy(completos, chave)].map(([k, l]) => ({ chave: k, itens: l.length, valor: soma(l), compras: new Set(l.map((i) => i.compra)).size }));
-  const total = soma(completos);
+  const comDesconto = completos.filter((i) => i.desconto != null);
   return {
     cnpj,
     anos: nAnos,
-    fonte: 'Compras.gov.br — Dados Abertos (resultados de itens da Lei 14.133 publicados no PNCP)',
+    fonte: 'Compras.gov.br Dados Abertos (resultados da Lei 14.133) e PNCP (detalhes da compra e do item)',
     resumo: {
       itens: completos.length,
       compras: new Set(completos.map((i) => i.compra)).size,
-      valor: total,
+      valor: soma(completos),
       orgaos: new Set(completos.map((i) => i.orgaoCnpj).filter(Boolean)).size,
       beneficioMeEpp: completos.filter((i) => i.beneficioMeEpp).length,
+      descontoMedio: comDesconto.length ? comDesconto.reduce((a, i) => a + i.desconto, 0) / comDesconto.length : null,
     },
     porAno: agrupar((i) => (i.data ?? '????').slice(0, 4)).sort((a, b) => a.chave.localeCompare(b.chave)),
     porUf: agrupar((i) => i.uf ?? '—').sort((a, b) => b.valor - a.valor),
+    porPortal: agrupar((i) => i.portal ?? 'Não identificado').sort((a, b) => b.itens - a.itens),
     orgaos: [...Map.groupBy(completos, (i) => i.orgaoCnpj ?? '—')].map(([k, l]) => ({ cnpj: k, nome: l[0].orgao, itens: l.length, valor: soma(l), uf: l[0].uf }))
       .sort((a, b) => b.valor - a.valor).slice(0, 10),
-    itens: completos.slice(0, 200),
-    descricoesPendentes: pendentes,
+    itens: completos.slice(0, 500),
+    detalhesPendentes: pendentes,
     falhas,
   };
 }

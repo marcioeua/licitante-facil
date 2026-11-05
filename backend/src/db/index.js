@@ -321,6 +321,9 @@ CREATE TABLE IF NOT EXISTS empresas_cadastro (cnpj TEXT PRIMARY KEY, dados TEXT 
 -- Vitórias por fornecedor (Compras.gov.br Dados Abertos), por janela de 365 dias.
 CREATE TABLE IF NOT EXISTS vitorias_cache (cnpj TEXT NOT NULL, janela TEXT NOT NULL, dados TEXT NOT NULL, buscado_em TEXT NOT NULL, PRIMARY KEY (cnpj, janela));
 
+-- Cabeçalho das compras (órgão, modalidade, número, abertura, portal), vindo do PNCP.
+CREATE TABLE IF NOT EXISTS compras_cabecalho (controle TEXT PRIMARY KEY, dados TEXT NOT NULL, buscado_em TEXT NOT NULL);
+
 -- Última execução de tarefas agendadas (alertas diários etc.).
 CREATE TABLE IF NOT EXISTS tarefas (
   nome TEXT PRIMARY KEY,
@@ -347,6 +350,8 @@ const MIGRACOES = [
   'ALTER TABLE sincronizacoes ADD COLUMN progresso TEXT',
   "ALTER TABLE negocios ADD COLUMN origem TEXT",
   "ALTER TABLE negocios ADD COLUMN pontuacao INTEGER",
+  "ALTER TABLE compra_itens ADD COLUMN situacao TEXT",
+  "ALTER TABLE compra_itens ADD COLUMN criterio TEXT",
 ];
 
 export function openDatabase(path) {
