@@ -159,7 +159,8 @@ export async function buildApp({ db, logger = false, serveFrontend = true, ia, f
   if (serveFrontend && existsSync(config.frontendDist)) {
     await app.register(fastifyStatic, { root: config.frontendDist, wildcard: false });
     app.setNotFoundHandler((req, reply) => {
-      if (req.url.startsWith('/api/')) return reply.code(404).send({ erro: 'Não encontrado.' });
+      // /.well-known e /mcp não podem cair no index.html: clientes MCP procuram OAuth ali e leriam HTML.
+      if (/^\/(api|mcp|\.well-known)(\/|$)/.test(req.url)) return reply.code(404).send({ erro: 'Não encontrado.' });
       return reply.sendFile('index.html');
     });
   }

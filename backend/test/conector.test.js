@@ -70,3 +70,25 @@ test('conector MCP: link pessoal, ferramentas e filtro "sem atestado"', async ()
   await app.inject({ method: 'DELETE', url: '/api/conector', headers: { cookie } });
   assert.equal((await rpc('tools/list', {})).statusCode, 401, 'link desativado');
 });
+
+test('rotas de descoberta OAuth respondem 404 em JSON (não o index.html)', async () => {
+  const { mkdtempSync, writeFileSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const { config } = await import('../src/config.js');
+  const dir = mkdtempSync(join(tmpdir(), 'spa-'));
+  writeFileSync(join(dir, 'index.html'), '<html></html>');
+  const antes = config.frontendDist;
+  config.frontendDist = dir;
+  try {
+    const app = await buildApp({ db: openDatabase(':memory:'), ia: null });
+    for (const url of ['/.well-known/oauth-protected-resource', '/.well-known/oauth-authorization-server', '/mcp']) {
+      const r = await app.inject({ method: 'GET', url });
+      assert.equal(r.statusCode, 404, url);
+      assert.match(r.headers['content-type'], /json/);
+    }
+    assert.match((await app.inject({ method: 'GET', url: '/qualquer' })).body, /<html>/);
+  } finally {
+    config.frontendDist = antes;
+  }
+});
