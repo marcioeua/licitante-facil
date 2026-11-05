@@ -180,6 +180,7 @@
           </q-card-section>
           <q-card-actions align="right">
             <q-btn flat no-caps color="primary" icon="handshake" label="Ver todos os contratos" :to="{ name: 'historico', query: { aba: 'contratos' } }" />
+            <q-btn unelevated no-caps color="primary" icon="domain" label="Análise completa da empresa" :to="{ name: 'analise-empresas', params: { cnpj: empresa.ni } }" />
           </q-card-actions>
         </template>
       </q-card>

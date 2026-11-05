@@ -315,6 +315,9 @@ CREATE TABLE IF NOT EXISTS vigia_snapshot (
   verificado_em TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- Dados cadastrais públicos de CNPJ (BrasilAPI), guardados por 30 dias.
+CREATE TABLE IF NOT EXISTS empresas_cadastro (cnpj TEXT PRIMARY KEY, dados TEXT NOT NULL, atualizado_em TEXT NOT NULL);
+
 -- Última execução de tarefas agendadas (alertas diários etc.).
 CREATE TABLE IF NOT EXISTS tarefas (
   nome TEXT PRIMARY KEY,

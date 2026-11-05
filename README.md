@@ -29,6 +29,9 @@ Plataforma para empresas encontrarem licitações públicas e organizarem a part
   completos (estados, municípios, órgãos, fornecedores, categorias), valor contratado, contrato típico (mediana), evolução
   semanal, participação por esfera e por estado, concentração do mercado (por valor ou nº de contratos),
   maiores fornecedores e compradores, e perfil de cada empresa (inclusive a sua).
+- **Análise de empresas**: busca por nome ou CNPJ; dados cadastrais da Receita (BrasilAPI), vendas
+  ao governo, sazonalidade mensal, onde e o que vende, principais clientes com o Pagômetro de cada um,
+  concorrentes diretos (quem vende para os mesmos clientes), itens vencidos com preço e comparação lado a lado.
 - **Histórico de compras**: quem comprou, quem venceu e por quanto. Contratos do PNCP (últimos
   `HISTORICO_DIAS` dias, padrão 30) com os fornecedores que mais vencem e os órgãos que mais compram,
   e pesquisa de preços unitários homologados por item (menor, mediana e maior, por unidade).
@@ -43,6 +46,7 @@ Plataforma para empresas encontrarem licitações públicas e organizarem a part
 | Back-end | Node.js 22+ com Fastify 5 |
 | Banco | SQLite embutido no Node (`node:sqlite`) com busca FTS5 |
 | Dados | API pública de consultas do PNCP; CAPAG do Tesouro Transparente |
+| Cadastro CNPJ | [BrasilAPI](https://brasilapi.com.br) (dados públicos da Receita Federal) |
 | Mapa | [svg-maps/brazil](https://github.com/VictorCazanave/svg-maps) (CC BY 4.0) |
 | IA | Claude (Anthropic) via `@anthropic-ai/sdk`, com Files API, saída estruturada e citações |
 

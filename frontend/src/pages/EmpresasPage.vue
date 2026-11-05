@@ -13,7 +13,7 @@
         </q-item-section>
         <q-item-section side class="row no-wrap">
           <div>
-            <q-btn flat round icon="insights" :to="{ name: 'mercado', query: { empresa: e.cnpj } }"><q-tooltip>Minha empresa no mercado</q-tooltip></q-btn>
+            <q-btn flat round icon="insights" :to="{ name: 'analise-empresas', params: { cnpj: e.cnpj } }"><q-tooltip>Análise da minha empresa</q-tooltip></q-btn>
             <q-btn flat round icon="folder_shared" :to="{ name: 'documentos' }"><q-tooltip>Documentos</q-tooltip></q-btn>
             <q-btn flat round icon="edit" @click="abrir(e)" />
             <q-btn flat round icon="delete" color="negative" @click="remover(e)" />
