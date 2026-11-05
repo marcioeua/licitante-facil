@@ -8,6 +8,7 @@ export default [
       { path: 'oportunidades/:id', name: 'oportunidade', component: () => import('pages/OportunidadePage.vue') },
       { path: 'negocios', name: 'negocios', component: () => import('pages/NegociosPage.vue') },
       { path: 'negocios/:id', name: 'negocio', component: () => import('pages/NegocioPage.vue') },
+      { path: 'negocios/:id/disputa', name: 'disputa', component: () => import('pages/DisputaPage.vue') },
       { path: 'agenda', name: 'agenda', component: () => import('pages/AgendaPage.vue') },
       { path: 'documentos', name: 'documentos', component: () => import('pages/DocumentosPage.vue') },
       { path: 'alertas', name: 'alertas', component: () => import('pages/AlertasPage.vue') },

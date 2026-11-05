@@ -21,6 +21,7 @@ import { vitoriasDoFornecedor } from './services/vitorias.js';
 import { gerarToken, usuarioDoToken, tratarMensagem } from './services/conector.js';
 import dashboardRoutes from './routes/dashboard.js';
 import agentesRoutes, { notificacoesRoutes } from './routes/agentes.js';
+import disputaRoutes from './routes/disputa.js';
 
 import { COOKIE } from './http.js';
 
@@ -158,6 +159,7 @@ export async function buildApp({ db, logger = false, serveFrontend = true, ia, f
   await app.register(alertasRoutes, { prefix: '/api/alertas' });
   await app.register(agendaRoutes, { prefix: '/api/agenda' });
   await app.register(agentesRoutes, { prefix: '/api/agentes' });
+  await app.register(disputaRoutes, { prefix: '/api/disputa' });
   await app.register(notificacoesRoutes, { prefix: '/api/notificacoes' });
 
   // Em produção o backend também entrega o front-end compilado (SPA).

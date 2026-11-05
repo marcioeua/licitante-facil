@@ -176,6 +176,36 @@ CREATE TABLE IF NOT EXISTS edital_ignorados (
   motivo TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS disputa_itens (
+  id INTEGER PRIMARY KEY,
+  negocio_id INTEGER NOT NULL REFERENCES negocios(id) ON DELETE CASCADE,
+  numero_item INTEGER,
+  descricao TEXT NOT NULL,
+  unidade TEXT,
+  quantidade REAL,
+  valor_estimado REAL,
+  custo REAL,
+  margem_minima REAL,
+  lance_inicial REAL,
+  decremento REAL,
+  decremento_tipo TEXT NOT NULL DEFAULT 'valor' CHECK (decremento_tipo IN ('valor', 'pct')),
+  melhor_lance REAL,
+  meu_lance REAL,
+  situacao TEXT NOT NULL DEFAULT 'pendente'
+    CHECK (situacao IN ('pendente', 'disputando', 'ganho', 'perdido', 'desisti')),
+  notas TEXT,
+  criado_em TEXT NOT NULL DEFAULT (datetime('now')),
+  atualizado_em TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_disputa_negocio ON disputa_itens(negocio_id, numero_item);
+CREATE TABLE IF NOT EXISTS disputa_lances (
+  id INTEGER PRIMARY KEY,
+  item_id INTEGER NOT NULL REFERENCES disputa_itens(id) ON DELETE CASCADE,
+  tipo TEXT NOT NULL CHECK (tipo IN ('meu', 'melhor')),
+  valor REAL NOT NULL,
+  criado_em TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE TABLE IF NOT EXISTS conector_tokens (
   usuario_id INTEGER PRIMARY KEY REFERENCES usuarios(id) ON DELETE CASCADE,
   token_hash TEXT NOT NULL UNIQUE,

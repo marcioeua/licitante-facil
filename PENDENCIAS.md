@@ -46,8 +46,9 @@ Para retomar, é só abrir a conversa e dizer qual item quer fazer.
       sem responder nos testes. Participações e derrotas não existem em dados públicos: não estimar.
 
 - [ ] **Filtro e selo por portal** (Compras.gov.br, Portal de Compras Públicas, BLL, Licitanet, BNC…).
-- [ ] **Assistente de disputa** (sem lance automático): preço mínimo por item, calculadora de lance,
-      histórico de preços e lembretes. Validar regras dos portais com especialista antes de qualquer automação.
+- [x] **Assistente de disputa** (Sala de disputa no negócio, sem lance automático): preço mínimo por item,
+      próximo lance, aviso de parar, preços pagos no PNCP e registro dos lances.
+- [ ] Lance automático: só com regras dos portais validadas por especialista e API oficial; hoje não fazer.
 - [ ] Relatórios de desempenho (taxa de vitória, valores ganhos).
 - [ ] App para celular (Android/iPhone).
 - [ ] Equipe com permissões.
