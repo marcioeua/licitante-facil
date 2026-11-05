@@ -215,6 +215,20 @@ CREATE TABLE IF NOT EXISTS disputa_mensagens (
   criado_em TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+CREATE TABLE IF NOT EXISTS pecas_juridicas (
+  id INTEGER PRIMARY KEY,
+  usuario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+  negocio_id INTEGER REFERENCES negocios(id) ON DELETE CASCADE,
+  tipo TEXT NOT NULL CHECK (tipo IN ('analise', 'esclarecimento', 'impugnacao', 'recurso', 'contrarrazoes')),
+  titulo TEXT NOT NULL,
+  conteudo TEXT NOT NULL,
+  dados TEXT NOT NULL DEFAULT '{}',
+  modelo TEXT,
+  criado_em TEXT NOT NULL DEFAULT (datetime('now')),
+  atualizado_em TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_pecas_usuario ON pecas_juridicas(usuario_id, negocio_id);
+
 CREATE TABLE IF NOT EXISTS conector_tokens (
   usuario_id INTEGER PRIMARY KEY REFERENCES usuarios(id) ON DELETE CASCADE,
   token_hash TEXT NOT NULL UNIQUE,

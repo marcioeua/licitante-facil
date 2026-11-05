@@ -19,6 +19,7 @@ export default [
       { path: 'analise-empresas/:cnpj?', name: 'analise-empresas', component: () => import('pages/AnaliseEmpresasPage.vue') },
       { path: 'agentes', name: 'agentes', component: () => import('pages/AgentesPage.vue') },
       { path: 'chat', name: 'chat', component: () => import('pages/ChatPage.vue') },
+      { path: 'juridico', name: 'juridico', component: () => import('pages/JuridicoPage.vue') },
     ],
   },
   { path: '/entrar', name: 'login', meta: { publica: true }, component: () => import('pages/LoginPage.vue') },

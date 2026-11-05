@@ -85,6 +85,16 @@
           <q-card-actions><q-btn unelevated no-caps color="primary" icon="link" label="Conectar ao Claude ou ChatGPT" :to="{ name: 'chat' }" /></q-card-actions>
         </q-card>
       </div>
+      <div class="col-12 col-md-4">
+        <q-card flat bordered class="lf-card full-height column">
+          <q-card-section class="row items-start no-wrap">
+            <q-avatar color="brown-6" text-color="white" icon="balance" size="48px" class="q-mr-md" />
+            <div class="col"><div class="text-subtitle1 text-weight-bold">Agente Jurídico</div><q-badge color="positive" label="Disponível" /></div>
+          </q-card-section>
+          <q-card-section class="q-pt-none text-body2 text-grey-8 col">Lê o edital, aponta possíveis irregularidades e redige esclarecimentos, impugnações, recursos e contrarrazões para revisão do seu advogado.</q-card-section>
+          <q-card-actions><q-btn unelevated no-caps color="primary" icon="balance" label="Abrir peças jurídicas" :to="{ name: 'juridico' }" /></q-card-actions>
+        </q-card>
+      </div>
       <div v-for="e in EM_BREVE" :key="e.nome" class="col-12 col-md-4">
         <q-card flat bordered class="lf-card full-height" style="opacity: 0.75">
           <q-card-section class="row items-start no-wrap">
@@ -113,7 +123,6 @@ const VISUAL = {
   leitor: { cor: 'indigo-7', icone: 'auto_stories' },
 };
 const EM_BREVE = [
-  { nome: 'Agente Jurídico', cor: 'brown-6', icone: 'gavel', descricao: 'Lê o edital, aponta irregularidades e redige impugnações, pedidos de esclarecimento e recursos para revisão do seu advogado.' },
   { nome: 'Agente Fornecedor', cor: 'purple-6', icone: 'local_shipping', descricao: 'Encontra quem vende cada item (pelo histórico de compras) e monta a planilha e o e-mail de cotação.' },
 ];
 

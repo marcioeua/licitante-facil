@@ -137,7 +137,7 @@ export async function prepararEdital(db, op, { client, fetchImpl = fetch } = {})
   });
 }
 
-function blocosDocumentos(arquivos, { citacoes }) {
+export function blocosDocumentos(arquivos, { citacoes }) {
   return arquivos.map((a, i) => ({
     type: 'document',
     source: { type: 'file', file_id: a.file_id },

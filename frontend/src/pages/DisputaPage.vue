@@ -216,7 +216,7 @@ const titulo = (d) => {
   return t.length > 90 ? `${t.slice(0, 87)}...` : t;
 };
 const folga = (i) => (i.preco_minimo != null && i.valor_estimado ? (i.valor_estimado - i.preco_minimo) / i.valor_estimado : null);
-const dataSessao = computed(() => sala.value?.negocio.data_disputa || sala.value?.negocio.data_abertura || null);
+const dataSessao = computed(() => sala.value?.negocio.data_disputa || sala.value?.negocio.data_encerramento || sala.value?.negocio.data_abertura || null);
 const resumo = computed(() => {
   const its = sala.value?.itens ?? [];
   const com = its.filter((i) => i.preco_minimo != null);

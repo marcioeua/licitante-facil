@@ -84,6 +84,7 @@ const itens = [
   { to: 'chat', nome: 'Busca no Chat', icone: 'forum' },
   { to: 'oportunidades', nome: 'Oportunidades', icone: 'travel_explore' },
   { to: 'negocios', nome: 'Meus negócios', icone: 'view_kanban' },
+  { to: 'juridico', nome: 'Peças jurídicas', icone: 'balance' },
   { to: 'agenda', nome: 'Agenda', icone: 'event' },
   { to: 'documentos', nome: 'Documentos', icone: 'folder_shared' },
   { to: 'alertas', nome: 'Alertas', icone: 'notifications_active' },

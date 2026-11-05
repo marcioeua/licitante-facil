@@ -27,7 +27,7 @@ export default async function (app) {
 
   const negocio = (uid, id) => {
     const n = db.prepare(`SELECT n.id, n.titulo, n.etapa, n.data_disputa, n.oportunidade_id, n.empresa_id, o.numero_controle_pncp, o.objeto, o.orgao_nome,
-        o.unidade_nome, o.uf, o.municipio, o.modalidade, o.numero_compra, o.ano_compra, o.data_abertura, o.link_origem, o.link_pncp, o.valor_estimado
+        o.unidade_nome, o.uf, o.municipio, o.modalidade, o.numero_compra, o.ano_compra, o.data_abertura, o.data_encerramento, o.link_origem, o.link_pncp, o.valor_estimado
       FROM negocios n LEFT JOIN oportunidades o ON o.id = n.oportunidade_id WHERE n.id = ? AND n.usuario_id = ?`).get(idParam(id), uid);
     if (!n) throw httpError(404, 'Negócio não encontrado.');
     return n;

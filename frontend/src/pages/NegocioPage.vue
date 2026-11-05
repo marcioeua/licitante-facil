@@ -12,6 +12,7 @@
             </div>
             <div v-if="n.orgao_nome" class="text-grey-7">{{ n.orgao_nome }} · {{ n.municipio }}/{{ n.uf }} · {{ n.modalidade }}</div>
             <q-btn unelevated no-caps color="primary" icon="gavel" label="Sala de disputa" class="q-mt-sm" :to="{ name: 'disputa', params: { id: n.id } }" />
+            <q-btn outline no-caps color="primary" icon="balance" label="Peças jurídicas" class="q-mt-sm q-ml-sm" :to="{ name: 'juridico', query: { negocio: n.id } }" />
           </q-card-section>
           <q-card-section class="q-pt-none">
             <q-btn-toggle v-model="form.etapa" spread no-caps unelevated toggle-color="primary" color="grey-2" text-color="grey-9"
