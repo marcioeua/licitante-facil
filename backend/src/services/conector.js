@@ -75,7 +75,8 @@ const BuscarArgs = z.object({
   atestado: z.enum(['qualquer', 'sem_atestado', 'com_atestado']).default('qualquer')
     .describe('Filtra pela exigência de atestado de capacidade técnica. Só é possível saber depois que a IA lê o edital; com "sem_atestado", as licitações ainda não verificadas também voltam, marcadas como "nao_verificado".'),
   apenas_abertas: z.boolean().default(true).describe('Somente licitações com prazo de proposta ainda aberto'),
-  ordem: z.enum(['encerramento', 'valor', 'publicacao', 'relevancia']).optional().describe('encerramento = prazo mais próximo primeiro'),
+  ordem: z.enum(['encerramento', 'valor', 'publicacao', 'relevancia']).optional().describe('Padrão: publicacao (mais novas). encerramento = prazo mais próximo primeiro'),
+  incluir_encerrando_hoje: z.boolean().default(false).describe('Incluir as que encerram nas próximas 24 horas (por padrão ficam fora)'),
   limite: z.number().int().min(1).max(50).default(15),
 });
 
@@ -99,9 +100,14 @@ const FERRAMENTAS = {
       if (a.cidade && !municipio.length) return { total: 0, licitacoes: [], aviso: `Nenhuma licitação aberta encontrada na cidade "${a.cidade}".` };
       const filtroAtestado = a.atestado !== 'qualquer';
       const filtros = {
-        q: a.texto, uf: ufs, municipio, valorMin: a.valor_min, valorMax: a.valor_max,
+        q: a.texto, uf: ufs, municipio, valorMax: a.valor_max,
+        // Valor 0 ou centavos = órgão não informou o valor; fica fora quando há filtro de valor.
+        valorMin: a.valor_min ?? (a.valor_max != null ? 1 : undefined),
         modalidade: (a.modalidades ?? []).flatMap((m) => MODALIDADES[m]),
-        abertas: a.apenas_abertas, ordem: a.ordem, tamanho: filtroAtestado ? 100 : a.limite,
+        abertas: a.apenas_abertas, ordem: a.ordem ?? (a.texto ? 'relevancia' : 'publicacao'),
+        tamanho: filtroAtestado ? 100 : a.limite,
+        // Por padrão, esconde as que encerram nas próximas 24 horas (não dá tempo de preparar a proposta).
+        encerraDepoisDe: a.incluir_encerrando_hoje ? undefined : new Date(Date.now() + 86400000),
       };
       const r = buscarOportunidades(ctx.db, filtros, ctx.uid);
       let itens = r.itens;
@@ -127,7 +133,7 @@ const FERRAMENTAS = {
         atestado_por_situacao: filtroAtestado ? contagem : undefined,
         licitacoes: lista.slice(0, a.limite),
         observacoes: [
-          'valor_estimado null = órgão não divulgou (sigiloso); essas ficam fora quando há filtro de valor.',
+          'Licitações sem valor informado (sigiloso ou zero) e as que encerram nas próximas 24 horas ficam fora, salvo pedido.',
           'atestado_capacidade_tecnica.situacao: nao_exige (o edital dispensa ou não pede), nao_listado (a IA não encontrou atestado na habilitação), exige, nao_informado (edital não deixa claro) ou nao_verificado (edital ainda não lido). Para verificar, use verificar_edital.',
         ],
       };

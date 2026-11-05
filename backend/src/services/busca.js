@@ -71,6 +71,11 @@ export function buscarOportunidades(db, filtros = {}, usuarioId = null) {
     params.desde = filtros.publicadasDesde;
   }
   if (filtros.srp === true || filtros.srp === 'true') where.push('o.registro_preco = 1');
+  if (filtros.encerraDepoisDe) {
+    // data_encerramento está no horário de Brasília (sem fuso).
+    where.push("o.data_encerramento >= :encDepois");
+    params.encDepois = new Date(new Date(filtros.encerraDepoisDe).getTime() - 3 * 3600000).toISOString().slice(0, 19);
+  }
   if (filtros.comResumo) where.push('o.id IN (SELECT oportunidade_id FROM edital_resumos)');
 
   const ordem = {
