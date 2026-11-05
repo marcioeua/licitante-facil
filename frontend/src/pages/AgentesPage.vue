@@ -75,6 +75,16 @@
           <q-card-section class="q-pt-none text-body2 text-grey-8">Este órgão costuma pagar em dia? Nota de capacidade de pagamento do Tesouro Nacional em cada licitação.</q-card-section>
         </q-card>
       </div>
+      <div class="col-12 col-md-4">
+        <q-card flat bordered class="lf-card full-height column">
+          <q-card-section class="row items-start no-wrap">
+            <q-avatar color="green-7" text-color="white" icon="forum" size="48px" class="q-mr-md" />
+            <div class="col"><div class="text-subtitle1 text-weight-bold">Busca Pregão no Chat</div><q-badge color="positive" label="Disponível" /></div>
+          </q-card-section>
+          <q-card-section class="q-pt-none text-body2 text-grey-8 col">Pergunte no Claude ou no ChatGPT, em português: “licitação de até 50 mil que não exija atestado”. Eles buscam aqui e leem os editais.</q-card-section>
+          <q-card-actions><q-btn unelevated no-caps color="primary" icon="link" label="Conectar ao Claude ou ChatGPT" :to="{ name: 'chat' }" /></q-card-actions>
+        </q-card>
+      </div>
       <div v-for="e in EM_BREVE" :key="e.nome" class="col-12 col-md-4">
         <q-card flat bordered class="lf-card full-height" style="opacity: 0.75">
           <q-card-section class="row items-start no-wrap">
@@ -105,7 +115,6 @@ const VISUAL = {
 const EM_BREVE = [
   { nome: 'Agente Jurídico', cor: 'brown-6', icone: 'gavel', descricao: 'Lê o edital, aponta irregularidades e redige impugnações, pedidos de esclarecimento e recursos para revisão do seu advogado.' },
   { nome: 'Agente Fornecedor', cor: 'purple-6', icone: 'local_shipping', descricao: 'Encontra quem vende cada item (pelo histórico de compras) e monta a planilha e o e-mail de cotação.' },
-  { nome: 'Busca Pregão no Chat', cor: 'green-7', icone: 'forum', descricao: 'Use seus agentes direto no Claude ou no ChatGPT.' },
 ];
 
 const quando = (s) => new Date(s.replace(' ', 'T') + 'Z').toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
