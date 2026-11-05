@@ -81,3 +81,39 @@ test('cadastro do CNPJ: usa a fonte reserva quando a primeira falha', async () =
   const nada = await cadastroCnpj(openDatabase(':memory:'), '11222333000181', { fetchImpl: async () => new Response(null, { status: 404 }), log: () => {} });
   assert.equal(nada, null);
 });
+
+test('vitórias: janelas de 365 dias, paginação, cancelados fora, cache e descrições do PNCP', async () => {
+  const { janelas, vitoriasDoFornecedor } = await import('../src/services/vitorias.js');
+  const js = janelas(2, new Date('2026-11-05T12:00:00Z'));
+  assert.deepEqual(js.map((j) => [j.ini, j.fim]), [['2025-11-06', '2026-11-05'], ['2024-11-06', '2025-11-05']]);
+
+  const db = openDatabase(':memory:');
+  const chamadas = { dados: 0, pncp: 0 };
+  const res = (compra, item, valor, data, extra = {}) => ({ numeroControlePNCPCompra: compra, numeroItemPncp: item, orgaoEntidadeCnpj: '05853163000130',
+    unidadeOrgaoUfSigla: 'PA', quantidadeHomologada: 1, valorUnitarioHomologado: valor, valorTotalHomologado: valor, dataResultadoPncp: `${data}T00:00:00`,
+    porteFornecedorNome: 'ME', aplicacaoBeneficioMeepp: item === 1, ...extra });
+  const fake = async (url) => {
+    const u = new URL(String(url));
+    if (u.hostname.includes('dadosabertos')) {
+      chamadas.dados++;
+      const ini = u.searchParams.get('dataResultadoPncpInicial');
+      const pg = Number(u.searchParams.get('pagina'));
+      if (ini === '2025-11-06' && pg === 1) return Response.json({ resultado: [res('05853163000130-1-000155/2026', 1, 115000, '2026-08-14')], paginasRestantes: 1 });
+      if (ini === '2025-11-06' && pg === 2) return Response.json({ resultado: [res('05853163000130-1-000155/2026', 2, 98500, '2026-08-14'), res('05853163000130-1-000155/2026', 3, 1, '2026-08-14', { dataCancelamentoPncp: '2026-09-01' })], paginasRestantes: 0 });
+      return Response.json({ resultado: [res('05853163000130-1-000099/2025', 1, 54078, '2025-03-20')], paginasRestantes: 0 });
+    }
+    chamadas.pncp++;
+    if (u.pathname.includes('/2026/155/')) return Response.json([{ numeroItem: 1, descricao: 'Peça de trator', unidadeMedida: 'Unidade', temResultado: true }, { numeroItem: 2, descricao: 'Pneu agrícola', unidadeMedida: 'Unidade', temResultado: true }]);
+    return new Response(null, { status: 500 });
+  };
+  const v = await vitoriasDoFornecedor(db, '31650693000191', { anos: 2, fetchImpl: fake });
+  assert.deepEqual(v.resumo, { itens: 3, compras: 2, valor: 267578, orgaos: 1, beneficioMeEpp: 2 });
+  assert.deepEqual(v.porAno.map((a) => [a.chave, a.valor]), [['2025', 54078], ['2026', 213500]]);
+  assert.equal(v.itens.find((i) => i.valorUnitario === 115000).descricao, 'Peça de trator');
+  assert.equal(v.itens.find((i) => i.valorUnitario === 54078).descricao, null, 'PNCP falhou: segue sem descrição');
+
+  const antes = { ...chamadas };
+  await vitoriasDoFornecedor(db, '31650693000191', { anos: 2, fetchImpl: fake });
+  assert.equal(chamadas.dados, antes.dados, 'janelas em cache');
+  assert.equal(chamadas.pncp, antes.pncp, 'não insiste no PNCP que acabou de falhar');
+});

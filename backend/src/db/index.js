@@ -318,6 +318,9 @@ CREATE TABLE IF NOT EXISTS vigia_snapshot (
 -- Dados cadastrais públicos de CNPJ (BrasilAPI), guardados por 30 dias.
 CREATE TABLE IF NOT EXISTS empresas_cadastro (cnpj TEXT PRIMARY KEY, dados TEXT NOT NULL, atualizado_em TEXT NOT NULL);
 
+-- Vitórias por fornecedor (Compras.gov.br Dados Abertos), por janela de 365 dias.
+CREATE TABLE IF NOT EXISTS vitorias_cache (cnpj TEXT NOT NULL, janela TEXT NOT NULL, dados TEXT NOT NULL, buscado_em TEXT NOT NULL, PRIMARY KEY (cnpj, janela));
+
 -- Última execução de tarefas agendadas (alertas diários etc.).
 CREATE TABLE IF NOT EXISTS tarefas (
   nome TEXT PRIMARY KEY,

@@ -17,18 +17,20 @@ import { buscarEntes } from './services/capag.js';
 import { consultarContratos, pesquisarPrecos, disco } from './services/historico.js';
 import { analisarMercado, analisarEmpresa, rankingMercado } from './services/mercado.js';
 import { sugerirEmpresas, perfilEmpresa, compararEmpresas } from './services/empresas.js';
+import { vitoriasDoFornecedor } from './services/vitorias.js';
 import dashboardRoutes from './routes/dashboard.js';
 import agentesRoutes, { notificacoesRoutes } from './routes/agentes.js';
 
 import { COOKIE } from './http.js';
 
-export async function buildApp({ db, logger = false, serveFrontend = true, ia, fetchImpl = fetch, fetchCnpj } = {}) {
+export async function buildApp({ db, logger = false, serveFrontend = true, ia, fetchImpl = fetch, fetchCnpj, fetchDadosAbertos } = {}) {
   const app = Fastify({ logger });
   app.decorate('db', db);
   // Cliente da IA (Claude) e fetch do PNCP: injetáveis nos testes.
   app.decorate('ia', ia === undefined ? clienteIA() : ia);
   app.decorate('fetchPncp', fetchImpl);
   app.decorate('fetchCnpj', fetchCnpj ?? fetch);
+  app.decorate('fetchDadosAbertos', fetchDadosAbertos ?? fetchImpl);
 
   await app.register(cookie);
   await app.register(multipart, { limits: { fileSize: 25 * 1024 * 1024, files: 1 } });
@@ -104,6 +106,10 @@ export async function buildApp({ db, logger = false, serveFrontend = true, ia, f
   // Análise de empresas fornecedoras.
   app.get('/api/analise-empresas/sugestoes', async (req) => sugerirEmpresas(db, req.query.q));
   app.get('/api/analise-empresas/comparar', async (req) => compararEmpresas(db, String(req.query.cnpjs ?? '').split(','), req.query));
+  app.get('/api/analise-empresas/:ni/vitorias', async (req, reply) => {
+    if (String(req.params.ni).replace(/\D/g, '').length < 11) return reply.code(400).send({ erro: 'CNPJ inválido.' });
+    return vitoriasDoFornecedor(db, req.params.ni, { anos: req.query.anos, fetchImpl: app.fetchDadosAbertos ?? fetch });
+  });
   app.get('/api/analise-empresas/:ni', async (req, reply) => {
     if (String(req.params.ni).replace(/\D/g, '').length < 11) return reply.code(400).send({ erro: 'CNPJ inválido.' });
     return perfilEmpresa(db, req.params.ni, req.query, { fetchImpl: app.fetchCnpj ?? fetch });

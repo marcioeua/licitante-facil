@@ -96,6 +96,62 @@
       </div>
       <div v-if="!p.resumo.contratos" class="text-grey-7 q-mb-md">Nenhum contrato desta empresa no período carregado.</div>
 
+      <!-- Vitórias (dados abertos do Compras.gov.br) -->
+      <q-card flat bordered class="lf-card q-mb-md">
+        <q-card-section class="row items-center q-pb-sm">
+          <q-icon name="emoji_events" color="amber-8" size="24px" class="q-mr-sm" />
+          <div class="col">
+            <div class="text-subtitle1 text-weight-medium">Vitórias em licitações</div>
+            <div class="text-caption text-grey-7">Itens vencidos e valores homologados (Lei 14.133), dados abertos oficiais do Compras.gov.br</div>
+          </div>
+          <q-btn-toggle v-model="anosVitorias" no-caps unelevated dense toggle-color="primary" color="grey-2" text-color="grey-9"
+            :options="[{ label: '1 ano', value: 1 }, { label: '3 anos', value: 3 }, { label: '5 anos', value: 5 }]" />
+        </q-card-section>
+        <q-card-section v-if="carregandoVitorias" class="row items-center q-gutter-sm text-grey-7">
+          <q-spinner-dots color="primary" size="28px" /><span>Consultando o Compras.gov.br...</span>
+        </q-card-section>
+        <q-card-section v-else-if="erroVitorias" class="text-grey-7">{{ erroVitorias }}</q-card-section>
+        <template v-else-if="vit">
+          <q-card-section class="q-pt-none row q-col-gutter-md">
+            <div v-for="k in kpisVitorias" :key="k.nome" class="col-6 col-sm">
+              <div class="text-caption text-grey-7">{{ k.nome }}</div>
+              <div class="text-h6 text-weight-bold">{{ k.valor }}</div>
+            </div>
+          </q-card-section>
+          <q-card-section v-if="!vit.resumo.itens" class="q-pt-none text-grey-7">
+            Nenhuma vitória registrada nos dados abertos no período. Licitações da lei antiga e de alguns portais podem não aparecer.
+          </q-card-section>
+          <template v-else>
+            <q-card-section v-if="vit.porAno.length > 1" class="q-pt-none">
+              <BarrasVerticais :itens="vit.porAno.map((a) => ({ rotulo: a.chave, valor: a.valor, detalhe: `${a.itens} item(ns) em ${a.compras} compra(s)` }))" :formatar="brlCurto" :altura="150" titulo="Valor vencido por ano" />
+            </q-card-section>
+            <q-markup-table flat dense separator="horizontal">
+              <thead><tr><th class="text-left">Item vencido</th><th class="text-right">Preço unit.</th><th class="text-right">Qtd.</th><th class="text-right">Total</th><th class="text-left">Órgão</th><th class="text-right">Data</th><th /></tr></thead>
+              <tbody>
+                <tr v-for="(i, k) in vit.itens.slice(0, mostrarItens)" :key="k">
+                  <td class="text-left" style="white-space: normal; max-width: 340px">
+                    {{ i.descricao || `Item ${i.item} da compra` }}
+                    <q-badge v-if="i.beneficioMeEpp" color="teal-1" text-color="teal-9" label="ME/EPP" class="q-ml-xs" />
+                  </td>
+                  <td class="text-right">{{ brl2(i.valorUnitario) }}<div v-if="i.unidade" class="text-caption text-grey-6">{{ i.unidade }}</div></td>
+                  <td class="text-right">{{ num(i.quantidade) }}</td>
+                  <td class="text-right">{{ brl(i.valorTotal) }}</td>
+                  <td class="text-left" style="white-space: normal">{{ i.orgao ?? `CNPJ ${cnpj(i.orgaoCnpj)}` }} · {{ i.uf }}</td>
+                  <td class="text-right">{{ data(i.data) }}</td>
+                  <td><q-btn v-if="linkPncp(i.compra)" flat round dense size="sm" icon="open_in_new" :href="linkPncp(i.compra)" target="_blank" rel="noopener" /></td>
+                </tr>
+              </tbody>
+            </q-markup-table>
+            <q-card-actions v-if="vit.itens.length > mostrarItens"><q-btn flat no-caps color="primary" label="Ver mais itens" @click="mostrarItens += 20" /></q-card-actions>
+          </template>
+          <q-card-section class="text-caption text-grey-6">
+            Fonte: {{ vit.fonte }}. Mostra apenas vitórias (os dados públicos não informam participações nem derrotas).
+            <span v-if="vit.descricoesPendentes">Algumas descrições de itens ainda estão carregando do PNCP; abra de novo em alguns minutos.</span>
+            <span v-if="vit.falhas.length">Não foi possível consultar parte do período agora.</span>
+          </q-card-section>
+        </template>
+      </q-card>
+
       <div class="row q-col-gutter-md">
         <div class="col-12 col-md-8 q-gutter-y-md">
           <q-card flat bordered class="lf-card">
@@ -216,6 +272,11 @@ const dias = ref(365);
 const p = ref(null);
 const carregando = ref(false);
 const comparar = ref([]);
+const vit = ref(null);
+const carregandoVitorias = ref(false);
+const erroVitorias = ref('');
+const anosVitorias = ref(3);
+const mostrarItens = ref(20);
 const tabelaComparacao = ref([]);
 
 const num = (v) => Number(v ?? 0).toLocaleString('pt-BR');
@@ -236,6 +297,31 @@ const meses = computed(() => (p.value?.porMes ?? []).map((x) => ({
   rotulo: MESES[Number(x.mes.slice(5, 7)) - 1], rotuloLongo: `${MESES[Number(x.mes.slice(5, 7)) - 1]}/${x.mes.slice(0, 4)}`,
   valor: x.valor, detalhe: `${num(x.contratos)} contrato(s)`, parcial: x.consolidando,
 })));
+const kpisVitorias = computed(() => [
+  { nome: 'Itens vencidos', valor: num(vit.value.resumo.itens) },
+  { nome: 'Licitações', valor: num(vit.value.resumo.compras) },
+  { nome: 'Valor vencido', valor: brlCurto(vit.value.resumo.valor) },
+  { nome: 'Órgãos', valor: num(vit.value.resumo.orgaos) },
+  { nome: 'Com benefício ME/EPP', valor: num(vit.value.resumo.beneficioMeEpp) },
+]);
+function linkPncp(controle) {
+  const m = String(controle ?? '').match(/^(\d{14})-\d+-0*(\d+)\/(\d{4})$/);
+  return m ? `https://pncp.gov.br/app/editais/${m[1]}/${m[3]}/${m[2]}` : null;
+}
+async function carregarVitorias(ni) {
+  vit.value = null;
+  erroVitorias.value = '';
+  if (!ni) return;
+  carregandoVitorias.value = true;
+  mostrarItens.value = 20;
+  try {
+    vit.value = (await api.get(`/analise-empresas/${ni}/vitorias`, { params: { anos: anosVitorias.value }, timeout: 180000, silencioso: true })).data;
+  } catch {
+    erroVitorias.value = 'Não foi possível consultar o Compras.gov.br agora. Tente novamente em instantes.';
+  } finally {
+    carregandoVitorias.value = false;
+  }
+}
 const pctRisco = computed(() => {
   const r = p.value?.riscoClientes ?? {};
   const total = Object.values(r).reduce((a, b) => a + b, 0);
@@ -271,10 +357,11 @@ function removerComparacao(ni) {
   atualizarComparacao();
 }
 
-watch(() => route.params.cnpj, (c) => carregar(c));
+watch(() => route.params.cnpj, (c) => { carregar(c); carregarVitorias(c); });
+watch(anosVitorias, () => carregarVitorias(route.params.cnpj));
 watch(dias, () => { carregar(route.params.cnpj); atualizarComparacao(); });
 onMounted(async () => {
   minhas.value = (await api.get('/empresas')).data;
-  if (route.params.cnpj) carregar(route.params.cnpj);
+  if (route.params.cnpj) { carregar(route.params.cnpj); carregarVitorias(route.params.cnpj); }
 });
 </script>
