@@ -31,37 +31,49 @@ export function sugerirEmpresas(db, q = '', limite = 10) {
     .all(`fornecedor_nome : (${termos.map((t) => `"${t}"*`).join(' ')})`, limite);
 }
 
-/** Dados cadastrais públicos (Receita Federal via BrasilAPI), guardados por 30 dias. */
-export async function cadastroCnpj(db, cnpj, { fetchImpl = fetch } = {}) {
+// Fontes públicas dos dados da Receita Federal, tentadas em ordem (mesmo formato de campos).
+const FONTES_CNPJ = (process.env.CNPJ_FONTES ?? `${BRASILAPI},https://minhareceita.org`).split(',').map((x) => x.trim()).filter(Boolean);
+const CABECALHOS = { accept: 'application/json', 'user-agent': 'BuscaPregaoIA/1.0 (+https://app.buscapregaoia.com.br)' };
+
+function mapearCadastro(d) {
+  return {
+    razaoSocial: d.razao_social ?? null,
+    nomeFantasia: d.nome_fantasia || null,
+    porte: d.porte ?? d.descricao_porte ?? null,
+    simples: d.opcao_pelo_simples ?? null,
+    mei: d.opcao_pelo_mei ?? null,
+    atividade: d.cnae_fiscal_descricao ?? null,
+    cnae: d.cnae_fiscal ? String(d.cnae_fiscal) : null,
+    naturezaJuridica: d.natureza_juridica ?? null,
+    situacao: d.descricao_situacao_cadastral ?? null,
+    abertura: d.data_inicio_atividade ?? null,
+    capitalSocial: d.capital_social ?? null,
+    municipio: d.municipio ?? null,
+    uf: d.uf ?? null,
+    socios: (d.qsa ?? []).slice(0, 10).map((x) => ({ nome: x.nome_socio, qualificacao: x.qualificacao_socio })),
+  };
+}
+
+/** Dados cadastrais públicos (Receita Federal via BrasilAPI ou minhareceita.org), guardados por 30 dias. */
+export async function cadastroCnpj(db, cnpj, { fetchImpl = fetch, log = console.warn } = {}) {
   const c = so(cnpj);
   if (c.length !== 14) return null;
   const salvo = db.prepare("SELECT dados FROM empresas_cadastro WHERE cnpj = ? AND atualizado_em > datetime('now', '-30 days')").get(c);
   if (salvo) return JSON.parse(salvo.dados);
-  try {
-    const res = await fetchImpl(`${BRASILAPI}/${c}`, { headers: { accept: 'application/json' }, signal: AbortSignal.timeout(15000) });
-    if (!res.ok) return null;
-    const d = await res.json();
-    const dados = {
-      razaoSocial: d.razao_social ?? null,
-      nomeFantasia: d.nome_fantasia || null,
-      porte: d.porte ?? d.descricao_porte ?? null,
-      simples: d.opcao_pelo_simples ?? null,
-      mei: d.opcao_pelo_mei ?? null,
-      atividade: d.cnae_fiscal_descricao ?? null,
-      cnae: d.cnae_fiscal ? String(d.cnae_fiscal) : null,
-      naturezaJuridica: d.natureza_juridica ?? null,
-      situacao: d.descricao_situacao_cadastral ?? null,
-      abertura: d.data_inicio_atividade ?? null,
-      capitalSocial: d.capital_social ?? null,
-      municipio: d.municipio ?? null,
-      uf: d.uf ?? null,
-      socios: (d.qsa ?? []).slice(0, 10).map((s) => ({ nome: s.nome_socio, qualificacao: s.qualificacao_socio })),
-    };
-    db.prepare("INSERT OR REPLACE INTO empresas_cadastro (cnpj, dados, atualizado_em) VALUES (?, ?, datetime('now'))").run(c, JSON.stringify(dados));
-    return dados;
-  } catch {
-    return null; // sem internet ou serviço fora: o perfil segue sem cadastro
+  for (const fonte of FONTES_CNPJ) {
+    try {
+      const res = await fetchImpl(`${fonte.replace(/\/$/, '')}/${c}`, { headers: CABECALHOS, signal: AbortSignal.timeout(15000) });
+      if (res.status === 404) return null; // CNPJ não existe: não adianta tentar outra fonte
+      if (!res.ok) { log(`[cnpj] ${fonte} respondeu ${res.status} para ${c}`); continue; }
+      const dados = mapearCadastro(await res.json());
+      if (!dados.razaoSocial) { log(`[cnpj] ${fonte} sem razão social para ${c}`); continue; }
+      db.prepare("INSERT OR REPLACE INTO empresas_cadastro (cnpj, dados, atualizado_em) VALUES (?, ?, datetime('now'))").run(c, JSON.stringify(dados));
+      return dados;
+    } catch (e) {
+      log(`[cnpj] ${fonte} falhou para ${c}: ${e.cause?.code ?? e.message}`);
+    }
   }
+  return null; // sem acesso às fontes: o perfil segue sem cadastro
 }
 
 function periodo(q) {

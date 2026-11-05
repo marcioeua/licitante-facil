@@ -90,6 +90,10 @@
           </q-card-section></q-card>
         </div>
       </div>
+      <div class="text-caption text-grey-7 q-mb-md">
+        <q-icon name="info" /> Valores de <b>contratos e empenhos assinados</b> publicados no PNCP<span v-if="p.periodo?.de"> desde {{ data(p.periodo.de) }}</span>.
+        Não inclui disputas perdidas nem atas de registro de preço que ainda não viraram contrato, por isso pode ser menor que o "valor vencido" de outras ferramentas.
+      </div>
       <div v-if="!p.resumo.contratos" class="text-grey-7 q-mb-md">Nenhum contrato desta empresa no período carregado.</div>
 
       <div class="row q-col-gutter-md">
@@ -221,7 +225,7 @@ const brlCurto = (v) => (v >= 1e6 ? `R$ ${(v / 1e6).toLocaleString('pt-BR', { ma
 const intervalo = () => ({ de: new Date(Date.now() - dias.value * 86400000).toISOString().slice(0, 10), ate: new Date().toISOString().slice(0, 10) });
 
 const kpis = computed(() => [
-  { nome: 'Vendeu ao governo', valor: brlCurto(p.value.resumo.valor) },
+  { nome: 'Contratado (assinado)', valor: brlCurto(p.value.resumo.valor) },
   { nome: 'Contratos', valor: num(p.value.resumo.contratos) },
   { nome: 'Contrato típico', valor: brlCurto(p.value.resumo.ticketMediano ?? 0) },
   { nome: 'Clientes', valor: num(p.value.resumo.clientes) },

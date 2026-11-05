@@ -64,3 +64,20 @@ test('análise de empresas: sugestões, perfil, Pagômetro dos clientes, concorr
   assert.equal(p2.cadastro, null);
   assert.equal(p2.resumo.contratos, 2);
 });
+
+test('cadastro do CNPJ: usa a fonte reserva quando a primeira falha', async () => {
+  const { cadastroCnpj } = await import('../src/services/empresas.js');
+  const db = openDatabase(':memory:');
+  const urls = [];
+  const fake = async (url, opts) => {
+    urls.push(String(url));
+    assert.match(opts.headers['user-agent'], /BuscaPregaoIA/);
+    if (String(url).includes('brasilapi')) return new Response('bloqueado', { status: 403 });
+    return Response.json({ razao_social: 'EMPRESA RESERVA LTDA', porte: 'DEMAIS' });
+  };
+  const d = await cadastroCnpj(db, '11.222.333/0001-81', { fetchImpl: fake, log: () => {} });
+  assert.equal(d.razaoSocial, 'EMPRESA RESERVA LTDA');
+  assert.deepEqual(urls.map((u) => new URL(u).hostname), ['brasilapi.com.br', 'minhareceita.org']);
+  const nada = await cadastroCnpj(openDatabase(':memory:'), '11222333000181', { fetchImpl: async () => new Response(null, { status: 404 }), log: () => {} });
+  assert.equal(nada, null);
+});
