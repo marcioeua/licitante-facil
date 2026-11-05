@@ -2,6 +2,7 @@ import { httpError, idParam } from '../http.js';
 import { montarItem, importarItens } from '../services/disputa.js';
 import { pesquisarPrecos } from '../services/historico.js';
 import { tituloItem } from '../services/vitorias.js';
+import { analisarChat, historicoChat, MAX_TEXTO } from '../services/pregoeiro.js';
 
 const num = { type: ['number', 'null'], minimum: 0 };
 const itemProps = {
@@ -25,7 +26,7 @@ export default async function (app) {
   const { db } = app;
 
   const negocio = (uid, id) => {
-    const n = db.prepare(`SELECT n.id, n.titulo, n.etapa, n.data_disputa, n.oportunidade_id, o.numero_controle_pncp, o.objeto, o.orgao_nome,
+    const n = db.prepare(`SELECT n.id, n.titulo, n.etapa, n.data_disputa, n.oportunidade_id, n.empresa_id, o.numero_controle_pncp, o.objeto, o.orgao_nome,
         o.unidade_nome, o.uf, o.municipio, o.modalidade, o.numero_compra, o.ano_compra, o.data_abertura, o.link_origem, o.link_pncp, o.valor_estimado
       FROM negocios n LEFT JOIN oportunidades o ON o.id = n.oportunidade_id WHERE n.id = ? AND n.usuario_id = ?`).get(idParam(id), uid);
     if (!n) throw httpError(404, 'Negócio não encontrado.');
@@ -113,5 +114,23 @@ export default async function (app) {
       req.log.warn(e);
       return reply.code(502).send({ erro: 'Não foi possível consultar os preços agora. Tente novamente.' });
     }
+  });
+
+  // Leitor do chat do pregoeiro (texto colado pelo usuário; nada é lido do portal).
+  app.get('/negocio/:id/chat', async (req) => {
+    const n = negocio(req.usuarioId, req.params.id);
+    return { iaDisponivel: !!app.ia, analises: historicoChat(db, n.id) };
+  });
+  app.post('/negocio/:id/chat', {
+    schema: { body: { type: 'object', required: ['texto'], properties: { texto: { type: 'string', maxLength: MAX_TEXTO + 1000 } } } },
+  }, async (req) => {
+    const n = negocio(req.usuarioId, req.params.id);
+    return analisarChat(db, n.id, req.usuarioId, req.body.texto, { client: app.ia });
+  });
+  app.delete('/chat/:id', async (req) => {
+    const r = db.prepare(`DELETE FROM disputa_mensagens WHERE id = ? AND negocio_id IN (SELECT id FROM negocios WHERE usuario_id = ?)`)
+      .run(idParam(req.params.id), req.usuarioId);
+    if (!r.changes) throw httpError(404, 'Análise não encontrada.');
+    return { ok: true };
   });
 }

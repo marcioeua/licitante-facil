@@ -206,6 +206,15 @@ CREATE TABLE IF NOT EXISTS disputa_lances (
   criado_em TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+CREATE TABLE IF NOT EXISTS disputa_mensagens (
+  id INTEGER PRIMARY KEY,
+  negocio_id INTEGER NOT NULL REFERENCES negocios(id) ON DELETE CASCADE,
+  texto TEXT NOT NULL,
+  analise TEXT NOT NULL,
+  lembretes INTEGER NOT NULL DEFAULT 0,
+  criado_em TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE TABLE IF NOT EXISTS conector_tokens (
   usuario_id INTEGER PRIMARY KEY REFERENCES usuarios(id) ON DELETE CASCADE,
   token_hash TEXT NOT NULL UNIQUE,

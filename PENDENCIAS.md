@@ -48,6 +48,8 @@ Para retomar, é só abrir a conversa e dizer qual item quer fazer.
 - [ ] **Filtro e selo por portal** (Compras.gov.br, Portal de Compras Públicas, BLL, Licitanet, BNC…).
 - [x] **Assistente de disputa** (Sala de disputa no negócio, sem lance automático): preço mínimo por item,
       próximo lance, aviso de parar, preços pagos no PNCP e registro dos lances.
+- [x] **Leitor do chat do pregoeiro** (aba na Sala de disputa: cola o chat, IA aponta prazos e cria lembretes).
+      Leitura automática do chat não é possível: não há dado público e o portal exige login gov.br + captcha.
 - [ ] Lance automático: só com regras dos portais validadas por especialista e API oficial; hoje não fazer.
 - [ ] Relatórios de desempenho (taxa de vitória, valores ganhos).
 - [ ] App para celular (Android/iPhone).

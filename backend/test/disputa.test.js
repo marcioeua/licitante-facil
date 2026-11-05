@@ -69,3 +69,52 @@ test('sala de disputa: importa itens do PNCP, registra lances, desfaz e protege 
   await req('DELETE', `/api/negocios/${neg.id}`);
   assert.equal(db.prepare('SELECT count(*) n FROM disputa_itens').get().n, 0, 'apaga junto com o negócio');
 });
+
+test('chat do pregoeiro: IA analisa o texto colado, cria lembretes e avisa no sino', async () => {
+  const db = openDatabase(':memory:');
+  const chamadas = [];
+  const analise = {
+    resumo: 'O pregoeiro convocou a LIMPA TUDO para enviar a proposta ajustada do item 1.',
+    envolve_minha_empresa: true,
+    mensagens: [{ data_hora: '05/11/2026 10:00:12', item: '1', tipo: 'convocacao', me_envolve: true, trecho: 'Convoco LIMPA TUDO a anexar proposta em 2 horas', explicacao: 'Você precisa anexar a proposta ajustada.' }],
+    prazos: [
+      { descricao: 'Anexar proposta ajustada do item 1', prazo_texto: '2 horas', limite: '2026-11-05T12:00', me_envolve: true },
+      { descricao: 'Prazo sem hora', prazo_texto: 'em breve', limite: null, me_envolve: true },
+      { descricao: 'Formato inválido', prazo_texto: 'x', limite: 'amanhã', me_envolve: false },
+    ],
+    acoes: ['Anexar a proposta ajustada no sistema até 12h'],
+    alertas: [],
+  };
+  const ia = { beta: { messages: { parse: async (p) => { chamadas.push(p); return { parsed_output: analise, stop_reason: 'end_turn', usage: { input_tokens: 10, output_tokens: 5 } }; } } } };
+  const app = await buildApp({ db, serveFrontend: false, ia });
+  const cookie = (await app.inject({ method: 'POST', url: '/api/auth/cadastro', payload: { nome: 'Teste', email: 'p@e.com', senha: 'senha-segura-1' } })).headers['set-cookie'].split(';')[0];
+  const req = (method, url, payload) => app.inject({ method, url, payload, headers: { cookie } });
+  const emp = (await req('POST', '/api/empresas', { razao_social: 'LIMPA TUDO LTDA', cnpj: '11222333000181' })).json();
+  const neg = (await req('POST', '/api/negocios', { titulo: 'Pregão limpeza', empresa_id: emp.id })).json();
+
+  assert.equal((await req('POST', `/api/disputa/negocio/${neg.id}/chat`, { texto: 'curto' })).statusCode, 400);
+  const texto = '05/11/2026 10:00:12 - Pregoeiro: Convoco LIMPA TUDO a anexar proposta em 2 horas.';
+  let r = await req('POST', `/api/disputa/negocio/${neg.id}/chat`, { texto });
+  assert.equal(r.statusCode, 200, r.body);
+  assert.equal(r.json().lembretes, 1, 'só prazos com data e hora válidas');
+  const prompt = chamadas[0].messages[0].content;
+  assert.match(prompt, /LIMPA TUDO LTDA \(CNPJ 11222333000181\)/);
+  assert.match(prompt, /<chat_do_pregoeiro>[\s\S]*Convoco/);
+
+  const agenda = (await req('GET', '/api/agenda?de=2026-11-01&ate=2026-11-30')).json();
+  assert.ok(agenda.some((e) => e.tipo === 'evento' && e.inicio === '2026-11-05T12:00' && /proposta ajustada/.test(e.titulo)));
+  const notifs = (await req('GET', '/api/notificacoes')).json();
+  const lista = notifs.itens ?? notifs;
+  assert.ok(lista.some((n) => n.tipo === 'prazo_pregoeiro' && n.link === `/negocios/${neg.id}/disputa`));
+
+  await req('POST', `/api/disputa/negocio/${neg.id}/chat`, { texto });
+  assert.equal(db.prepare("SELECT count(*) n FROM eventos").get().n, 1, 'não duplica o lembrete');
+  const hist = (await req('GET', `/api/disputa/negocio/${neg.id}/chat`)).json();
+  assert.equal(hist.analises.length, 2);
+  assert.equal(hist.analises[0].analise.envolve_minha_empresa, true);
+  assert.equal((await req('DELETE', `/api/disputa/chat/${hist.analises[0].id}`)).statusCode, 200);
+
+  const semIA = await buildApp({ db, serveFrontend: false, ia: null });
+  r = await semIA.inject({ method: 'POST', url: `/api/disputa/negocio/${neg.id}/chat`, payload: { texto }, headers: { cookie } });
+  assert.equal(r.statusCode, 503);
+});

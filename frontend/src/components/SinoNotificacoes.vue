@@ -35,7 +35,7 @@ const router = useRouter();
 const naoLidas = ref(0);
 const itens = ref([]);
 let timer = null;
-const ICONES = { prospeccao: 'travel_explore', mudanca: 'update', mudanca_grave: 'warning', documento: 'description', lembrete: 'alarm', edital_lido: 'auto_awesome' };
+const ICONES = { prospeccao: 'travel_explore', mudanca: 'update', mudanca_grave: 'warning', documento: 'description', lembrete: 'alarm', edital_lido: 'auto_awesome', prazo_pregoeiro: 'campaign' };
 
 function quando(s) {
   const d = new Date(s.replace(' ', 'T') + 'Z');

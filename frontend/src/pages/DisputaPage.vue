@@ -31,24 +31,24 @@
         </q-banner>
       </q-card>
 
-      <div v-if="!sala.itens.length" class="text-center text-grey-7 q-pa-xl">
-        <q-icon name="inventory_2" size="48px" class="q-mb-sm" /><div>Nenhum item ainda.</div>
-        <div class="text-body2">Importe os itens do PNCP ou adicione manualmente.</div>
-      </div>
-
-      <template v-else>
+      <template v-if="true">
         <div class="row items-center q-mb-md q-gutter-sm">
           <q-btn-toggle v-model="modo" no-caps unelevated toggle-color="primary" color="grey-2" text-color="grey-9"
-            :options="[{ label: '1. Preparar preços', value: 'preparar', icon: 'calculate' }, { label: '2. Modo disputa', value: 'disputa', icon: 'bolt' }]" />
+            :options="[{ label: '1. Preparar preços', value: 'preparar', icon: 'calculate' }, { label: '2. Modo disputa', value: 'disputa', icon: 'bolt' }, { label: '3. Chat do pregoeiro', value: 'chat', icon: 'campaign' }]" />
           <q-space />
-          <div class="text-body2 text-grey-8">
+          <div v-if="sala.itens.length && modo !== 'chat'" class="text-body2 text-grey-8">
             {{ resumo.comMinimo }} de {{ sala.itens.length }} itens com preço mínimo
             <span v-if="resumo.totalMinimo"> · total mínimo {{ brl2(resumo.totalMinimo) }}</span>
           </div>
         </div>
 
+        <div v-if="modo !== 'chat' && !sala.itens.length" class="text-center text-grey-7 q-pa-xl">
+          <q-icon name="inventory_2" size="48px" class="q-mb-sm" /><div>Nenhum item ainda.</div>
+          <div class="text-body2">Importe os itens do PNCP ou adicione manualmente.</div>
+        </div>
+
         <!-- 1. Preparar -->
-        <div v-if="modo === 'preparar'" class="q-gutter-y-md">
+        <div v-else-if="modo === 'preparar'" class="q-gutter-y-md">
           <q-card v-for="i in sala.itens" :key="i.id" flat bordered class="lf-card disp-item">
             <q-card-section class="row items-start no-wrap q-pb-sm">
               <div class="col">
@@ -87,6 +87,9 @@
             </q-card-section>
           </q-card>
         </div>
+
+        <!-- 3. Chat do pregoeiro -->
+        <ChatPregoeiro v-else-if="modo === 'chat'" :negocio-id="Number(route.params.id)" :tem-empresa="!!sala.negocio.empresa_id" />
 
         <!-- 2. Modo disputa -->
         <div v-else class="row q-col-gutter-md">
@@ -185,6 +188,7 @@ import { useRoute } from 'vue-router';
 import { useQuasar, copyToClipboard, Notify } from 'quasar';
 import { api } from 'boot/axios';
 import { data, dataHora } from 'src/format';
+import ChatPregoeiro from 'components/ChatPregoeiro.vue';
 
 const SITUACOES = { pendente: 'Aguardando', disputando: 'Disputando', ganho: 'Ganhei', perdido: 'Perdi', desisti: 'Desisti' };
 const ROTULO = { inicial: 'LANCE INICIAL', cobrir: 'PRÓXIMO LANCE', parar: 'PARE AQUI', ganhando: 'VOCÊ ESTÁ GANHANDO', abaixo_minimo: 'ATENÇÃO', sem_dados: 'FALTAM DADOS', encerrado: 'ENCERRADO' };

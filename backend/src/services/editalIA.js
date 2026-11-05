@@ -10,7 +10,7 @@ export const MODELO = process.env.ANTHROPIC_MODEL ?? 'claude-opus-5-5';
 const LIMITE_DIARIO = Number(process.env.IA_LIMITE_DIARIO ?? 30);
 const VALIDADE_ARQUIVOS_DIAS = 30;
 // Se o modelo recusar por política de segurança, a API refaz a chamada em outro modelo.
-const FALLBACK = { betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' };
+export const FALLBACK = { betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' };
 
 const SISTEMA = `Você é um analista de licitações públicas brasileiras, experiente na Lei 14.133/2021, \
 ajudando uma empresa que avalia se vai participar desta licitação.
@@ -78,12 +78,12 @@ function exigirCliente(client) {
   return client;
 }
 
-function checarLimite(db, uid) {
+export function checarLimite(db, uid) {
   const { n } = db.prepare("SELECT count(*) AS n FROM ia_uso WHERE usuario_id = ? AND criado_em >= datetime('now', 'start of day')").get(uid);
   if (n >= LIMITE_DIARIO) throw httpError(429, `Você atingiu o limite de ${LIMITE_DIARIO} análises com IA por dia. Tente amanhã.`);
 }
 
-function registrarUso(db, uid, tipo, usage) {
+export function registrarUso(db, uid, tipo, usage) {
   db.prepare('INSERT INTO ia_uso (usuario_id, tipo, input_tokens, output_tokens, cache_read_tokens) VALUES (?, ?, ?, ?, ?)')
     .run(uid, tipo, usage?.input_tokens ?? null, usage?.output_tokens ?? null, usage?.cache_read_input_tokens ?? null);
 }
