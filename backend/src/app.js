@@ -36,6 +36,11 @@ export async function buildApp({ db, logger = false, serveFrontend = true, ia, f
   await app.register(cookie);
   await app.register(multipart, { limits: { fileSize: 25 * 1024 * 1024, files: 1 } });
 
+  // Por enquanto o site não deve aparecer em buscadores (Google, Bing etc.).
+  app.addHook('onSend', async (req, reply) => {
+    reply.header('x-robots-tag', 'noindex, nofollow, noarchive');
+  });
+
   app.decorateRequest('usuarioId', null);
   app.addHook('onRequest', async (req) => {
     req.usuarioId = lerToken(req.cookies[COOKIE]);

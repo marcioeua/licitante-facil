@@ -92,3 +92,10 @@ test('rotas de descoberta OAuth respondem 404 em JSON (não o index.html)', asyn
     config.frontendDist = antes;
   }
 });
+
+test('site fora dos buscadores: cabeçalho noindex em todas as respostas', async () => {
+  const app = await buildApp({ db: openDatabase(':memory:'), serveFrontend: false, ia: null });
+  for (const url of ['/api/saude', '/api/oportunidades']) {
+    assert.equal((await app.inject({ method: 'GET', url })).headers['x-robots-tag'], 'noindex, nofollow, noarchive', url);
+  }
+});
