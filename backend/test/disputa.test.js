@@ -118,3 +118,36 @@ test('chat do pregoeiro: IA analisa o texto colado, cria lembretes e avisa no si
   r = await semIA.inject({ method: 'POST', url: `/api/disputa/negocio/${neg.id}/chat`, payload: { texto }, headers: { cookie } });
   assert.equal(r.statusCode, 503);
 });
+
+test('agente fornecedor: termos do item, ranking de quem vendeu e contato público', async () => {
+  const { termosDoItem, fornecedoresDoItem } = await import('../src/services/fornecedores.js');
+  assert.equal(termosDoItem('Detergente líquido, neutro, frasco 500 ml'), 'detergente liquido');
+  assert.equal(termosDoItem('Papel higiênico folha dupla, rolo 30 m'), 'papel higienico');
+
+  const db = openDatabase(':memory:');
+  const ins = db.prepare('INSERT INTO compra_itens (compra_controle, numero_item, descricao, unidade, quantidade, valor_unit_estimado, tem_resultado, resultado_buscado) VALUES (?, ?, ?, ?, 10, 5, 1, 1)');
+  const res = db.prepare('INSERT INTO item_resultados (compra_controle, numero_item, sequencial, fornecedor_ni, fornecedor_nome, porte, quantidade, valor_unitario, valor_total, data_resultado) VALUES (?, ?, 1, ?, ?, ?, 10, ?, ?, ?)');
+  const A = ['11222333000181', 'DISTRIBUIDORA ALFA'];
+  const B = ['22333444000155', 'COMERCIAL BETA'];
+  [['11111111000111-1-000001/2026', A, 2.5, 'SP'], ['11111111000111-1-000002/2026', A, 2.9, 'SP'], ['11111111000111-1-000003/2026', B, 2.1, 'MG']].forEach(([c, f, v], i) => {
+    ins.run(c, 1, 'Detergente líquido neutro 500 ml', 'Frasco');
+    res.run(c, 1, f[0], f[1], 'ME', v, v * 10, `2026-0${i + 1}-10`);
+  });
+  const r = await fornecedoresDoItem(db, 'Detergente líquido neutro 500 ml', { fetchImpl: async () => Response.json([]) });
+  assert.deepEqual(r.fornecedores.map((f) => [f.nome, f.vitorias, f.menorPreco]), [['DISTRIBUIDORA ALFA', 2, 2.5], ['COMERCIAL BETA', 1, 2.1]]);
+  assert.equal(r.fornecedores[0].precoMediano, 2.7);
+  assert.equal(r.fornecedores[0].unidadePreco, 'FRASCO');
+
+  const app = await buildApp({ db, serveFrontend: false, ia: null, fetchCnpj: async () => Response.json({ razao_social: 'DISTRIBUIDORA ALFA LTDA', email: 'VENDAS@ALFA.COM.BR', ddd_telefone_1: '(11) 3333-4444', municipio: 'SAO PAULO', uf: 'SP' }) });
+  const cookie = (await app.inject({ method: 'POST', url: '/api/auth/cadastro', payload: { nome: 'Teste', email: 'f@e.com', senha: 'senha-segura-1' } })).headers['set-cookie'].split(';')[0];
+  const c = (await app.inject({ method: 'GET', url: `/api/disputa/fornecedores/${A[0]}/contato`, headers: { cookie } })).json();
+  assert.deepEqual([c.email, c.telefone], ['vendas@alfa.com.br', '1133334444']);
+  assert.equal((await app.inject({ method: 'GET', url: '/api/disputa/fornecedores/123/contato', headers: { cookie } })).statusCode, 400);
+});
+
+test('agente fornecedor: assunto da licitação a partir do objeto', async () => {
+  const { assuntoDoObjeto } = await import('../src/services/fornecedores.js');
+  assert.equal(assuntoDoObjeto('Aquisição de material de limpeza para as unidades de saúde'), 'material limpeza');
+  assert.equal(assuntoDoObjeto('Registro de preços para eventual aquisição de gêneros alimentícios'), 'generos alimenticios');
+  assert.equal(assuntoDoObjeto('Contratação de empresa especializada em manutenção predial'), 'manutencao predial');
+});

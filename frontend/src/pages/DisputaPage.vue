@@ -34,9 +34,9 @@
       <template v-if="true">
         <div class="row items-center q-mb-md q-gutter-sm">
           <q-btn-toggle v-model="modo" no-caps unelevated toggle-color="primary" color="grey-2" text-color="grey-9"
-            :options="[{ label: '1. Preparar preços', value: 'preparar', icon: 'calculate' }, { label: '2. Modo disputa', value: 'disputa', icon: 'bolt' }, { label: '3. Chat do pregoeiro', value: 'chat', icon: 'campaign' }]" />
+            :options="[{ label: '1. Preparar preços', value: 'preparar', icon: 'calculate' }, { label: '2. Modo disputa', value: 'disputa', icon: 'bolt' }, { label: '3. Chat do pregoeiro', value: 'chat', icon: 'campaign' }, { label: '4. Fornecedores', value: 'fornecedores', icon: 'local_shipping' }]" />
           <q-space />
-          <div v-if="sala.itens.length && modo !== 'chat'" class="text-body2 text-grey-8">
+          <div v-if="sala.itens.length && ['preparar', 'disputa'].includes(modo)" class="text-body2 text-grey-8">
             {{ resumo.comMinimo }} de {{ sala.itens.length }} itens com preço mínimo
             <span v-if="resumo.totalMinimo"> · total mínimo {{ brl2(resumo.totalMinimo) }}</span>
           </div>
@@ -87,6 +87,9 @@
             </q-card-section>
           </q-card>
         </div>
+
+        <!-- 4. Fornecedores e cotação -->
+        <FornecedoresCotacao v-else-if="modo === 'fornecedores'" :itens="sala.itens" :negocio="sala.negocio" />
 
         <!-- 3. Chat do pregoeiro -->
         <ChatPregoeiro v-else-if="modo === 'chat'" :negocio-id="Number(route.params.id)" :tem-empresa="!!sala.negocio.empresa_id" />
@@ -189,6 +192,7 @@ import { useQuasar, copyToClipboard, Notify } from 'quasar';
 import { api } from 'boot/axios';
 import { data, dataHora } from 'src/format';
 import ChatPregoeiro from 'components/ChatPregoeiro.vue';
+import FornecedoresCotacao from 'components/FornecedoresCotacao.vue';
 
 const SITUACOES = { pendente: 'Aguardando', disputando: 'Disputando', ganho: 'Ganhei', perdido: 'Perdi', desisti: 'Desisti' };
 const ROTULO = { inicial: 'LANCE INICIAL', cobrir: 'PRÓXIMO LANCE', parar: 'PARE AQUI', ganhando: 'VOCÊ ESTÁ GANHANDO', abaixo_minimo: 'ATENÇÃO', sem_dados: 'FALTAM DADOS', encerrado: 'ENCERRADO' };

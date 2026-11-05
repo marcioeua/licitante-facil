@@ -50,6 +50,9 @@ function mapearCadastro(d) {
     capitalSocial: d.capital_social ?? null,
     municipio: d.municipio ?? null,
     uf: d.uf ?? null,
+    // Contato informado pela empresa à Receita (público; às vezes é o do contador).
+    email: d.email ? String(d.email).toLowerCase() : null,
+    telefone: d.ddd_telefone_1 ? String(d.ddd_telefone_1).replace(/\D/g, '') || null : null,
     socios: (d.qsa ?? []).slice(0, 10).map((x) => ({ nome: x.nome_socio, qualificacao: x.qualificacao_socio })),
   };
 }
@@ -59,7 +62,8 @@ export async function cadastroCnpj(db, cnpj, { fetchImpl = fetch, log = console.
   const c = so(cnpj);
   if (c.length !== 14) return null;
   const salvo = db.prepare("SELECT dados FROM empresas_cadastro WHERE cnpj = ? AND atualizado_em > datetime('now', '-30 days')").get(c);
-  if (salvo) return JSON.parse(salvo.dados);
+  // Cadastros guardados antes de existir o campo de contato são buscados de novo.
+  if (salvo && 'email' in JSON.parse(salvo.dados)) return JSON.parse(salvo.dados);
   for (const fonte of FONTES_CNPJ) {
     try {
       const res = await fetchImpl(`${fonte.replace(/\/$/, '')}/${c}`, { headers: CABECALHOS, signal: AbortSignal.timeout(15000) });

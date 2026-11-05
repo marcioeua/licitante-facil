@@ -95,6 +95,16 @@
           <q-card-actions><q-btn unelevated no-caps color="primary" icon="balance" label="Abrir peças jurídicas" :to="{ name: 'juridico' }" /></q-card-actions>
         </q-card>
       </div>
+      <div class="col-12 col-md-4">
+        <q-card flat bordered class="lf-card full-height column">
+          <q-card-section class="row items-start no-wrap">
+            <q-avatar color="purple-6" text-color="white" icon="local_shipping" size="48px" class="q-mr-md" />
+            <div class="col"><div class="text-subtitle1 text-weight-bold">Agente Fornecedor</div><q-badge color="positive" label="Disponível" /></div>
+          </q-card-section>
+          <q-card-section class="q-pt-none text-body2 text-grey-8 col">Mostra quem vendeu cada item ao governo e por quanto, com o contato público, e monta a planilha e o e-mail de cotação. Abra um negócio → <b>Sala de disputa</b> → <b>4. Fornecedores</b>.</q-card-section>
+          <q-card-actions><q-btn unelevated no-caps color="primary" icon="view_kanban" label="Ir para Meus negócios" :to="{ name: 'negocios' }" /></q-card-actions>
+        </q-card>
+      </div>
       <div v-for="e in EM_BREVE" :key="e.nome" class="col-12 col-md-4">
         <q-card flat bordered class="lf-card full-height" style="opacity: 0.75">
           <q-card-section class="row items-start no-wrap">
@@ -123,7 +133,6 @@ const VISUAL = {
   leitor: { cor: 'indigo-7', icone: 'auto_stories' },
 };
 const EM_BREVE = [
-  { nome: 'Agente Fornecedor', cor: 'purple-6', icone: 'local_shipping', descricao: 'Encontra quem vende cada item (pelo histórico de compras) e monta a planilha e o e-mail de cotação.' },
 ];
 
 const quando = (s) => new Date(s.replace(' ', 'T') + 'Z').toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });

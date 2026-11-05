@@ -32,8 +32,8 @@ Para retomar, é só abrir a conversa e dizer qual item quer fazer.
 - [x] **Agente Jurídico** (página *Peças jurídicas*): análise de irregularidades do edital e rascunhos de
       esclarecimento, impugnação, recurso e contrarrazões, para revisão de advogado. Baixa em Word.
 - [ ] Testar o Agente Jurídico com um edital real em produção e ajustar o texto das peças com um advogado.
-- [ ] **Agente Fornecedor**: sugere quem vende cada item (pelo histórico de compras) e monta a planilha
-      e o e-mail de cotação.
+- [x] **Agente Fornecedor** (Sala de disputa → 4. Fornecedores): quem venceu itens parecidos no PNCP, preços por
+      unidade, contato público da Receita, planilha e e-mail de cotação.
 - [x] **Busca Pregão no Chat** (conector MCP para Claude e ChatGPT, página *Busca no Chat*, link pessoal).
 - [ ] Testar o conector no Claude/ChatGPT com o link gerado em produção.
 - [ ] (Opcional) Assistente de chat dentro do próprio sistema.

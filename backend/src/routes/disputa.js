@@ -3,6 +3,7 @@ import { montarItem, importarItens } from '../services/disputa.js';
 import { pesquisarPrecos } from '../services/historico.js';
 import { tituloItem } from '../services/vitorias.js';
 import { analisarChat, historicoChat, MAX_TEXTO } from '../services/pregoeiro.js';
+import { fornecedoresDoItem, contatoFornecedor } from '../services/fornecedores.js';
 
 const num = { type: ['number', 'null'], minimum: 0 };
 const itemProps = {
@@ -27,8 +28,8 @@ export default async function (app) {
 
   const negocio = (uid, id) => {
     const n = db.prepare(`SELECT n.id, n.titulo, n.etapa, n.data_disputa, n.oportunidade_id, n.empresa_id, o.numero_controle_pncp, o.objeto, o.orgao_nome,
-        o.unidade_nome, o.uf, o.municipio, o.modalidade, o.numero_compra, o.ano_compra, o.data_abertura, o.data_encerramento, o.link_origem, o.link_pncp, o.valor_estimado
-      FROM negocios n LEFT JOIN oportunidades o ON o.id = n.oportunidade_id WHERE n.id = ? AND n.usuario_id = ?`).get(idParam(id), uid);
+        o.unidade_nome, o.uf, o.municipio, o.modalidade, o.numero_compra, o.ano_compra, o.data_abertura, o.data_encerramento, o.link_origem, o.link_pncp, o.valor_estimado, e.razao_social AS empresa
+      FROM negocios n LEFT JOIN oportunidades o ON o.id = n.oportunidade_id LEFT JOIN empresas e ON e.id = n.empresa_id WHERE n.id = ? AND n.usuario_id = ?`).get(idParam(id), uid);
     if (!n) throw httpError(404, 'Negócio não encontrado.');
     return n;
   };
@@ -132,5 +133,23 @@ export default async function (app) {
       .run(idParam(req.params.id), req.usuarioId);
     if (!r.changes) throw httpError(404, 'Análise não encontrada.');
     return { ok: true };
+  });
+
+  // Agente Fornecedor: quem vendeu itens parecidos ao governo (PNCP) e contato público (Receita).
+  app.get('/itens/:id/fornecedores', async (req, reply) => {
+    const it = item(req.usuarioId, req.params.id);
+    const n = db.prepare('SELECT o.uf, coalesce(o.objeto, n.titulo) AS objeto FROM negocios n LEFT JOIN oportunidades o ON o.id = n.oportunidade_id WHERE n.id = ?').get(it.negocio_id);
+    try {
+      return await fornecedoresDoItem(db, it.descricao, { q: req.query.q, uf: n?.uf, objeto: n?.objeto, fetchImpl: app.fetchPncp });
+    } catch (e) {
+      req.log.warn(e);
+      return reply.code(502).send({ erro: 'Não foi possível consultar o PNCP agora. Tente novamente em instantes.' });
+    }
+  });
+  app.get('/fornecedores/:ni/contato', async (req, reply) => {
+    const ni = String(req.params.ni).replace(/\D/g, '');
+    if (ni.length !== 14) return reply.code(400).send({ erro: 'CNPJ inválido.' });
+    const c = await contatoFornecedor(db, ni, { fetchImpl: app.fetchCnpj });
+    return c ?? reply.code(404).send({ erro: 'Cadastro não encontrado agora. Tente de novo mais tarde.' });
   });
 }
