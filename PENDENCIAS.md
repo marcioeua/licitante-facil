@@ -5,15 +5,15 @@ Para retomar, é só abrir a conversa e dizer qual item quer fazer.
 
 ## 1. Configurações rápidas (você faz no Railway / Registro.br, com a minha ajuda)
 
-- [ ] **Domínio `app.buscapregaoia.com.br`**: quando o Registro.br terminar a transição para o modo
-      avançado, em *Configurar zona DNS* → *Nova entrada*, criar:
+- [ ] **Domínio `app.buscapregaoia.com.br`**: registros CNAME e TXT criados no Registro.br em 05/11/2026.
+      Falta: conferir o selo verde no Railway e criar `APP_URL`. Registros usados:
       - `CNAME` · nome `app` · dados `6dqhqd63.up.railway.app`
       - `TXT` · nome `_railway-verify.app` · dados = código completo `railway-verify=...`
         (copiar no Railway: serviço → Settings → Networking)
       - Depois criar a variável `APP_URL=https://app.buscapregaoia.com.br` no Railway.
 - [ ] **Código de convite da equipe**: variável `CODIGO_CONVITE` no Railway.
-- [ ] **Chave da IA**: criar em https://console.anthropic.com e cadastrar `ANTHROPIC_API_KEY` no Railway.
-      Depois: testar a leitura de um edital e ligar o **Agente Leitor**.
+- [x] **Chave da IA**: `ANTHROPIC_API_KEY` cadastrada no Railway (05/11/2026, `/api/saude` mostra `ia: true`).
+- [ ] Testar a leitura de um edital e ligar o **Agente Leitor**.
 - [ ] **E-mail dos alertas e agentes**: escolher um serviço de envio (Gmail, Brevo, Amazon SES…) e
       cadastrar `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`.
 - [ ] **Histórico de 12 meses**: acompanhar em `/api/saude` o uso do disco (volume de 5 GB) e o período
