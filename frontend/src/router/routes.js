@@ -15,6 +15,7 @@ export default [
       { path: 'pagometro', name: 'pagometro', component: () => import('pages/PagometroPage.vue') },
       { path: 'historico', name: 'historico', component: () => import('pages/HistoricoPage.vue') },
       { path: 'mercado', name: 'mercado', component: () => import('pages/MercadoPage.vue') },
+      { path: 'agentes', name: 'agentes', component: () => import('pages/AgentesPage.vue') },
     ],
   },
   { path: '/entrar', name: 'login', meta: { publica: true }, component: () => import('pages/LoginPage.vue') },

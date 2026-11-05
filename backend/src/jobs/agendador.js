@@ -6,6 +6,8 @@ import { config } from '../config.js';
 import { sincronizarPropostasAbertas, sincronizarAtualizacoes } from '../services/pncp.js';
 import { enviarAlertas } from '../services/alertas.js';
 import { atualizarCapag } from '../services/capag.js';
+import { usuariosCom, executarVigia, executarProspector, executarLeitor, enviarNotificacoesPorEmail } from '../services/agentes.js';
+import { resumirEdital } from '../services/editalIA.js';
 import { proximoDiaContratos, importarContratosDoDia, limparHistoricoAntigo, liberarEspaco } from '../services/historico.js';
 
 const FUSO = 'America/Sao_Paulo';
@@ -90,7 +92,39 @@ export function marcarInterrompidas(db) {
     WHERE finalizado_em IS NULL`).run().changes;
 }
 
-export function iniciarAgendador(db, { log = console.log, intervaloMs = 5 * 60 * 1000 } = {}) {
+const ultimaTarefa = (db, nome) => db.prepare('SELECT ultima_execucao FROM tarefas WHERE nome = ?').get(nome)?.ultima_execucao ?? null;
+const marcarTarefa = (db, nome, valor) => db.prepare('INSERT OR REPLACE INTO tarefas (nome, ultima_execucao) VALUES (?, ?)').run(nome, valor);
+
+/** Agentes: Vigia a cada 2h, Prospector 1x por dia a partir das 7h, Leitor a cada 30 min. */
+export async function executarAgentesAgendados(db, { log = console.log, ia = null, fetchImpl = fetch, agora = new Date() } = {}) {
+  const passou = (nome, ms) => {
+    const u = ultimaTarefa(db, nome);
+    return !u || agora - utc(u) >= ms;
+  };
+  const agoraTxt = agora.toISOString().slice(0, 19).replace('T', ' ');
+  if (passou('agente_vigia', INTERVALO_INCREMENTAL_MS)) {
+    marcarTarefa(db, 'agente_vigia', agoraTxt);
+    for (const uid of usuariosCom(db, 'vigia')) {
+      try { await executarVigia(db, uid, { fetchImpl, agora }); } catch (e) { log(`[agentes] vigia ${uid}: ${e.message}`); }
+    }
+  }
+  const br = agoraBrasilia(agora);
+  if (br.hora >= 7 && ultimaTarefa(db, 'agente_prospector') !== br.data) {
+    marcarTarefa(db, 'agente_prospector', br.data);
+    for (const uid of usuariosCom(db, 'prospector')) {
+      try { executarProspector(db, uid, { agora }); } catch (e) { log(`[agentes] prospector ${uid}: ${e.message}`); }
+    }
+  }
+  if (ia && passou('agente_leitor', 30 * 60000)) {
+    marcarTarefa(db, 'agente_leitor', agoraTxt);
+    for (const uid of usuariosCom(db, 'leitor')) {
+      try { await executarLeitor(db, uid, { client: ia, fetchImpl, resumir: resumirEdital }); } catch (e) { log(`[agentes] leitor ${uid}: ${e.message}`); }
+    }
+  }
+  try { await enviarNotificacoesPorEmail(db); } catch (e) { log(`[agentes] e-mail: ${e.message}`); }
+}
+
+export function iniciarAgendador(db, { log = console.log, intervaloMs = 5 * 60 * 1000, ia = null } = {}) {
   const n = marcarInterrompidas(db);
   if (n) log(`[agendador] ${n} sincronização(ões) interrompida(s) pelo reinício; retomando`);
   let ocupado = false;
@@ -132,6 +166,7 @@ export function iniciarAgendador(db, { log = console.log, intervaloMs = 5 * 60 *
           limparHistoricoAntigo(db);
         }
       }
+      await executarAgentesAgendados(db, { log, ia });
       if (alertasPendentes(db)) {
         if (config.smtp.host) {
           const r = await enviarAlertas(db);

@@ -279,6 +279,42 @@ CREATE TABLE IF NOT EXISTS item_resultados (
 );
 CREATE TABLE IF NOT EXISTS compras_consultadas (compra_controle TEXT PRIMARY KEY, consultado_em TEXT NOT NULL);
 
+-- Agentes: configuração por usuário.
+CREATE TABLE IF NOT EXISTS agentes_config (
+  usuario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+  agente TEXT NOT NULL,
+  ativo INTEGER NOT NULL DEFAULT 0,
+  config TEXT NOT NULL DEFAULT '{}',
+  ultima_execucao TEXT,
+  ultimo_resultado TEXT,
+  PRIMARY KEY (usuario_id, agente)
+);
+
+-- Notificações (sino no topo da tela e e-mail opcional).
+CREATE TABLE IF NOT EXISTS notificacoes (
+  id INTEGER PRIMARY KEY,
+  usuario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+  agente TEXT NOT NULL,
+  tipo TEXT NOT NULL,
+  titulo TEXT NOT NULL,
+  mensagem TEXT,
+  negocio_id INTEGER REFERENCES negocios(id) ON DELETE SET NULL,
+  oportunidade_id INTEGER REFERENCES oportunidades(id) ON DELETE SET NULL,
+  link TEXT,
+  lida INTEGER NOT NULL DEFAULT 0,
+  enviada_email INTEGER NOT NULL DEFAULT 0,
+  criado_em TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_notif_usuario ON notificacoes(usuario_id, lida, criado_em);
+
+-- Agente Vigia: última foto de cada licitação do funil, para detectar mudanças.
+CREATE TABLE IF NOT EXISTS vigia_snapshot (
+  negocio_id INTEGER PRIMARY KEY REFERENCES negocios(id) ON DELETE CASCADE,
+  dados TEXT NOT NULL,
+  arquivos TEXT,
+  verificado_em TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 -- Última execução de tarefas agendadas (alertas diários etc.).
 CREATE TABLE IF NOT EXISTS tarefas (
   nome TEXT PRIMARY KEY,
@@ -303,6 +339,8 @@ const MIGRACOES = [
   'ALTER TABLE oportunidades ADD COLUMN poder TEXT',
   'ALTER TABLE oportunidades ADD COLUMN codigo_ibge TEXT',
   'ALTER TABLE sincronizacoes ADD COLUMN progresso TEXT',
+  "ALTER TABLE negocios ADD COLUMN origem TEXT",
+  "ALTER TABLE negocios ADD COLUMN pontuacao INTEGER",
 ];
 
 export function openDatabase(path) {

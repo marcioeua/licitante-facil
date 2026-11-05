@@ -23,6 +23,7 @@
                   <div class="row no-wrap items-start">
                     <div class="text-body2 text-weight-medium col ellipsis-3">{{ n.titulo }}</div>
                     <q-icon v-if="n.favorito" name="star" color="amber" size="18px" />
+                    <q-badge v-if="n.origem === 'prospector'" color="blue-1" text-color="primary" class="q-ml-xs" :label="`IA ${n.pontuacao ?? ''}`"><q-tooltip>Adicionada pelo Agente Prospector (nota {{ n.pontuacao }})</q-tooltip></q-badge>
                   </div>
                   <div class="text-caption text-grey-7 ellipsis">{{ n.orgao_nome || n.empresa_nome || 'Negócio manual' }}<span v-if="n.uf"> · {{ n.uf }}</span></div>
                   <div class="row items-center q-mt-xs text-caption q-gutter-x-sm">

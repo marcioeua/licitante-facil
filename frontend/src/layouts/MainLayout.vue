@@ -7,6 +7,7 @@
           <img src="/favicon.svg" alt="" width="28" height="28" class="q-mr-sm" />
           <span class="text-weight-bold">Busca Pregão <span class="text-primary">IA</span></span>
         </q-toolbar-title>
+        <SinoNotificacoes class="q-mr-sm" />
         <q-btn flat no-caps icon="account_circle" :label="$q.screen.gt.xs ? auth.usuario?.nome : ''">
           <q-menu>
             <q-list style="min-width: 180px">
@@ -38,12 +39,14 @@
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuth } from 'stores/auth';
+import SinoNotificacoes from 'components/SinoNotificacoes.vue';
 
 const auth = useAuth();
 const router = useRouter();
 const menu = ref(false);
 const itens = [
   { to: 'inicio', nome: 'Início', icone: 'space_dashboard' },
+  { to: 'agentes', nome: 'Agentes', icone: 'smart_toy' },
   { to: 'oportunidades', nome: 'Oportunidades', icone: 'travel_explore' },
   { to: 'negocios', nome: 'Meus negócios', icone: 'view_kanban' },
   { to: 'agenda', nome: 'Agenda', icone: 'event' },

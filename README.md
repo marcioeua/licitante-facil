@@ -15,6 +15,12 @@ Plataforma para empresas encontrarem licitações públicas e organizarem a part
 - **Checklist** por negócio, já criado com as etapas típicas de um pregão.
 - **Documentos**: certidões, contrato social, atestados etc., com upload, validade e aviso de vencimento.
 - **Agenda**: datas de disputa, vencimentos de documentos e compromissos próprios.
+- **Agentes**: trabalham sozinhos e avisam no sino (e por e-mail, se configurado):
+  - *Prospector*: todo dia avalia as licitações novas dos alertas (nota 0–100 com motivos: aderência,
+    prazo, faixa de valor, Pagômetro) e coloca as melhores no funil;
+  - *Vigia*: a cada 2h compara as licitações do funil com o PNCP (prazo, situação, valor, documentos
+    novos como retificações) e lembra 24h antes da disputa;
+  - *Leitor*: lê com IA o edital das licitações que entram no funil e completa o checklist.
 - **Pagômetro**: indica se o órgão tende a pagar em dia, pela nota CAPAG (capacidade de pagamento)
   que o Tesouro Nacional publica para estados e municípios. Aparece em cada licitação, como selo na
   busca e numa página de consulta. Dados atualizados toda semana do Tesouro Transparente.

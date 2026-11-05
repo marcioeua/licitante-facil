@@ -25,13 +25,18 @@ export function montarEmail(alerta, itens) {
   };
 }
 
-export async function enviarAlertas(db, { transport } = {}) {
-  transport ??= config.smtp.host
+/** Transporte SMTP configurado por variáveis de ambiente (null se não houver). */
+export function criarTransporte() {
+  return config.smtp.host
     ? nodemailer.createTransport({
         host: config.smtp.host, port: config.smtp.port, secure: config.smtp.port === 465,
         auth: config.smtp.user ? { user: config.smtp.user, pass: config.smtp.pass } : undefined,
       })
     : null;
+}
+
+export async function enviarAlertas(db, { transport } = {}) {
+  transport ??= criarTransporte();
   if (!transport) throw new Error('Configure SMTP_HOST (e SMTP_USER/SMTP_PASS) para enviar alertas.');
 
   const alertas = db.prepare(`

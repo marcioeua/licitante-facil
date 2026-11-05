@@ -3,7 +3,7 @@ import { tx } from '../db/index.js';
 
 export const ETAPAS = ['triagem', 'analise', 'proposta', 'disputa', 'ganho', 'perdido'];
 
-const CHECKLIST_PADRAO = [
+export const CHECKLIST_PADRAO = [
   'Ler o edital completo',
   'Conferir habilitação jurídica e fiscal',
   'Conferir qualificação técnica e econômica',
@@ -51,7 +51,7 @@ export default async function (app) {
   app.get('/', async (req) => {
     const arquivados = req.query.arquivados === 'true' ? 1 : 0;
     return db.prepare(`
-      SELECT n.id, n.titulo, n.etapa, n.responsavel, n.favorito, n.arquivado, n.posicao, n.data_disputa,
+      SELECT n.id, n.titulo, n.etapa, n.responsavel, n.favorito, n.arquivado, n.posicao, n.data_disputa, n.origem, n.pontuacao,
              n.valor_proposta, o.orgao_nome, o.uf, o.valor_estimado, o.data_encerramento, o.modalidade,
              e.razao_social AS empresa_nome,
              (SELECT count(*) FROM checklist_itens c WHERE c.negocio_id = n.id) AS checklist_total,

@@ -17,6 +17,7 @@ import { buscarEntes } from './services/capag.js';
 import { consultarContratos, pesquisarPrecos, disco } from './services/historico.js';
 import { analisarMercado, analisarEmpresa, rankingMercado } from './services/mercado.js';
 import dashboardRoutes from './routes/dashboard.js';
+import agentesRoutes, { notificacoesRoutes } from './routes/agentes.js';
 
 import { COOKIE } from './http.js';
 
@@ -106,6 +107,8 @@ export async function buildApp({ db, logger = false, serveFrontend = true, ia, f
   await app.register(empresasRoutes, { prefix: '/api/empresas' });
   await app.register(alertasRoutes, { prefix: '/api/alertas' });
   await app.register(agendaRoutes, { prefix: '/api/agenda' });
+  await app.register(agentesRoutes, { prefix: '/api/agentes' });
+  await app.register(notificacoesRoutes, { prefix: '/api/notificacoes' });
 
   // Em produção o backend também entrega o front-end compilado (SPA).
   if (serveFrontend && existsSync(config.frontendDist)) {

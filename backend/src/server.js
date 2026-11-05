@@ -2,6 +2,7 @@ import { config } from './config.js';
 import { openDatabase } from './db/index.js';
 import { buildApp } from './app.js';
 import { iniciarAgendador } from './jobs/agendador.js';
+import { clienteIA } from './services/editalIA.js';
 import { randomBytes } from 'node:crypto';
 
 const db = openDatabase(config.dbPath);
@@ -17,4 +18,4 @@ const app = await buildApp({ db, logger: true });
 await app.listen({ port: config.port, host: config.host });
 
 // Atualização automática do PNCP e alertas. Desligue com AGENDADOR=off.
-if (process.env.AGENDADOR !== 'off') iniciarAgendador(db, { log: (m) => app.log.info(m) });
+if (process.env.AGENDADOR !== 'off') iniciarAgendador(db, { log: (m) => app.log.info(m), ia: clienteIA() });
