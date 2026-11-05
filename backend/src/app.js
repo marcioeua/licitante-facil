@@ -14,7 +14,7 @@ import empresasRoutes from './routes/empresas.js';
 import alertasRoutes from './routes/alertas.js';
 import agendaRoutes from './routes/agenda.js';
 import { buscarEntes } from './services/capag.js';
-import { consultarContratos, pesquisarPrecos } from './services/historico.js';
+import { consultarContratos, pesquisarPrecos, disco } from './services/historico.js';
 import { analisarMercado, analisarEmpresa, rankingMercado } from './services/mercado.js';
 import dashboardRoutes from './routes/dashboard.js';
 
@@ -53,7 +53,13 @@ export async function buildApp({ db, logger = false, serveFrontend = true, ia, f
   app.get('/api/saude', async () => {
     db.prepare('SELECT 1').get();
     const u = db.prepare('SELECT finalizado_em, erro FROM sincronizacoes WHERE finalizado_em IS NOT NULL ORDER BY id DESC LIMIT 1').get();
-    return { ok: true, ultimaSincronizacao: u?.finalizado_em ?? null, ia: !!app.ia };
+    const d = disco();
+    const hist = db.prepare('SELECT min(dia) AS de, count(*) AS dias FROM contratos_dias').get();
+    return {
+      ok: true, ultimaSincronizacao: u?.finalizado_em ?? null, ia: !!app.ia,
+      disco: d ? { totalMb: Math.round(d.total), livreMb: Math.round(d.livre), usoPct: Math.round(d.usoPct * 100) } : null,
+      historico: { desde: hist.de, dias: hist.dias },
+    };
   });
 
   // Pagômetro: busca de estados e municípios pela nota de capacidade de pagamento.

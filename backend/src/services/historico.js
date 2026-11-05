@@ -2,6 +2,8 @@
 // - Contratos: GET /api/consulta/v1/contratos (importados por data de publicação)
 // - Itens e resultados: GET /api/pncp/v1/orgaos/{cnpj}/compras/{ano}/{seq}/itens[/{n}/resultados]
 //   buscados sob demanda na pesquisa de preços e guardados para as próximas consultas.
+import { statfsSync } from 'node:fs';
+import { dirname } from 'node:path';
 import { config } from '../config.js';
 import { tx } from '../db/index.js';
 import { ftsQuery } from './busca.js';
@@ -10,6 +12,25 @@ const PAGE_SIZE = 50;
 export const DIAS_HISTORICO = Number(process.env.HISTORICO_DIAS ?? 365);
 // Trava de segurança: para de buscar dias antigos se o banco passar deste tamanho (MB).
 export const LIMITE_BANCO_MB = Number(process.env.HISTORICO_LIMITE_MB ?? 3500);
+// Espaço livre mínimo no disco do banco: abaixo disso não busca dias antigos; abaixo da metade, libera espaço.
+export const LIVRE_MINIMO_MB = Number(process.env.HISTORICO_LIVRE_MINIMO_MB ?? 400);
+
+/** Espaço do disco onde está o banco (MB). Retorna null se não for possível medir (ex.: banco em memória). */
+export function disco(caminho = config.dbPath) {
+  try {
+    const st = statfsSync(dirname(caminho));
+    const total = (st.blocks * st.bsize) / 1048576;
+    const livre = (st.bavail * st.bsize) / 1048576;
+    return { total, livre, usoPct: total ? 1 - livre / total : 0 };
+  } catch {
+    return null;
+  }
+}
+
+/** Reserva de espaço: o maior entre LIVRE_MINIMO_MB e 15% do disco. */
+function reservaMb(d) {
+  return Math.max(LIVRE_MINIMO_MB, d.total * 0.15);
+}
 
 const norm = (t) => String(t ?? '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 const yyyymmdd = (d) => d.toISOString().slice(0, 10).replaceAll('-', '');
@@ -111,9 +132,29 @@ export function proximoDiaContratos(db, agora = new Date()) {
     const r = feito.get(dia(n));
     if (!r || agora - new Date(r.importado_em.replace(' ', 'T') + 'Z') > 6 * 3600000) return dia(n);
   }
-  if (bancoMb(db) >= LIMITE_BANCO_MB) return null; // disco: não busca mais dias antigos
+  if (bancoMb(db) >= LIMITE_BANCO_MB) return null; // banco grande demais: não busca mais dias antigos
+  const d = medirDisco();
+  if (d && d.livre < reservaMb(d)) return null; // disco quase cheio: só mantém hoje/ontem
   for (let n = 2; n <= DIAS_HISTORICO; n++) if (!feito.get(dia(n))) return dia(n);
   return null;
+}
+
+let medirDisco = () => disco();
+/** Permite simular o disco nos testes. */
+export function _definirMedidorDisco(fn) { medirDisco = fn ?? (() => disco()); }
+
+/**
+ * Se o disco estiver muito cheio (menos da metade da reserva livre), apaga o dia mais antigo de contratos.
+ * As páginas liberadas no SQLite são reaproveitadas pelos dados novos, então o arquivo para de crescer.
+ */
+export function liberarEspaco(db) {
+  const d = medirDisco();
+  if (!d || d.livre >= reservaMb(d) / 2) return 0;
+  const dia = db.prepare('SELECT min(dia) AS dia FROM contratos_dias').get()?.dia;
+  if (!dia) return 0;
+  const r = db.prepare('DELETE FROM contratos WHERE substr(data_publicacao, 1, 10) <= ?').run(dia);
+  db.prepare('DELETE FROM contratos_dias WHERE dia <= ?').run(dia);
+  return r.changes;
 }
 
 /** Remove contratos e marcações mais antigos que o período guardado. */

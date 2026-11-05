@@ -6,7 +6,7 @@ import { config } from '../config.js';
 import { sincronizarPropostasAbertas, sincronizarAtualizacoes } from '../services/pncp.js';
 import { enviarAlertas } from '../services/alertas.js';
 import { atualizarCapag } from '../services/capag.js';
-import { proximoDiaContratos, importarContratosDoDia, limparHistoricoAntigo } from '../services/historico.js';
+import { proximoDiaContratos, importarContratosDoDia, limparHistoricoAntigo, liberarEspaco } from '../services/historico.js';
 
 const FUSO = 'America/Sao_Paulo';
 const HORA_COMPLETA = 3; // 3h da manhã
@@ -120,6 +120,9 @@ export function iniciarAgendador(db, { log = console.log, intervaloMs = 5 * 60 *
         const r = await sincronizarAtualizacoes(db, { desde: t.desde, log: () => {} });
         log(`[agendador] atualização concluída: ${r.importadas} registros`);
       }
+      // Disco quase cheio: libera espaço apagando o dia mais antigo do histórico.
+      const liberados = liberarEspaco(db);
+      if (liberados) log(`[agendador] disco quase cheio: ${liberados} contratos antigos removidos`);
       // Contratos (histórico de compras) quando não há carga de licitações nesta rodada.
       if (!t) {
         const dia = proximoDiaContratos(db);

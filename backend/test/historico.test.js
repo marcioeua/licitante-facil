@@ -4,6 +4,10 @@ import assert from 'node:assert/strict';
 const { openDatabase } = await import('../src/db/index.js');
 const { buildApp } = await import('../src/app.js');
 const { mapContrato, gravarContratos, importarContratosDoDia, proximoDiaContratos, limparHistoricoAntigo, pesquisarPrecos } = await import('../src/services/historico.js');
+const { _definirMedidorDisco: medidor } = await import('../src/services/historico.js');
+// Nos testes o disco é simulado (com espaço), para não depender da máquina.
+const DISCO_FOLGADO = () => ({ total: 1e6, livre: 1e6, usoPct: 0 });
+medidor(DISCO_FOLGADO);
 
 const contrato = (i, objeto, forn, orgao, valor, compra, uf = 'SP') => ({
   numeroControlePNCP: `C-${i}`, numeroControlePncpCompra: compra, objetoContrato: objeto, valorGlobal: valor,
@@ -111,4 +115,24 @@ test('consulta de contratos com rankings e pesquisa de preços', async () => {
   assert.equal(r.grupos[0].quantidade, 1);
 
   assert.equal((await get('/api/historico/precos?q=ab')).statusCode, 400);
+});
+
+test('disco quase cheio: para de buscar dias antigos e libera espaço', async () => {
+  const { _definirMedidorDisco, liberarEspaco } = await import('../src/services/historico.js');
+  const db = openDatabase(':memory:');
+  const agora = new Date('2026-11-04T12:00:00Z');
+  db.prepare("INSERT INTO contratos_dias VALUES ('2026-11-03', 1, '2026-11-04 11:00:00'), ('2026-11-04', 1, '2026-11-04 11:30:00'), ('2026-10-01', 1, '2026-11-04 10:00:00')").run();
+  gravarContratos(db, [mapContrato({ ...contrato(20, 'antigo', FA, P1, 1, null), dataPublicacaoPncp: '2026-10-01T10:00:00' })]);
+  try {
+    _definirMedidorDisco(() => ({ total: 1000, livre: 500, usoPct: 0.5 }));
+    assert.equal(proximoDiaContratos(db, agora), '2026-11-02', 'com espaço, busca dias antigos');
+    assert.equal(liberarEspaco(db), 0);
+    _definirMedidorDisco(() => ({ total: 1000, livre: 300, usoPct: 0.7 }));
+    assert.equal(proximoDiaContratos(db, agora), null, 'pouco espaço: não busca dias antigos');
+    _definirMedidorDisco(() => ({ total: 1000, livre: 100, usoPct: 0.9 }));
+    assert.equal(liberarEspaco(db), 1, 'muito pouco espaço: apaga o dia mais antigo');
+    assert.equal(db.prepare("SELECT count(*) AS n FROM contratos_dias WHERE dia = '2026-10-01'").get().n, 0);
+  } finally {
+    _definirMedidorDisco(DISCO_FOLGADO);
+  }
 });

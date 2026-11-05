@@ -35,7 +35,7 @@ No serviço, abra a aba **Variables** e adicione:
 | `CODIGO_CONVITE` | Recomendada | Um código que você vai passar para sua equipe se cadastrar |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` | Para alertas por e-mail | Dados do seu serviço de e-mail (Gmail, Brevo, Amazon SES…) |
 | `IA_LIMITE_DIARIO` | Opcional | Análises com IA por usuário por dia (padrão 30) |
-| `HISTORICO_DIAS` | Opcional | Dias de contratos guardados (padrão 365; cerca de 200 MB de disco por mês). A importação para sozinha se o banco passar de `HISTORICO_LIMITE_MB` (padrão 3500) |
+| `HISTORICO_DIAS` | Opcional | Dias de contratos guardados (padrão 365; cerca de 200 MB de disco por mês). Se o disco ficar com menos de 15% livre (mínimo `HISTORICO_LIVRE_MINIMO_MB`, padrão 400), o sistema para de buscar meses antigos; se ficar muito cheio, apaga os mais antigos. `/api/saude` mostra o uso do disco |
 
 Não é preciso configurar porta, banco, fuso horário nem `SESSION_SECRET`: a imagem já define
 isso, e o segredo de login é gerado sozinho no primeiro início e guardado no volume.
