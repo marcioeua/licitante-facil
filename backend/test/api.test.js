@@ -207,3 +207,19 @@ test('cadastro em produção: só a primeira conta, depois com convite', async (
     delete process.env.CODIGO_CONVITE;
   }
 });
+
+test('alterar senha: exige a senha atual e passa a valer a nova', async () => {
+  const { openDatabase } = await import('../src/db/index.js');
+  const { buildApp } = await import('../src/app.js');
+  const app = await buildApp({ db: openDatabase(':memory:'), serveFrontend: false, ia: null });
+  const cad = await app.inject({ method: 'POST', url: '/api/auth/cadastro', payload: { nome: 'Dono', email: 's@e.com', senha: 'senha-antiga-1' } });
+  const cookie = cad.headers['set-cookie'].split(';')[0];
+  const trocar = (atual, nova, c = cookie) => app.inject({ method: 'PUT', url: '/api/auth/senha', headers: c ? { cookie: c } : {}, payload: { atual, nova } });
+  assert.equal((await trocar('senha-antiga-1', 'nova-senha-123', null)).statusCode, 401);
+  assert.equal((await trocar('errada-errada', 'nova-senha-123')).statusCode, 400);
+  assert.equal((await trocar('senha-antiga-1', 'curta')).statusCode, 400);
+  assert.equal((await trocar('senha-antiga-1', 'nova-senha-123')).statusCode, 200);
+  const login = (senha) => app.inject({ method: 'POST', url: '/api/auth/login', payload: { email: 's@e.com', senha } });
+  assert.equal((await login('senha-antiga-1')).statusCode, 401);
+  assert.equal((await login('nova-senha-123')).statusCode, 200);
+});

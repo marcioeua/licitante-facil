@@ -13,12 +13,30 @@
             <q-list style="min-width: 180px">
               <q-item-label header>{{ auth.usuario?.email }}</q-item-label>
               <q-item clickable v-close-popup :to="{ name: 'empresas' }"><q-item-section avatar><q-icon name="business" /></q-item-section><q-item-section>Minhas empresas</q-item-section></q-item>
+              <q-item clickable v-close-popup @click="dlgSenha = true"><q-item-section avatar><q-icon name="key" /></q-item-section><q-item-section>Alterar senha</q-item-section></q-item>
               <q-item clickable v-close-popup @click="sair"><q-item-section avatar><q-icon name="logout" /></q-item-section><q-item-section>Sair</q-item-section></q-item>
             </q-list>
           </q-menu>
         </q-btn>
       </q-toolbar>
     </q-header>
+
+    <q-dialog v-model="dlgSenha" @hide="senha = { atual: '', nova: '', confirma: '' }">
+      <q-card style="width: 380px; max-width: 92vw">
+        <q-card-section class="text-h6">Alterar senha</q-card-section>
+        <q-form @submit.prevent="trocarSenha">
+          <q-card-section class="q-gutter-y-sm q-pt-none">
+            <q-input v-model="senha.atual" type="password" label="Senha atual" outlined dense autocomplete="current-password" />
+            <q-input v-model="senha.nova" type="password" label="Nova senha (mínimo 8 caracteres)" outlined dense autocomplete="new-password" :rules="[(v) => v.length >= 8 || 'Use pelo menos 8 caracteres']" />
+            <q-input v-model="senha.confirma" type="password" label="Repita a nova senha" outlined dense autocomplete="new-password" :rules="[(v) => v === senha.nova || 'As senhas não são iguais']" />
+          </q-card-section>
+          <q-card-actions align="right">
+            <q-btn flat no-caps label="Cancelar" v-close-popup />
+            <q-btn unelevated no-caps color="primary" label="Salvar" type="submit" :loading="salvandoSenha" />
+          </q-card-actions>
+        </q-form>
+      </q-card>
+    </q-dialog>
 
     <q-drawer v-model="menu" show-if-above bordered :width="232" class="bg-white">
       <q-list padding>
@@ -38,12 +56,28 @@
 <script setup>
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
+import { Notify } from 'quasar';
+import { api } from 'boot/axios';
 import { useAuth } from 'stores/auth';
 import SinoNotificacoes from 'components/SinoNotificacoes.vue';
 
 const auth = useAuth();
 const router = useRouter();
 const menu = ref(false);
+const dlgSenha = ref(false);
+const salvandoSenha = ref(false);
+const senha = ref({ atual: '', nova: '', confirma: '' });
+async function trocarSenha() {
+  if (senha.value.nova.length < 8 || senha.value.nova !== senha.value.confirma) return;
+  salvandoSenha.value = true;
+  try {
+    await api.put('/auth/senha', { atual: senha.value.atual, nova: senha.value.nova });
+    dlgSenha.value = false;
+    Notify.create({ type: 'positive', message: 'Senha alterada.' });
+  } finally {
+    salvandoSenha.value = false;
+  }
+}
 const itens = [
   { to: 'inicio', nome: 'Início', icone: 'space_dashboard' },
   { to: 'agentes', nome: 'Agentes', icone: 'smart_toy' },

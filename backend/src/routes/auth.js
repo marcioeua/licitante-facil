@@ -68,6 +68,22 @@ export default async function (app) {
     return { ok: true };
   });
 
+  app.put('/senha', {
+    schema: {
+      body: {
+        type: 'object',
+        required: ['atual', 'nova'],
+        properties: { atual: { type: 'string' }, nova: { type: 'string', minLength: 8, maxLength: 200 } },
+      },
+    },
+  }, async (req) => {
+    if (!req.usuarioId) throw httpError(401, 'Faça login para continuar.');
+    const u = db.prepare('SELECT senha_hash FROM usuarios WHERE id = ?').get(req.usuarioId);
+    if (!u || !conferirSenha(req.body.atual, u.senha_hash)) throw httpError(400, 'A senha atual está incorreta.');
+    db.prepare('UPDATE usuarios SET senha_hash = ? WHERE id = ?').run(hashSenha(req.body.nova), req.usuarioId);
+    return { ok: true };
+  });
+
   app.get('/me', async (req) => {
     if (!req.usuarioId) throw httpError(401, 'Não autenticado.');
     const u = db.prepare('SELECT id, nome, email FROM usuarios WHERE id = ?').get(req.usuarioId);
