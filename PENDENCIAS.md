@@ -38,6 +38,12 @@ Para retomar, é só abrir a conversa e dizer qual item quer fazer.
 
 ## 4. Outras melhorias anotadas
 
+- [ ] **Vitórias em licitações** na Análise de empresas, com dados oficiais do Compras.gov.br
+      (`dadosabertos.compras.gov.br`, endpoint `consultarResultadoItensContratacoes_PNCP_14133` filtrado por
+      `niFornecedor`, até 365 dias por consulta): itens vencidos, valor vencido homologado por ano, órgãos e
+      estados, uso do benefício ME/EPP e preços unitários. Pregões da lei antiga (`modulo-legado`) estavam
+      sem responder nos testes. Participações e derrotas não existem em dados públicos: não estimar.
+
 - [ ] **Filtro e selo por portal** (Compras.gov.br, Portal de Compras Públicas, BLL, Licitanet, BNC…).
 - [ ] **Assistente de disputa** (sem lance automático): preço mínimo por item, calculadora de lance,
       histórico de preços e lembretes. Validar regras dos portais com especialista antes de qualquer automação.
