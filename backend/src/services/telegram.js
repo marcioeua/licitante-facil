@@ -63,7 +63,10 @@ export async function processarMensagensTelegram(db, cliente, { log = () => {} }
       if (cmd === '/start' && arg) {
         const usr = db.prepare('SELECT id, nome FROM usuarios WHERE telegram_codigo = ?').get(arg);
         if (!usr) {
-          await cliente.enviarTexto(m.chat.id, 'Código inválido ou já usado. Gere um novo link na página <b>Agentes</b> do Busca Pregão IA.');
+          const jaLigado = db.prepare('SELECT 1 FROM usuarios WHERE telegram_chat_id = ?').get(String(m.chat.id));
+          await cliente.enviarTexto(m.chat.id, jaLigado
+            ? '✅ Este Telegram já está conectado ao Busca Pregão IA.'
+            : 'Código inválido ou já usado. Gere um novo link na página <b>Agentes</b> do Busca Pregão IA.');
           continue;
         }
         db.prepare(`UPDATE usuarios SET telegram_chat_id = ?, telegram_ativo = 1, telegram_codigo = NULL,
