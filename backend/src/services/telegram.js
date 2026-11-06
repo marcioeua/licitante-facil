@@ -9,7 +9,8 @@ const esc = (t) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').
 const corta = (t, max) => (t.length > max ? `${t.slice(0, max - 1)}…` : t);
 
 export function clienteTelegram({ fetchImpl = fetch } = {}) {
-  const token = process.env.TELEGRAM_BOT_TOKEN;
+  // Tolera token colado com espaços, quebras de linha, aspas ou com "bot" na frente.
+  const token = String(process.env.TELEGRAM_BOT_TOKEN ?? '').replace(/\s+/g, '').replace(/^["']+|["']+$/g, '').replace(/^bot(?=\d)/i, '');
   if (!token) return null;
   const base = `https://api.telegram.org/bot${token}`;
   const chamar = async (metodo, corpo) => {

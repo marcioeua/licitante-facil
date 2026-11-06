@@ -111,3 +111,15 @@ test('Telegram no sistema: conectar pelo link, avisos, edital em PDF e fila do P
   await processarMensagensTelegram(db, telegram);
   assert.equal(db.prepare('SELECT telegram_ativo FROM usuarios').get().telegram_ativo, 0);
 });
+
+test('token colado com espaço, aspas ou "bot" na frente é limpo', async () => {
+  const urls = [];
+  process.env.TELEGRAM_BOT_TOKEN = ' "bot123:ABC-def"\n';
+  try {
+    const c = clienteTelegram({ fetchImpl: async (u) => { urls.push(String(u)); return Response.json({ ok: true, result: { username: 'x' } }); } });
+    await c.nomeDoRobo();
+    assert.equal(urls[0], 'https://api.telegram.org/bot123:ABC-def/getMe');
+  } finally {
+    delete process.env.TELEGRAM_BOT_TOKEN;
+  }
+});

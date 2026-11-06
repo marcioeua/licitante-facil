@@ -11,7 +11,9 @@ export default async function (app) {
   };
   const traduzir = (e) => {
     if (e.statusCode) throw e;
-    if (e.status === 401) throw httpError(502, 'O token do robô do Telegram é inválido. Confira TELEGRAM_BOT_TOKEN no Railway.');
+    if (e.status === 401 || e.status === 404) {
+      throw httpError(502, 'O token do robô não foi aceito pelo Telegram. No Railway, confira se TELEGRAM_BOT_TOKEN tem só o código do @BotFather (números, dois-pontos e letras), sem espaços, e se é o token mais novo (depois do /revoke).');
+    }
     if (e.status === 403) throw httpError(502, 'Você bloqueou o robô no Telegram. Desbloqueie e conecte de novo.');
     throw httpError(502, `O Telegram recusou: ${e.message}`);
   };
