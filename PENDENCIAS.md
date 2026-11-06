@@ -29,7 +29,11 @@ Para retomar, é só abrir a conversa e dizer qual item quer fazer.
       - `aviso_busca_pregao`: corpo "🔔 *{{1}}*" + linha em branco + "{{2}}" + linha em branco + "Busca Pregão IA".
       - `edital_busca_pregao`: cabeçalho **Documento** + corpo "📄 *Edital:* {{1}}" + linha em branco + "{{2}}".
 - [ ] No Railway: `WHATSAPP_TOKEN` e `WHATSAPP_PHONE_ID` (opcional: `WHATSAPP_TEMPLATE_AVISO`, `WHATSAPP_TEMPLATE_EDITAL`).
-- [ ] (Opcional) **Robô do Telegram** como alternativa gratuita enquanto a Meta aprova.
+- [x] **Robô do Telegram** (grátis, sem chip): avisos dos agentes e edital em PDF; conectar na página Agentes.
+- [ ] **Você faz**: criar o robô no @BotFather e colocar `TELEGRAM_BOT_TOKEN` no Railway.
+- [ ] WhatsApp: o número de teste da Meta (+1 555) não envia para o Brasil (erro 130497). Falta um número
+      brasileiro próprio (chip pré-pago ou fixo que não esteja no WhatsApp). App "Busca Pregao IA" já criado
+      (Phone Number ID de teste 1518217504707319, conta 2673262883091773).
 - Não usar serviços não oficiais (Z-API, Evolution API etc.): risco de bloqueio do número.
 
 ## 3. Agentes — etapas 2 e 3

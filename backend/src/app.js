@@ -26,10 +26,12 @@ import juridicoRoutes from './routes/juridico.js';
 import whatsappRoutes from './routes/whatsapp.js';
 import { habilitacaoDoNegocio } from './services/habilitacao.js';
 import { clienteWhatsApp } from './services/whatsapp.js';
+import telegramRoutes from './routes/telegram.js';
+import { clienteTelegram } from './services/telegram.js';
 
 import { COOKIE } from './http.js';
 
-export async function buildApp({ db, logger = false, serveFrontend = true, ia, fetchImpl = fetch, fetchCnpj, fetchDadosAbertos, whatsapp } = {}) {
+export async function buildApp({ db, logger = false, serveFrontend = true, ia, fetchImpl = fetch, fetchCnpj, fetchDadosAbertos, whatsapp, telegram } = {}) {
   const app = Fastify({ logger });
   app.decorate('db', db);
   // Cliente da IA (Claude) e fetch do PNCP: injetáveis nos testes.
@@ -37,6 +39,8 @@ export async function buildApp({ db, logger = false, serveFrontend = true, ia, f
   app.decorate('fetchPncp', fetchImpl);
   // Cliente da API oficial do WhatsApp (Meta): injetável nos testes; null sem WHATSAPP_TOKEN/WHATSAPP_PHONE_ID.
   app.decorate('whatsapp', whatsapp === undefined ? clienteWhatsApp() : whatsapp);
+  // Robô do Telegram: null sem TELEGRAM_BOT_TOKEN.
+  app.decorate('telegram', telegram === undefined ? clienteTelegram() : telegram);
   app.decorate('fetchCnpj', fetchCnpj ?? fetch);
   app.decorate('fetchDadosAbertos', fetchDadosAbertos ?? fetchImpl);
 
@@ -175,6 +179,7 @@ export async function buildApp({ db, logger = false, serveFrontend = true, ia, f
   await app.register(disputaRoutes, { prefix: '/api/disputa' });
   await app.register(juridicoRoutes, { prefix: '/api/juridico' });
   await app.register(whatsappRoutes, { prefix: '/api/whatsapp' });
+  await app.register(telegramRoutes, { prefix: '/api/telegram' });
   await app.register(notificacoesRoutes, { prefix: '/api/notificacoes' });
 
   // Em produção o backend também entrega o front-end compilado (SPA).

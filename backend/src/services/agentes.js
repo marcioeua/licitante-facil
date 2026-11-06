@@ -15,17 +15,17 @@ export const AGENTES = {
   prospector: {
     nome: 'Agente Prospector',
     descricao: 'Todo dia procura licitações novas dos seus alertas, dá uma nota de 0 a 100 e coloca as melhores no seu funil.',
-    padrao: { notaMinima: 60, maxPorDia: 10, empresaId: null, email: true, whatsapp: true, whatsappEdital: true },
+    padrao: { notaMinima: 60, maxPorDia: 10, empresaId: null, email: true, whatsapp: true, telegram: true, whatsappEdital: true },
   },
   vigia: {
     nome: 'Agente Vigia',
     descricao: 'Acompanha as licitações do seu funil e avisa quando muda data, situação, valor ou sai documento novo no PNCP. Lembra 24h antes da sessão.',
-    padrao: { email: true, whatsapp: true, lembrete24h: true },
+    padrao: { email: true, whatsapp: true, telegram: true, lembrete24h: true },
   },
   leitor: {
     nome: 'Agente Leitor',
     descricao: 'Quando uma licitação entra no funil, lê o edital com IA, coloca no checklist os documentos exigidos e confere se a sua documentação está em dia para participar.',
-    padrao: { maxPorDia: 5, email: false, whatsapp: true },
+    padrao: { maxPorDia: 5, email: false, whatsapp: true, telegram: true },
     precisaIA: true,
   },
 };
@@ -144,10 +144,10 @@ export function executarProspector(db, uid, { agora = new Date() } = {}) {
       adicionadas.push({ negocioId: r.id, oportunidadeId: c.op.id, nota: c.nota, objeto: c.op.objeto });
     }
   });
-  if (adicionadas.length && cfg.whatsapp && cfg.whatsappEdital) {
-    // O edital de cada licitação nova vai para o WhatsApp (se o usuário ativou).
-    const fila = db.prepare("INSERT INTO whatsapp_fila (usuario_id, oportunidade_id, origem) VALUES (?, ?, 'prospector')");
-    for (const a of adicionadas) fila.run(uid, a.oportunidadeId);
+  if (adicionadas.length && cfg.whatsappEdital) {
+    // O edital de cada licitação nova vai para o celular (WhatsApp e/ou Telegram, conforme ativado).
+    const fila = db.prepare("INSERT INTO whatsapp_fila (usuario_id, oportunidade_id, origem, canal) VALUES (?, ?, 'prospector', ?)");
+    for (const canal of ['whatsapp', 'telegram'].filter((c) => cfg[c])) for (const a of adicionadas) fila.run(uid, a.oportunidadeId, canal);
   }
   if (adicionadas.length) {
     notificar(db, {
@@ -333,3 +333,4 @@ export function usuariosCom(db, agente) {
 
 /** O usuário quer receber este aviso no WhatsApp? (preferência por agente; outros avisos sempre) */
 export const querWhatsApp = (db) => (n) => (AGENTES[n.agente] ? !!lerConfig(db, n.usuario_id, n.agente).config.whatsapp : true);
+export const querTelegram = (db) => (n) => (AGENTES[n.agente] ? !!lerConfig(db, n.usuario_id, n.agente).config.telegram : true);

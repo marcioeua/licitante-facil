@@ -80,16 +80,20 @@ export function detalhesDaLicitacao(op, appUrl = config.appUrl) {
   ].filter(Boolean).join(' · ');
 }
 
+/** Dados da licitação + PDF do edital (ou null), para enviar por qualquer canal. */
+export async function montarEnvioEdital(db, oportunidadeId, { fetchImpl = fetch, appUrl } = {}) {
+  const op = db.prepare('SELECT * FROM oportunidades WHERE id = ?').get(oportunidadeId);
+  if (!op) throw Object.assign(new Error('Licitação não encontrada.'), { statusCode: 404 });
+  let pdf = null;
+  try { pdf = await primeiroPdfDoEdital(op, { fetchImpl }); } catch { pdf = null; }
+  return { op, titulo: op.objeto, texto: detalhesDaLicitacao(op, appUrl), pdf };
+}
+
 /** Envia o edital (PDF) de uma licitação; se não houver PDF, manda o aviso com o link do PNCP. */
 export async function enviarEdital(db, cliente, uid, oportunidadeId, { fetchImpl = fetch, appUrl } = {}) {
   const u = db.prepare('SELECT whatsapp, whatsapp_ativo FROM usuarios WHERE id = ?').get(uid);
   if (!u?.whatsapp || !u.whatsapp_ativo) throw Object.assign(new Error('Ative o WhatsApp na página Agentes primeiro.'), { statusCode: 400 });
-  const op = db.prepare('SELECT * FROM oportunidades WHERE id = ?').get(oportunidadeId);
-  if (!op) throw Object.assign(new Error('Licitação não encontrada.'), { statusCode: 404 });
-  const titulo = op.objeto;
-  const texto = detalhesDaLicitacao(op, appUrl);
-  let pdf = null;
-  try { pdf = await primeiroPdfDoEdital(op, { fetchImpl }); } catch { pdf = null; }
+  const { op, titulo, texto, pdf } = await montarEnvioEdital(db, oportunidadeId, { fetchImpl, appUrl });
   if (pdf) {
     await cliente.enviarDocumento(u.whatsapp, { bytes: pdf.bytes, nomeArquivo: pdf.nome, titulo, texto });
     return { documento: true, arquivo: pdf.nome };
@@ -102,7 +106,7 @@ export async function enviarEdital(db, cliente, uid, oportunidadeId, { fetchImpl
 export async function processarFilaWhatsApp(db, { cliente = clienteWhatsApp(), fetchImpl = fetch, log = () => {}, limite = 15 } = {}) {
   if (!cliente) return 0;
   const pend = db.prepare(`SELECT f.* FROM whatsapp_fila f JOIN usuarios u ON u.id = f.usuario_id
-    WHERE f.enviado_em IS NULL AND f.tentativas < 3 AND u.whatsapp_ativo = 1 AND f.criado_em >= datetime('now', '-2 days')
+    WHERE f.canal = 'whatsapp' AND f.enviado_em IS NULL AND f.tentativas < 3 AND u.whatsapp_ativo = 1 AND f.criado_em >= datetime('now', '-2 days')
     ORDER BY f.id LIMIT ?`).all(limite);
   let n = 0;
   for (const f of pend) {

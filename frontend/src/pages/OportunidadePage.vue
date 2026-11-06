@@ -26,7 +26,8 @@
         <q-btn v-else unelevated no-caps color="primary" icon="add" label="Adicionar ao funil" :loading="salvando" @click="adicionar" />
         <q-btn flat no-caps color="primary" icon="query_stats" label="Quem já vendeu isso?" :to="{ name: 'historico', query: { aba: 'contratos', q: termoHistorico } }" />
         <q-btn v-if="op.link_pncp" outline no-caps color="primary" icon="open_in_new" label="Ver edital no PNCP" :href="op.link_pncp" target="_blank" rel="noopener" />
-        <q-btn outline no-caps color="positive" icon="chat" label="Enviar edital no meu WhatsApp" :loading="enviandoWhats" @click="enviarWhats" />
+        <q-btn v-if="canais.telegram" outline no-caps color="light-blue-8" icon="send" label="Enviar edital no meu Telegram" :loading="enviando === 'telegram'" @click="enviarCelular('telegram')" />
+        <q-btn v-if="canais.whatsapp" outline no-caps color="positive" icon="chat" label="Enviar edital no meu WhatsApp" :loading="enviando === 'whatsapp'" @click="enviarCelular('whatsapp')" />
         <q-btn v-if="op.link_origem" flat no-caps color="primary" icon="launch" label="Sistema de origem" :href="op.link_origem" target="_blank" rel="noopener" />
       </q-card-actions>
     </q-card>
@@ -48,16 +49,22 @@ const route = useRoute();
 const router = useRouter();
 const op = ref(null);
 const salvando = ref(false);
-const enviandoWhats = ref(false);
-async function enviarWhats() {
-  enviandoWhats.value = true;
+const enviando = ref('');
+const canais = ref({ telegram: false, whatsapp: false });
+const NOME_CANAL = { telegram: 'Telegram', whatsapp: 'WhatsApp' };
+async function enviarCelular(canal) {
+  enviando.value = canal;
   try {
-    const r = (await api.post(`/whatsapp/edital/${route.params.id}`, {}, { timeout: 180000 })).data;
-    Notify.create({ type: 'positive', message: r.documento ? 'Edital enviado no seu WhatsApp.' : 'O edital não está em PDF no PNCP: enviamos o aviso com o link.' });
+    const r = (await api.post(`/${canal}/edital/${route.params.id}`, {}, { timeout: 180000 })).data;
+    Notify.create({ type: 'positive', message: r.documento ? `Edital enviado no seu ${NOME_CANAL[canal]}.` : 'O edital não está em PDF no PNCP: enviamos o aviso com o link.' });
   } finally {
-    enviandoWhats.value = false;
+    enviando.value = '';
   }
 }
+// Mostra os botões só dos canais ativos.
+Promise.all([api.get('/telegram', { silencioso: true }), api.get('/whatsapp', { silencioso: true })])
+  .then(([t, w]) => { canais.value = { telegram: t.data.ativo, whatsapp: w.data.ativo && w.data.servidor }; })
+  .catch(() => {});
 // Palavras principais do objeto para buscar no histórico (sem "aquisição", "contratação" etc.).
 const PARADAS = new Set(['aquisicao', 'contratacao', 'registro', 'precos', 'futura', 'eventual', 'empresa', 'para', 'fornecimento', 'servicos', 'especializada', 'prestacao', 'atender', 'secretaria', 'municipal', 'conforme']);
 const termoHistorico = computed(() => (op.value?.objeto ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
