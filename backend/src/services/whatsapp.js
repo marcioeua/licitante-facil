@@ -33,7 +33,7 @@ export function clienteWhatsApp({ fetchImpl = fetch } = {}) {
   const token = process.env.WHATSAPP_TOKEN;
   const telefoneId = process.env.WHATSAPP_PHONE_ID;
   if (!token || !telefoneId) return null;
-  const base = `https://graph.facebook.com/${env('WHATSAPP_API_VERSION', 'v23.0')}`;
+  const base = `https://graph.facebook.com/${env('WHATSAPP_API_VERSION', 'v25.0')}`;
   const chamar = async (caminho, init) => {
     const r = await fetchImpl(`${base}/${caminho}`, { ...init, headers: { authorization: `Bearer ${token}`, ...(init.headers ?? {}) }, signal: AbortSignal.timeout(90000) });
     const j = await r.json().catch(() => ({}));
