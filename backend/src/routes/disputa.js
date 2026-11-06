@@ -21,6 +21,7 @@ const itemProps = {
   meu_lance: num,
   situacao: { type: 'string', enum: ['pendente', 'disputando', 'ganho', 'perdido', 'desisti'] },
   notas: { type: ['string', 'null'], maxLength: 5000 },
+  marca: { type: ['string', 'null'], maxLength: 300 },
 };
 
 export default async function (app) {
@@ -28,7 +29,9 @@ export default async function (app) {
 
   const negocio = (uid, id) => {
     const n = db.prepare(`SELECT n.id, n.titulo, n.etapa, n.data_disputa, n.oportunidade_id, n.empresa_id, o.numero_controle_pncp, o.objeto, o.orgao_nome,
-        o.unidade_nome, o.uf, o.municipio, o.modalidade, o.numero_compra, o.ano_compra, o.data_abertura, o.data_encerramento, o.link_origem, o.link_pncp, o.valor_estimado, e.razao_social AS empresa
+        o.unidade_nome, o.uf, o.municipio, o.modalidade, o.numero_compra, o.ano_compra, o.data_abertura, o.data_encerramento, o.link_origem, o.link_pncp, o.valor_estimado, e.razao_social AS empresa, e.cnpj AS empresa_cnpj, e.endereco AS empresa_endereco,
+        e.representante AS empresa_representante, e.representante_cpf AS empresa_representante_cpf, e.representante_cargo AS empresa_representante_cargo,
+        e.telefone AS empresa_telefone, e.email AS empresa_email, e.banco AS empresa_banco
       FROM negocios n LEFT JOIN oportunidades o ON o.id = n.oportunidade_id LEFT JOIN empresas e ON e.id = n.empresa_id WHERE n.id = ? AND n.usuario_id = ?`).get(idParam(id), uid);
     if (!n) throw httpError(404, 'Negócio não encontrado.');
     return n;
@@ -45,7 +48,11 @@ export default async function (app) {
     const n = negocio(req.usuarioId, req.params.id);
     const itens = db.prepare('SELECT * FROM disputa_itens WHERE negocio_id = ? ORDER BY numero_item IS NULL, numero_item, id').all(n.id)
       .map((i) => montarItem(db, i));
-    return { negocio: n, itens };
+    // Do edital lido pela IA: dados que entram na proposta.
+    const r = n.oportunidade_id ? db.prepare('SELECT resumo FROM edital_resumos WHERE oportunidade_id = ?').get(n.oportunidade_id) : null;
+    const s = r ? JSON.parse(r.resumo) : null;
+    const edital = s ? { prazo_entrega: s.prazo_entrega_execucao, pagamento: s.condicoes_pagamento, vigencia: s.vigencia, requisitos_proposta: s.requisitos_proposta ?? [] } : null;
+    return { negocio: n, itens, edital };
   });
 
   app.post('/negocio/:id/importar', async (req) => {

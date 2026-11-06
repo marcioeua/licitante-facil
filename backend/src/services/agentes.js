@@ -9,6 +9,7 @@ import { pagometroDaOportunidade } from './capag.js';
 import { parseAlerta, filtrosDoAlerta } from '../routes/alertas.js';
 import { CHECKLIST_PADRAO } from '../routes/negocios.js';
 import { criarTransporte } from './alertas.js';
+import { habilitacaoDoNegocio, resumoHabilitacao } from './habilitacao.js';
 
 export const AGENTES = {
   prospector: {
@@ -23,8 +24,8 @@ export const AGENTES = {
   },
   leitor: {
     nome: 'Agente Leitor',
-    descricao: 'Quando uma licitação entra no funil, lê o edital com IA e coloca no checklist os documentos exigidos.',
-    padrao: { maxPorDia: 5, email: false, whatsapp: false },
+    descricao: 'Quando uma licitação entra no funil, lê o edital com IA, coloca no checklist os documentos exigidos e confere se a sua documentação está em dia para participar.',
+    padrao: { maxPorDia: 5, email: false, whatsapp: true },
     precisaIA: true,
   },
 };
@@ -280,12 +281,13 @@ export async function executarLeitor(db, uid, { client, fetchImpl = fetch, resum
       const pos = db.prepare('SELECT coalesce(max(posicao), -1) + 1 AS p FROM checklist_itens WHERE negocio_id = ?').get(n.negocio_id).p;
       const ins = db.prepare('INSERT INTO checklist_itens (negocio_id, texto, posicao) VALUES (?, ?, ?)');
       tx(db, () => docs.forEach((d, i) => ins.run(n.negocio_id, `Documento: ${d.descricao}`.slice(0, 500), pos + i)));
+      const habil = resumoHabilitacao(habilitacaoDoNegocio(db, uid, n.negocio_id));
       notificar(db, {
         usuarioId: uid, agente: 'leitor', tipo: 'edital_lido', negocioId: n.negocio_id, oportunidadeId: n.id,
         titulo: `Edital lido: "${n.titulo.slice(0, 80)}"`,
-        mensagem: [resumo.resumo, docs.length ? `${docs.length} documento(s) de habilitação adicionados ao checklist.` : null,
+        mensagem: [habil, resumo.resumo, docs.length ? `${docs.length} documento(s) de habilitação adicionados ao checklist.` : null,
           ...(resumo.pontos_atencao ?? []).slice(0, 3).map((p) => `Atenção: ${p}`)].filter(Boolean).join('\n'),
-        link: `/oportunidades/${n.id}`,
+        link: `/negocios/${n.negocio_id}`,
       });
       lidos++;
     } catch (e) {

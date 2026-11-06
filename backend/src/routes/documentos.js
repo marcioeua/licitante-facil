@@ -7,7 +7,8 @@ import { httpError, idParam } from '../http.js';
 
 export const CATEGORIAS = [
   'certidao_federal', 'certidao_estadual', 'certidao_municipal', 'fgts', 'trabalhista',
-  'contrato_social', 'balanco', 'atestado_tecnico', 'procuracao', 'outros',
+  'contrato_social', 'balanco', 'atestado_tecnico', 'procuracao', 'falencia', 'cnpj', 'alvara',
+  'registro_conselho', 'documentos_socios', 'outros',
 ];
 
 const EXT_PERMITIDAS = new Set(['.pdf', '.png', '.jpg', '.jpeg', '.doc', '.docx', '.xls', '.xlsx', '.odt', '.zip']);

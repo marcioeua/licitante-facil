@@ -58,6 +58,21 @@ export default async function (app) {
     return e;
   });
 
+  // Dados usados na proposta de preços (endereço, representante, banco etc.).
+  const texto = (max) => ({ type: ['string', 'null'], maxLength: max });
+  app.patch('/:id/dados', {
+    schema: { body: { type: 'object', additionalProperties: false, minProperties: 1, properties: {
+      endereco: texto(300), representante: texto(150), representante_cpf: texto(20), representante_cargo: texto(80),
+      telefone: texto(40), email: texto(150), banco: texto(300),
+    } } },
+  }, async (req) => {
+    const campos = Object.keys(req.body);
+    const e = db.prepare(`UPDATE empresas SET ${campos.map((c) => `${c} = ?`).join(', ')} WHERE id = ? AND usuario_id = ? RETURNING *`)
+      .get(...campos.map((c) => (typeof req.body[c] === 'string' ? req.body[c].trim() || null : null)), idParam(req.params.id), req.usuarioId);
+    if (!e) throw httpError(404, 'Empresa não encontrada.');
+    return e;
+  });
+
   app.delete('/:id', async (req) => {
     const r = db.prepare('DELETE FROM empresas WHERE id = ? AND usuario_id = ?').run(idParam(req.params.id), req.usuarioId);
     if (!r.changes) throw httpError(404, 'Empresa não encontrada.');

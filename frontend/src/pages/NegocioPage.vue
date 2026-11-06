@@ -40,6 +40,8 @@
           </q-card-section>
         </q-card>
 
+        <HabilitacaoCard :negocio-id="n.id" :oportunidade-id="n.oportunidade_id" />
+
         <q-card flat bordered class="lf-card">
           <q-card-section class="row items-center">
             <div class="text-h6 col">Checklist</div>
@@ -103,6 +105,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import { api } from 'boot/axios';
 import { useFiltros } from 'stores/filtros';
+import HabilitacaoCard from 'components/HabilitacaoCard.vue';
 import { ETAPAS, brl, data, dataHora } from 'src/format';
 
 const $q = useQuasar();

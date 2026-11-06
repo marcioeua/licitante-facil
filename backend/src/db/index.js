@@ -415,6 +415,14 @@ CREATE TABLE IF NOT EXISTS ia_uso (
 
 // Colunas adicionadas depois da primeira versão (bancos já existentes).
 const MIGRACOES = [
+  'ALTER TABLE empresas ADD COLUMN endereco TEXT',
+  'ALTER TABLE empresas ADD COLUMN representante TEXT',
+  'ALTER TABLE empresas ADD COLUMN representante_cpf TEXT',
+  'ALTER TABLE empresas ADD COLUMN representante_cargo TEXT',
+  'ALTER TABLE empresas ADD COLUMN telefone TEXT',
+  'ALTER TABLE empresas ADD COLUMN email TEXT',
+  'ALTER TABLE empresas ADD COLUMN banco TEXT',
+  'ALTER TABLE disputa_itens ADD COLUMN marca TEXT',
   'ALTER TABLE usuarios ADD COLUMN whatsapp TEXT',
   'ALTER TABLE usuarios ADD COLUMN whatsapp_ativo INTEGER NOT NULL DEFAULT 0',
   'ALTER TABLE usuarios ADD COLUMN whatsapp_desde TEXT',

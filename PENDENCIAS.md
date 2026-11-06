@@ -43,6 +43,13 @@ Para retomar, é só abrir a conversa e dizer qual item quer fazer.
 - [ ] Testar o conector no Claude/ChatGPT com o link gerado em produção.
 - [ ] (Opcional) Assistente de chat dentro do próprio sistema.
 
+## 3b. Automação do começo ao fim
+
+- [x] **Agente Habilitação**: documentos exigidos no edital x documentos cadastrados (em dia, vence antes da
+      sessão, vencido, falta, declaração). Card no negócio; o Agente Leitor manda "apto / faltam X" no aviso.
+- [x] **Proposta pronta** (Sala de disputa → Gerar proposta): inicial ou ajustada, dados da empresa salvos,
+      valor por extenso, baixa em Word. O cadastro no portal continua manual (login gov.br + captcha).
+
 ## 4. Outras melhorias anotadas
 
 - [x] **Vitórias em licitações** na Análise de empresas (feito), com dados oficiais do Compras.gov.br

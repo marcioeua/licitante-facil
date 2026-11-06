@@ -24,6 +24,7 @@ import agentesRoutes, { notificacoesRoutes } from './routes/agentes.js';
 import disputaRoutes from './routes/disputa.js';
 import juridicoRoutes from './routes/juridico.js';
 import whatsappRoutes from './routes/whatsapp.js';
+import { habilitacaoDoNegocio } from './services/habilitacao.js';
 import { clienteWhatsApp } from './services/whatsapp.js';
 
 import { COOKIE } from './http.js';
@@ -125,6 +126,13 @@ export async function buildApp({ db, logger = false, serveFrontend = true, ia, f
   app.get('/api/analise-empresas/:ni', async (req, reply) => {
     if (String(req.params.ni).replace(/\D/g, '').length < 11) return reply.code(400).send({ erro: 'CNPJ inválido.' });
     return perfilEmpresa(db, req.params.ni, req.query, { fetchImpl: app.fetchCnpj ?? fetch });
+  });
+
+  // Agente Habilitação: documentos exigidos no edital x documentos cadastrados.
+  app.get('/api/habilitacao/negocio/:id', async (req, reply) => {
+    const id = Number(req.params.id);
+    const h = Number.isInteger(id) ? habilitacaoDoNegocio(db, req.usuarioId, id) : null;
+    return h ?? reply.code(404).send({ erro: 'Negócio não encontrado.' });
   });
 
   // Busca Pregão no Chat: conector MCP para Claude e ChatGPT (link pessoal com token).

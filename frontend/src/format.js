@@ -33,5 +33,10 @@ export const CATEGORIAS_DOC = {
   balanco: 'Balanço patrimonial',
   atestado_tecnico: 'Atestado de capacidade técnica',
   procuracao: 'Procuração',
+  falencia: 'Certidão de falência e recuperação judicial',
+  cnpj: 'Cartão CNPJ',
+  alvara: 'Alvará / licença',
+  registro_conselho: 'Registro em conselho (CREA, CRQ...)',
+  documentos_socios: 'Documentos dos sócios',
   outros: 'Outros',
 };

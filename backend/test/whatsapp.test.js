@@ -95,7 +95,7 @@ test('WhatsApp no sistema: ativação, teste, edital em PDF, avisos dos agentes 
   assert.match(doc.texto, /PREFEITURA DE TESTE - Campinas\/SP · Pregão - Eletrônico nº 90045\/2026 · Valor estimado: R\$\s?48\.000,00/);
   assert.match(doc.texto, /\/#\/oportunidades\/\d+$/);
 
-  // Avisos: vigia sim; leitor desligado por padrão; chat do pregoeiro sempre.
+  // Avisos: vigia e leitor sim (padrão); chat do pregoeiro sempre.
   enviados.length = 0;
   notificar(db, { usuarioId: uid, agente: 'vigia', tipo: 'mudanca', titulo: 'Prazo mudou', mensagem: 'De 18/11\npara 20/11', link: '/negocios/1' });
   notificar(db, { usuarioId: uid, agente: 'leitor', tipo: 'edital_lido', titulo: 'Edital lido' });
@@ -103,8 +103,8 @@ test('WhatsApp no sistema: ativação, teste, edital em PDF, avisos dos agentes 
   db.prepare("UPDATE notificacoes SET criado_em = datetime('now') WHERE titulo != 'Aviso antigo'").run();
   db.prepare("UPDATE notificacoes SET criado_em = datetime('now', '-10 minutes') WHERE titulo = 'Aviso antigo'").run();
   const n = await enviarNotificacoesPorWhatsApp(db, { cliente: whatsapp, querWhatsApp: querWhatsApp(db), appUrl: 'https://app.exemplo.com.br' });
-  assert.equal(n, 2);
-  assert.deepEqual(enviados.map((e) => e.titulo), ['Prazo mudou', 'Pregoeiro: 1 prazo']);
+  assert.equal(n, 3);
+  assert.deepEqual(enviados.map((e) => e.titulo), ['Prazo mudou', 'Edital lido', 'Pregoeiro: 1 prazo']);
   assert.match(enviados[0].texto, /Abrir: https:\/\/app\.exemplo\.com\.br\/#\/negocios\/1/);
   assert.equal(await enviarNotificacoesPorWhatsApp(db, { cliente: whatsapp, querWhatsApp: querWhatsApp(db) }), 0, 'não repete');
 

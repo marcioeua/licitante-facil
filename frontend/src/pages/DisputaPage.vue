@@ -22,6 +22,7 @@
             <q-btn v-if="sala.negocio.link_origem" outline no-caps color="primary" icon="open_in_new" label="Abrir no portal" :href="sala.negocio.link_origem" target="_blank" rel="noopener" />
             <q-btn v-if="sala.negocio.numero_controle_pncp" outline no-caps color="primary" icon="download" label="Importar itens do PNCP" :loading="importando" @click="importar" />
             <q-btn outline no-caps color="primary" icon="add" label="Adicionar item" @click="novoItem" />
+            <q-btn unelevated no-caps color="primary" icon="request_quote" label="Gerar proposta" :disable="!sala.itens.length" @click="dlgProposta = true" />
           </div>
         </q-card-section>
         <q-banner dense class="bg-blue-1 text-blue-10">
@@ -75,6 +76,7 @@
                   </template>
                 </q-input>
               </div>
+              <div class="col-12 col-sm-10"><q-input :model-value="i.marca" dense outlined label="Marca/modelo ofertado (vai na proposta)" @change="(v) => salvar(i, { marca: v || null })" /></div>
               <div class="col-12 col-sm-2">
                 <div class="minimo-box" :class="i.preco_minimo == null ? 'bg-grey-2' : 'bg-green-1'">
                   <div class="text-caption text-grey-7">Preço mínimo</div>
@@ -154,6 +156,8 @@
       </template>
     </template>
 
+    <PropostaDialog v-if="dlgProposta" v-model="dlgProposta" :sala="sala" />
+
     <!-- Preços pagos -->
     <q-dialog v-model="dlgPrecos">
       <q-card style="width: 760px; max-width: 95vw">
@@ -193,6 +197,7 @@ import { api } from 'boot/axios';
 import { data, dataHora } from 'src/format';
 import ChatPregoeiro from 'components/ChatPregoeiro.vue';
 import FornecedoresCotacao from 'components/FornecedoresCotacao.vue';
+import PropostaDialog from 'components/PropostaDialog.vue';
 
 const SITUACOES = { pendente: 'Aguardando', disputando: 'Disputando', ganho: 'Ganhei', perdido: 'Perdi', desisti: 'Desisti' };
 const ROTULO = { inicial: 'LANCE INICIAL', cobrir: 'PRÓXIMO LANCE', parar: 'PARE AQUI', ganhando: 'VOCÊ ESTÁ GANHANDO', abaixo_minimo: 'ATENÇÃO', sem_dados: 'FALTAM DADOS', encerrado: 'ENCERRADO' };
@@ -201,6 +206,7 @@ const route = useRoute();
 const $q = useQuasar();
 const sala = ref(null);
 const modo = ref('preparar');
+const dlgProposta = ref(false);
 const importando = ref(false);
 const digitado = ref({});
 const dlgPrecos = ref(false);
