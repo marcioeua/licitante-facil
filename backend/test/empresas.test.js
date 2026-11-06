@@ -88,6 +88,7 @@ test('vitórias: janelas de 365 dias, paginação, cancelados fora, cache e desc
   assert.deepEqual(js.map((j) => [j.ini, j.fim]), [['2025-11-06', '2026-11-05'], ['2024-11-06', '2025-11-05']]);
 
   const db = openDatabase(':memory:');
+  const atual = janelas(2)[0].ini; // janela do último ano, a partir de hoje
   const chamadas = { dados: 0, pncp: 0 };
   const res = (compra, item, valor, data, extra = {}) => ({ numeroControlePNCPCompra: compra, numeroItemPncp: item, orgaoEntidadeCnpj: '05853163000130',
     unidadeOrgaoUfSigla: 'PA', quantidadeHomologada: 1, valorUnitarioHomologado: valor, valorTotalHomologado: valor, dataResultadoPncp: `${data}T00:00:00`,
@@ -98,8 +99,8 @@ test('vitórias: janelas de 365 dias, paginação, cancelados fora, cache e desc
       chamadas.dados++;
       const ini = u.searchParams.get('dataResultadoPncpInicial');
       const pg = Number(u.searchParams.get('pagina'));
-      if (ini === '2025-11-06' && pg === 1) return Response.json({ resultado: [res('05853163000130-1-000155/2026', 1, 115000, '2026-08-14')], paginasRestantes: 1 });
-      if (ini === '2025-11-06' && pg === 2) return Response.json({ resultado: [res('05853163000130-1-000155/2026', 2, 98500, '2026-08-14'), res('05853163000130-1-000155/2026', 3, 1, '2026-08-14', { dataCancelamentoPncp: '2026-09-01' })], paginasRestantes: 0 });
+      if (ini === atual && pg === 1) return Response.json({ resultado: [res('05853163000130-1-000155/2026', 1, 115000, '2026-08-14')], paginasRestantes: 1 });
+      if (ini === atual && pg === 2) return Response.json({ resultado: [res('05853163000130-1-000155/2026', 2, 98500, '2026-08-14'), res('05853163000130-1-000155/2026', 3, 1, '2026-08-14', { dataCancelamentoPncp: '2026-09-01' })], paginasRestantes: 0 });
       return Response.json({ resultado: [res('05853163000130-1-000099/2025', 1, 54078, '2025-03-20')], paginasRestantes: 0 });
     }
     chamadas.pncp++;

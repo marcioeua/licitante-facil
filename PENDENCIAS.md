@@ -21,9 +21,14 @@ Para retomar, é só abrir a conversa e dizer qual item quer fazer.
 
 ## 2. Avisos pelo WhatsApp (e Telegram)
 
-- [ ] Criar conta **Meta Business** e separar um **número de telefone só para o sistema**.
-- [ ] Integrar a **API oficial do WhatsApp (Meta)**: campo de número por usuário, opção de receber por
-      WhatsApp em cada agente, modelo de mensagem para aprovação da Meta.
+- [x] Integração com a **API oficial do WhatsApp (Meta)** no sistema: número e autorização por usuário (página
+      Agentes), aviso de cada agente pelo WhatsApp, edital em PDF de cada licitação nova do Prospector e botão
+      "Enviar edital no meu WhatsApp" na licitação.
+- [ ] **Você faz na Meta** (com a minha ajuda): conta Meta Business + app WhatsApp, número só para o sistema,
+      token permanente (usuário do sistema), e os 2 modelos de mensagem (Utilidade, pt_BR):
+      - `aviso_busca_pregao`: corpo "🔔 *{{1}}*" + linha em branco + "{{2}}" + linha em branco + "Busca Pregão IA".
+      - `edital_busca_pregao`: cabeçalho **Documento** + corpo "📄 *Edital:* {{1}}" + linha em branco + "{{2}}".
+- [ ] No Railway: `WHATSAPP_TOKEN` e `WHATSAPP_PHONE_ID` (opcional: `WHATSAPP_TEMPLATE_AVISO`, `WHATSAPP_TEMPLATE_EDITAL`).
 - [ ] (Opcional) **Robô do Telegram** como alternativa gratuita enquanto a Meta aprova.
 - Não usar serviços não oficiais (Z-API, Evolution API etc.): risco de bloqueio do número.
 

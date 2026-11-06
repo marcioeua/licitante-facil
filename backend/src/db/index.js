@@ -229,6 +229,18 @@ CREATE TABLE IF NOT EXISTS pecas_juridicas (
 );
 CREATE INDEX IF NOT EXISTS idx_pecas_usuario ON pecas_juridicas(usuario_id, negocio_id);
 
+-- Envios de edital pelo WhatsApp (fila: o PDF é baixado do PNCP e enviado pela API oficial da Meta).
+CREATE TABLE IF NOT EXISTS whatsapp_fila (
+  id INTEGER PRIMARY KEY,
+  usuario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+  oportunidade_id INTEGER NOT NULL REFERENCES oportunidades(id) ON DELETE CASCADE,
+  origem TEXT NOT NULL DEFAULT 'manual',
+  tentativas INTEGER NOT NULL DEFAULT 0,
+  enviado_em TEXT,
+  resultado TEXT,
+  criado_em TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE TABLE IF NOT EXISTS conector_tokens (
   usuario_id INTEGER PRIMARY KEY REFERENCES usuarios(id) ON DELETE CASCADE,
   token_hash TEXT NOT NULL UNIQUE,
@@ -403,6 +415,10 @@ CREATE TABLE IF NOT EXISTS ia_uso (
 
 // Colunas adicionadas depois da primeira versão (bancos já existentes).
 const MIGRACOES = [
+  'ALTER TABLE usuarios ADD COLUMN whatsapp TEXT',
+  'ALTER TABLE usuarios ADD COLUMN whatsapp_ativo INTEGER NOT NULL DEFAULT 0',
+  'ALTER TABLE usuarios ADD COLUMN whatsapp_desde TEXT',
+  'ALTER TABLE notificacoes ADD COLUMN enviada_whatsapp INTEGER NOT NULL DEFAULT 0',
   "ALTER TABLE alertas ADD COLUMN municipios TEXT NOT NULL DEFAULT '[]'",
   "ALTER TABLE sincronizacoes ADD COLUMN tipo TEXT NOT NULL DEFAULT 'completa'",
   'ALTER TABLE oportunidades ADD COLUMN esfera TEXT',

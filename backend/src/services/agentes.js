@@ -14,17 +14,17 @@ export const AGENTES = {
   prospector: {
     nome: 'Agente Prospector',
     descricao: 'Todo dia procura licitações novas dos seus alertas, dá uma nota de 0 a 100 e coloca as melhores no seu funil.',
-    padrao: { notaMinima: 60, maxPorDia: 10, empresaId: null, email: true },
+    padrao: { notaMinima: 60, maxPorDia: 10, empresaId: null, email: true, whatsapp: true, whatsappEdital: true },
   },
   vigia: {
     nome: 'Agente Vigia',
     descricao: 'Acompanha as licitações do seu funil e avisa quando muda data, situação, valor ou sai documento novo no PNCP. Lembra 24h antes da sessão.',
-    padrao: { email: true, lembrete24h: true },
+    padrao: { email: true, whatsapp: true, lembrete24h: true },
   },
   leitor: {
     nome: 'Agente Leitor',
     descricao: 'Quando uma licitação entra no funil, lê o edital com IA e coloca no checklist os documentos exigidos.',
-    padrao: { maxPorDia: 5, email: false },
+    padrao: { maxPorDia: 5, email: false, whatsapp: false },
     precisaIA: true,
   },
 };
@@ -143,6 +143,11 @@ export function executarProspector(db, uid, { agora = new Date() } = {}) {
       adicionadas.push({ negocioId: r.id, oportunidadeId: c.op.id, nota: c.nota, objeto: c.op.objeto });
     }
   });
+  if (adicionadas.length && cfg.whatsapp && cfg.whatsappEdital) {
+    // O edital de cada licitação nova vai para o WhatsApp (se o usuário ativou).
+    const fila = db.prepare("INSERT INTO whatsapp_fila (usuario_id, oportunidade_id, origem) VALUES (?, ?, 'prospector')");
+    for (const a of adicionadas) fila.run(uid, a.oportunidadeId);
+  }
   if (adicionadas.length) {
     notificar(db, {
       usuarioId: uid, agente: 'prospector', tipo: 'prospeccao',
@@ -300,7 +305,8 @@ export async function enviarNotificacoesPorEmail(db, { transport = criarTranspor
   const porUsuario = Map.groupBy(pend, (n) => n.usuario_id);
   let enviados = 0;
   for (const [uid, lista] of porUsuario) {
-    const querem = lista.filter((n) => lerConfig(db, uid, n.agente).config.email);
+    // Avisos que não são de um agente (ex.: chat do pregoeiro) sempre vão por e-mail.
+    const querem = lista.filter((n) => (AGENTES[n.agente] ? lerConfig(db, uid, n.agente).config.email : true));
     if (querem.length) {
       const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
       const html = `<div style="font-family:Arial,sans-serif;max-width:640px;margin:auto"><h2 style="color:#1d4ed8">Busca Pregão IA</h2>
@@ -322,3 +328,6 @@ export function usuariosCom(db, agente) {
 }
 
 
+
+/** O usuário quer receber este aviso no WhatsApp? (preferência por agente; outros avisos sempre) */
+export const querWhatsApp = (db) => (n) => (AGENTES[n.agente] ? !!lerConfig(db, n.usuario_id, n.agente).config.whatsapp : true);

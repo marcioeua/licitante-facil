@@ -172,3 +172,31 @@ export async function baixarArquivosEdital(op, { fetchImpl = fetch } = {}) {
   return { partes, ignorados };
 }
 
+
+/**
+ * Primeiro PDF do edital (para enviar ao usuário, ex.: WhatsApp). Baixa só o necessário:
+ * o documento "Edital" primeiro; se vier em ZIP, pega o PDF principal de dentro.
+ * Devolve { bytes, nome } ou null se não houver PDF.
+ */
+export async function primeiroPdfDoEdital(op, { fetchImpl = fetch, maxBytes = 60 * 1024 * 1024 } = {}) {
+  if (!op.orgao_cnpj || !op.ano_compra || !op.sequencial_compra) return null;
+  const res = await fetchImpl(`${pncpApi()}/v1/orgaos/${op.orgao_cnpj}/compras/${op.ano_compra}/${op.sequencial_compra}/arquivos`,
+    { headers: { accept: 'application/json' }, signal: AbortSignal.timeout(60000) });
+  if (!res.ok) return null;
+  const lista = (await res.json()).filter((a) => a.statusAtivo !== false && a.url)
+    .sort((a, b) => (PRIORIDADE[a.tipoDocumentoId] ?? 9) - (PRIORIDADE[b.tipoDocumentoId] ?? 9) || a.sequencialDocumento - b.sequencialDocumento)
+    .slice(0, 3);
+  for (const a of lista) {
+    const r = await fetchImpl(a.url, { signal: AbortSignal.timeout(120000) });
+    if (!r.ok) continue;
+    if (Number(r.headers.get('content-length') || 0) > maxBytes) { r.body?.cancel?.(); continue; }
+    const buf = Buffer.from(await r.arrayBuffer());
+    const nome = nomeDoArquivo(r, `${a.tipoDocumentoNome || 'Edital'}.pdf`);
+    if (ehPdf(buf)) return { bytes: buf, nome: /\.pdf$/i.test(nome) ? nome : `${nome}.pdf` };
+    if (ehZip(buf)) {
+      const pdf = expandirArquivo(nome, buf).partes.find((p) => p.tipo === 'pdf' && p.bytes?.length <= maxBytes);
+      if (pdf) return { bytes: Buffer.from(pdf.bytes), nome: /\.pdf$/i.test(pdf.nome) ? pdf.nome.split('/').pop() : `${pdf.nome}.pdf` };
+    }
+  }
+  return null;
+}

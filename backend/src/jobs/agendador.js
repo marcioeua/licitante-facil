@@ -6,7 +6,8 @@ import { config } from '../config.js';
 import { sincronizarPropostasAbertas, sincronizarAtualizacoes } from '../services/pncp.js';
 import { enviarAlertas } from '../services/alertas.js';
 import { atualizarCapag } from '../services/capag.js';
-import { usuariosCom, executarVigia, executarProspector, executarLeitor, enviarNotificacoesPorEmail } from '../services/agentes.js';
+import { usuariosCom, executarVigia, executarProspector, executarLeitor, enviarNotificacoesPorEmail, querWhatsApp } from '../services/agentes.js';
+import { enviarNotificacoesPorWhatsApp, processarFilaWhatsApp } from '../services/whatsapp.js';
 import { resumirEdital } from '../services/editalIA.js';
 import { proximoDiaContratos, importarContratosDoDia, limparHistoricoAntigo, liberarEspaco } from '../services/historico.js';
 
@@ -122,6 +123,8 @@ export async function executarAgentesAgendados(db, { log = console.log, ia = nul
     }
   }
   try { await enviarNotificacoesPorEmail(db); } catch (e) { log(`[agentes] e-mail: ${e.message}`); }
+  try { await enviarNotificacoesPorWhatsApp(db, { querWhatsApp: querWhatsApp(db), log }); } catch (e) { log(`[agentes] whatsapp: ${e.message}`); }
+  try { await processarFilaWhatsApp(db, { fetchImpl, log }); } catch (e) { log(`[agentes] whatsapp editais: ${e.message}`); }
 }
 
 export function iniciarAgendador(db, { log = console.log, intervaloMs = 5 * 60 * 1000, ia = null } = {}) {

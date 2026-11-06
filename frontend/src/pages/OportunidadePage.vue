@@ -26,6 +26,7 @@
         <q-btn v-else unelevated no-caps color="primary" icon="add" label="Adicionar ao funil" :loading="salvando" @click="adicionar" />
         <q-btn flat no-caps color="primary" icon="query_stats" label="Quem já vendeu isso?" :to="{ name: 'historico', query: { aba: 'contratos', q: termoHistorico } }" />
         <q-btn v-if="op.link_pncp" outline no-caps color="primary" icon="open_in_new" label="Ver edital no PNCP" :href="op.link_pncp" target="_blank" rel="noopener" />
+        <q-btn outline no-caps color="positive" icon="chat" label="Enviar edital no meu WhatsApp" :loading="enviandoWhats" @click="enviarWhats" />
         <q-btn v-if="op.link_origem" flat no-caps color="primary" icon="launch" label="Sistema de origem" :href="op.link_origem" target="_blank" rel="noopener" />
       </q-card-actions>
     </q-card>
@@ -38,6 +39,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { api } from 'boot/axios';
+import { Notify } from 'quasar';
 import { brl, cnpj, dataHora } from 'src/format';
 import EditalIA from 'components/EditalIA.vue';
 import PagometroCard from 'components/PagometroCard.vue';
@@ -46,6 +48,16 @@ const route = useRoute();
 const router = useRouter();
 const op = ref(null);
 const salvando = ref(false);
+const enviandoWhats = ref(false);
+async function enviarWhats() {
+  enviandoWhats.value = true;
+  try {
+    const r = (await api.post(`/whatsapp/edital/${route.params.id}`, {}, { timeout: 180000 })).data;
+    Notify.create({ type: 'positive', message: r.documento ? 'Edital enviado no seu WhatsApp.' : 'O edital não está em PDF no PNCP: enviamos o aviso com o link.' });
+  } finally {
+    enviandoWhats.value = false;
+  }
+}
 // Palavras principais do objeto para buscar no histórico (sem "aquisição", "contratação" etc.).
 const PARADAS = new Set(['aquisicao', 'contratacao', 'registro', 'precos', 'futura', 'eventual', 'empresa', 'para', 'fornecimento', 'servicos', 'especializada', 'prestacao', 'atender', 'secretaria', 'municipal', 'conforme']);
 const termoHistorico = computed(() => (op.value?.objeto ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')

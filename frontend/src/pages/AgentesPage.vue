@@ -6,6 +6,8 @@
     </div>
     <div class="text-body2 text-grey-7 q-mb-md">Cada agente cuida de uma frente. Você liga e configura uma vez; ele trabalha sozinho todo dia e avisa no sino 🔔.</div>
 
+    <WhatsAppConfig @mudou="(e) => (whats = e)" />
+
     <div v-if="!agentes.length" class="row q-col-gutter-md"><div v-for="i in 3" :key="i" class="col-12 col-md-4"><q-skeleton height="260px" /></div></div>
     <div class="row q-col-gutter-md">
       <div v-for="a in agentes" :key="a.id" class="col-12 col-md-4">
@@ -42,6 +44,10 @@
               <div v-if="!a.iaDisponivel" class="text-caption text-orange-9">Ative a chave da IA (ANTHROPIC_API_KEY) no Railway para ligar este agente.</div>
             </template>
             <q-toggle :model-value="a.config.email" label="Avisar também por e-mail" @update:model-value="(v) => salvar(a, { config: { email: v } })" />
+            <q-toggle v-if="'whatsapp' in a.config" :model-value="a.config.whatsapp" :disable="!whats?.ativo" label="Avisar também pelo WhatsApp"
+              @update:model-value="(v) => salvar(a, { config: { whatsapp: v } })"><q-tooltip v-if="!whats?.ativo">Ative o WhatsApp no topo da página</q-tooltip></q-toggle>
+            <q-toggle v-if="'whatsappEdital' in a.config" :model-value="a.config.whatsappEdital" :disable="!whats?.ativo || !a.config.whatsapp" label="Mandar o edital em PDF de cada licitação nova"
+              @update:model-value="(v) => salvar(a, { config: { whatsappEdital: v } })" />
           </q-card-section>
 
           <q-space />
@@ -122,11 +128,13 @@
 import { onMounted, ref } from 'vue';
 import { useQuasar } from 'quasar';
 import { api } from 'boot/axios';
+import WhatsAppConfig from 'components/WhatsAppConfig.vue';
 
 const $q = useQuasar();
 const agentes = ref([]);
 const empresas = ref([]);
 const executando = ref(null);
+const whats = ref(null);
 const VISUAL = {
   prospector: { cor: 'blue-7', icone: 'travel_explore' },
   vigia: { cor: 'deep-orange-7', icone: 'visibility' },
