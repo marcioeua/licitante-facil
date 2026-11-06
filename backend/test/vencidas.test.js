@@ -45,4 +45,16 @@ test('licitação vencida não entra na triagem e sai dela quando o prazo acaba'
   assert.equal(arq.arquivado, 1);
   assert.match(arq.notas, /Arquivado automaticamente: o prazo de propostas terminou em \d{2}\/\d{2}\/\d{4}\./);
   assert.equal(arquivarVencidas(db), 0, 'não repete');
+
+  // Compra direta sem prazo de propostas (dispensa "sem disputa"): não é aberta, não entra e sai da triagem.
+  upsertOportunidades(db, [mapContratacao({ ...op('A5', 1), dataEncerramentoProposta: null, objetoCompra: 'Pagamento de passagem aérea' })]);
+  assert.equal((await req('GET', '/api/oportunidades?q=passagem')).json().total, 0);
+  assert.match((await req('POST', '/api/negocios', { oportunidade_id: id('A5') })).json().erro, /não recebe propostas/);
+  db.prepare("INSERT INTO negocios (usuario_id, oportunidade_id, titulo, etapa) VALUES (?, ?, 'passagem', 'triagem')").run(uid, id('A5'));
+  await req('GET', '/api/negocios');
+  assert.match(db.prepare("SELECT notas FROM negocios WHERE titulo = 'passagem'").get().notas, /não recebe propostas/);
+
+  // Atualizações do PNCP: novas sem prazo de propostas não são importadas.
+  const n = upsertOportunidades(db, [mapContratacao({ ...op('A6', 1), dataEncerramentoProposta: null })], { soAbertasOuConhecidas: true });
+  assert.equal(n, 0);
 });

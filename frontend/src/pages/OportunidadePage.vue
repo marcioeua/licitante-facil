@@ -49,7 +49,7 @@ import PagometroCard from 'components/PagometroCard.vue';
 const route = useRoute();
 const router = useRouter();
 const op = ref(null);
-const encerrada = computed(() => !!op.value?.data_encerramento && new Date(op.value.data_encerramento) < new Date());
+const encerrada = computed(() => !!op.value && (!op.value.data_encerramento || new Date(op.value.data_encerramento) < new Date()));
 const salvando = ref(false);
 const enviando = ref('');
 const canais = ref({ telegram: false, whatsapp: false });

@@ -39,7 +39,7 @@ const props = defineProps({ op: { type: Object, required: true } });
 const emit = defineEmits(['adicionado']);
 const salvando = ref(false);
 const prazo = computed(() => diasAte(props.op.data_encerramento));
-const encerrada = computed(() => !!props.op.data_encerramento && new Date(props.op.data_encerramento) < new Date());
+const encerrada = computed(() => !props.op.data_encerramento || new Date(props.op.data_encerramento) < new Date());
 const pag = computed(() => ({
   baixo: { cor: 'positive', rotulo: 'Paga em dia' },
   medio: { cor: 'orange-8', rotulo: 'Pagamento: atenção' },

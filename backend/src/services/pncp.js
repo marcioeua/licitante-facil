@@ -115,7 +115,8 @@ export function upsertOportunidades(db, registros, { soAbertasOuConhecidas = fal
     let n = 0;
     for (const r of registros) {
       if (!r.numero_controle_pncp || !r.objeto) continue;
-      if (soAbertasOuConhecidas && r.data_encerramento && r.data_encerramento < agora
+      // Novas sem prazo de propostas (compra direta já decidida) ou já encerradas não interessam.
+      if (soAbertasOuConhecidas && (!r.data_encerramento || r.data_encerramento < agora)
         && !existe.get(r.numero_controle_pncp)) continue;
       stmt.run(r);
       n++;

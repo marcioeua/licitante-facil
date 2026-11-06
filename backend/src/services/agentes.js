@@ -115,11 +115,13 @@ const AGORA_LOCAL = "strftime('%Y-%m-%dT%H:%M:%S','now','localtime')";
  */
 export function arquivarVencidas(db, uid = null) {
   return db.prepare(`UPDATE negocios SET arquivado = 1, atualizado_em = datetime('now'),
-      notas = trim(coalesce(notas, '') || char(10) || 'Arquivado automaticamente: o prazo de propostas terminou em ' ||
-        (SELECT substr(o.data_encerramento, 9, 2) || '/' || substr(o.data_encerramento, 6, 2) || '/' || substr(o.data_encerramento, 1, 4)
-         FROM oportunidades o WHERE o.id = negocios.oportunidade_id) || '.')
+      notas = trim(coalesce(notas, '') || char(10) || (SELECT CASE WHEN o.data_encerramento IS NULL
+          THEN 'Arquivado automaticamente: esta compra não recebe propostas (contratação direta já decidida, sem prazo de propostas no PNCP).'
+          ELSE 'Arquivado automaticamente: o prazo de propostas terminou em '
+            || substr(o.data_encerramento, 9, 2) || '/' || substr(o.data_encerramento, 6, 2) || '/' || substr(o.data_encerramento, 1, 4) || '.' END
+        FROM oportunidades o WHERE o.id = negocios.oportunidade_id))
     WHERE arquivado = 0 AND etapa = 'triagem' ${uid ? 'AND usuario_id = ?' : ''}
-      AND oportunidade_id IN (SELECT id FROM oportunidades WHERE data_encerramento IS NOT NULL AND data_encerramento < ${AGORA_LOCAL})`)
+      AND oportunidade_id IN (SELECT id FROM oportunidades WHERE data_encerramento IS NULL OR data_encerramento < ${AGORA_LOCAL})`)
     .run(...(uid ? [uid] : [])).changes;
 }
 

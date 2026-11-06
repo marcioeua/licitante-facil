@@ -64,7 +64,8 @@ export function buscarOportunidades(db, filtros = {}, usuarioId = null) {
     params.vmax = Number(filtros.valorMax);
   }
   if (filtros.abertas !== false && filtros.abertas !== 'false') {
-    where.push("(o.data_encerramento IS NULL OR o.data_encerramento >= strftime('%Y-%m-%dT%H:%M:%S','now','localtime'))");
+    // Sem prazo de propostas = compra direta já decidida (ex.: dispensa "sem disputa"): ninguém pode participar.
+    where.push("o.data_encerramento IS NOT NULL AND o.data_encerramento >= strftime('%Y-%m-%dT%H:%M:%S','now','localtime')");
   }
   if (filtros.publicadasDesde) {
     where.push('o.importado_em > :desde');
@@ -118,7 +119,7 @@ export function sugerirMunicipios(db, { q = '', uf = '' } = {}, limite = 20) {
   const linhas = db.prepare(`
     SELECT uf, municipio, count(*) AS total FROM oportunidades
     WHERE municipio IS NOT NULL
-      AND (data_encerramento IS NULL OR data_encerramento >= strftime('%Y-%m-%dT%H:%M:%S','now','localtime'))
+      AND data_encerramento IS NOT NULL AND data_encerramento >= strftime('%Y-%m-%dT%H:%M:%S','now','localtime')
     GROUP BY uf, municipio`).all();
   return linhas
     .filter((r) => (!ufs.size || ufs.has(r.uf)) && (!termo || norm(r.municipio).includes(termo)))

@@ -85,8 +85,10 @@ export default async function (app) {
       if (!op) throw httpError(404, 'Oportunidade não encontrada.');
       const existente = db.prepare('SELECT id FROM negocios WHERE usuario_id = ? AND oportunidade_id = ?').get(uid, op.id);
       if (existente) throw httpError(409, 'Esta oportunidade já está no seu funil.');
-      const encerrada = op.data_encerramento
-        && db.prepare("SELECT ? < strftime('%Y-%m-%dT%H:%M:%S','now','localtime') AS v").get(op.data_encerramento).v;
+      if (!op.data_encerramento) {
+        throw httpError(400, 'Esta compra não recebe propostas: é uma contratação direta já decidida (sem prazo de propostas no PNCP).');
+      }
+      const encerrada = db.prepare("SELECT ? < strftime('%Y-%m-%dT%H:%M:%S','now','localtime') AS v").get(op.data_encerramento).v;
       if (encerrada) {
         const quando = new Date(op.data_encerramento).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
         throw httpError(400, `O prazo de propostas desta licitação terminou em ${quando}. Não é mais possível participar.`);
