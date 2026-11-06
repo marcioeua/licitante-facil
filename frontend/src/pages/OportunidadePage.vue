@@ -23,6 +23,7 @@
       <q-separator />
       <q-card-actions class="q-pa-md q-gutter-sm">
         <q-btn v-if="op.negocio_id" unelevated no-caps color="positive" icon="view_kanban" label="Abrir no funil" :to="{ name: 'negocio', params: { id: op.negocio_id } }" />
+        <q-btn v-else-if="encerrada" unelevated no-caps color="grey-5" icon="block" label="Propostas encerradas" disable><q-tooltip>O prazo para enviar propostas já terminou</q-tooltip></q-btn>
         <q-btn v-else unelevated no-caps color="primary" icon="add" label="Adicionar ao funil" :loading="salvando" @click="adicionar" />
         <q-btn flat no-caps color="primary" icon="query_stats" label="Quem já vendeu isso?" :to="{ name: 'historico', query: { aba: 'contratos', q: termoHistorico } }" />
         <q-btn v-if="op.link_pncp" outline no-caps color="primary" icon="open_in_new" label="Ver edital no PNCP" :href="op.link_pncp" target="_blank" rel="noopener" />
@@ -48,6 +49,7 @@ import PagometroCard from 'components/PagometroCard.vue';
 const route = useRoute();
 const router = useRouter();
 const op = ref(null);
+const encerrada = computed(() => !!op.value?.data_encerramento && new Date(op.value.data_encerramento) < new Date());
 const salvando = ref(false);
 const enviando = ref('');
 const canais = ref({ telegram: false, whatsapp: false });

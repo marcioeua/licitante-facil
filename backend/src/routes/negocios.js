@@ -1,5 +1,6 @@
 import { httpError, idParam } from '../http.js';
 import { tx } from '../db/index.js';
+import { arquivarVencidas } from '../services/agentes.js';
 
 export const ETAPAS = ['triagem', 'analise', 'proposta', 'disputa', 'ganho', 'perdido'];
 
@@ -49,6 +50,7 @@ export default async function (app) {
 
   // Lista para o kanban.
   app.get('/', async (req) => {
+    arquivarVencidas(db, req.usuarioId);
     const arquivados = req.query.arquivados === 'true' ? 1 : 0;
     return db.prepare(`
       SELECT n.id, n.titulo, n.etapa, n.responsavel, n.favorito, n.arquivado, n.posicao, n.data_disputa, n.origem, n.pontuacao,
@@ -83,6 +85,12 @@ export default async function (app) {
       if (!op) throw httpError(404, 'Oportunidade não encontrada.');
       const existente = db.prepare('SELECT id FROM negocios WHERE usuario_id = ? AND oportunidade_id = ?').get(uid, op.id);
       if (existente) throw httpError(409, 'Esta oportunidade já está no seu funil.');
+      const encerrada = op.data_encerramento
+        && db.prepare("SELECT ? < strftime('%Y-%m-%dT%H:%M:%S','now','localtime') AS v").get(op.data_encerramento).v;
+      if (encerrada) {
+        const quando = new Date(op.data_encerramento).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+        throw httpError(400, `O prazo de propostas desta licitação terminou em ${quando}. Não é mais possível participar.`);
+      }
       titulo ??= op.objeto.slice(0, 300);
       dataDisputa ??= op.data_encerramento;
     }

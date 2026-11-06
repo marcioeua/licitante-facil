@@ -22,6 +22,7 @@
       <div class="col-12 col-sm-auto">
         <q-btn v-if="op.negocio_id" flat no-caps color="positive" icon="check_circle" :label="etapa(op.negocio_etapa).nome"
           :to="{ name: 'negocio', params: { id: op.negocio_id } }" />
+        <q-badge v-else-if="encerrada" color="grey-6" label="Propostas encerradas" class="q-pa-sm" />
         <q-btn v-else unelevated no-caps color="primary" icon="add" label="Adicionar ao funil" :loading="salvando" @click="adicionar" />
       </div>
     </q-card-section>
@@ -38,6 +39,7 @@ const props = defineProps({ op: { type: Object, required: true } });
 const emit = defineEmits(['adicionado']);
 const salvando = ref(false);
 const prazo = computed(() => diasAte(props.op.data_encerramento));
+const encerrada = computed(() => !!props.op.data_encerramento && new Date(props.op.data_encerramento) < new Date());
 const pag = computed(() => ({
   baixo: { cor: 'positive', rotulo: 'Paga em dia' },
   medio: { cor: 'orange-8', rotulo: 'Pagamento: atenção' },

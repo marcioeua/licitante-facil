@@ -106,6 +106,23 @@ export function pontuar(db, op, alerta, agora = new Date()) {
   return { nota: Math.min(100, nota), motivos, pagometro: pag };
 }
 
+// Agora no horário de Brasília, no mesmo formato de data_encerramento (o servidor roda em America/Sao_Paulo).
+const AGORA_LOCAL = "strftime('%Y-%m-%dT%H:%M:%S','now','localtime')";
+
+/**
+ * Tira da triagem as licitações cujo prazo de propostas já acabou (não dá mais para participar).
+ * Só mexe na etapa "triagem": nas outras etapas o prazo passar é normal (a disputa acontece depois).
+ */
+export function arquivarVencidas(db, uid = null) {
+  return db.prepare(`UPDATE negocios SET arquivado = 1, atualizado_em = datetime('now'),
+      notas = trim(coalesce(notas, '') || char(10) || 'Arquivado automaticamente: o prazo de propostas terminou em ' ||
+        (SELECT substr(o.data_encerramento, 9, 2) || '/' || substr(o.data_encerramento, 6, 2) || '/' || substr(o.data_encerramento, 1, 4)
+         FROM oportunidades o WHERE o.id = negocios.oportunidade_id) || '.')
+    WHERE arquivado = 0 AND etapa = 'triagem' ${uid ? 'AND usuario_id = ?' : ''}
+      AND oportunidade_id IN (SELECT id FROM oportunidades WHERE data_encerramento IS NOT NULL AND data_encerramento < ${AGORA_LOCAL})`)
+    .run(...(uid ? [uid] : [])).changes;
+}
+
 export function executarProspector(db, uid, { agora = new Date() } = {}) {
   const { config: cfg, ultimaExecucao } = lerConfig(db, uid, 'prospector');
   const alertas = db.prepare('SELECT * FROM alertas WHERE usuario_id = ?').all(uid).map(parseAlerta);
@@ -121,7 +138,9 @@ export function executarProspector(db, uid, { agora = new Date() } = {}) {
     : db.prepare("SELECT datetime('now', '-3 days') AS t").get().t;
   const candidatas = new Map();
   for (const a of alertas) {
-    const { itens } = buscarOportunidades(db, { ...filtrosDoAlerta(a), publicadasDesde: desde, tamanho: 100, ordem: 'publicacao' }, uid);
+    // Só licitações com pelo menos 24 horas até o fim das propostas (tempo de preparar a participação).
+    const { itens } = buscarOportunidades(db, { ...filtrosDoAlerta(a), publicadasDesde: desde, tamanho: 100, ordem: 'publicacao',
+      encerraDepoisDe: new Date(agora.getTime() + 86400000) }, uid);
     for (const op of itens) {
       if (op.negocio_id) continue;
       const p = pontuar(db, op, a, agora);
