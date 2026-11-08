@@ -51,8 +51,10 @@
     <q-page-container>
       <router-view />
       <!-- Atalho para o assistente de IA em todas as páginas -->
-      <q-page-sticky v-if="$route.name !== 'assistente'" position="bottom-right" :offset="[18, 18]">
-        <q-btn fab color="primary" icon="auto_awesome" :label="$q.screen.gt.xs ? 'Pergunte à IA' : ''" no-caps :to="{ name: 'assistente' }" />
+      <q-page-sticky v-if="$route.name !== 'assistente'" position="bottom-right" :offset="[14, 14]">
+        <q-btn fab-mini color="primary" icon="auto_awesome" :label="$q.screen.gt.xs ? 'Pergunte à IA' : ''" no-caps size="sm" padding="6px 12px" class="botao-ia" :to="{ name: 'assistente' }">
+          <q-tooltip v-if="!$q.screen.gt.xs">Pergunte à IA</q-tooltip>
+        </q-btn>
       </q-page-sticky>
     </q-page-container>
   </q-layout>
@@ -109,3 +111,8 @@ async function sair() {
   router.push({ name: 'login' });
 }
 </script>
+
+<style scoped>
+.botao-ia { font-size: 13px; opacity: 0.92; }
+.botao-ia:hover { opacity: 1; }
+</style>
