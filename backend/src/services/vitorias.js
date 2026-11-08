@@ -6,6 +6,7 @@
 import { config } from '../config.js';
 import { tx } from '../db/index.js';
 import { portalDoLink } from './portais.js';
+import { completarMarcas, marcaDoItem } from './marcas.js';
 
 const DADOS_ABERTOS = process.env.DADOS_ABERTOS_URL ?? 'https://dadosabertos.compras.gov.br';
 const ENDPOINT = '/modulo-contratacoes/3_consultarResultadoItensContratacoes_PNCP_14133';
@@ -193,7 +194,10 @@ export function produtosVendidos(itens) {
       orgaos: new Set(l.map((i) => i.orgaoCnpj).filter(Boolean)).size,
       ufs: [...new Set(l.map((i) => i.uf).filter(Boolean))].sort(),
       ultima: datas.at(-1) ?? null,
-      exemplos: l.slice(0, 5).map((i) => ({ descricao: i.descricao, valorUnitario: i.valorUnitario, unidade: i.unidade, orgao: i.orgao, uf: i.uf, data: i.data, linkPncp: i.linkPncp })),
+      marcas: [...Map.groupBy(l.filter((i) => i.marca), (i) => normalizar(i.marca).replace(/\s+/g, ' ').trim())]
+        .map(([, m]) => ({ marca: maisComum(m.map((i) => i.marca.trim())), vezes: m.length, valor: m.reduce((a, i) => a + (i.valorTotal || 0), 0) }))
+        .sort((a, b) => b.vezes - a.vezes || b.valor - a.valor),
+      exemplos: l.slice(0, 5).map((i) => ({ marca: i.marca, descricao: i.descricao, valorUnitario: i.valorUnitario, unidade: i.unidade, orgao: i.orgao, uf: i.uf, data: i.data, linkPncp: i.linkPncp })),
     };
   }).sort((a, b) => b.valor - a.valor || b.vezes - a.vezes);
 }
@@ -206,6 +210,9 @@ export async function vitoriasDoFornecedor(db, ni, { anos = 3, fetchImpl = fetch
   const comprasRecentes = [...itens].sort((a, b) => String(b.data).localeCompare(String(a.data))).map((i) => i.compra);
   const pendentes = await completarCompras(db, comprasRecentes, fetchImpl, { orcamentoMs: 6000 });
   if (pendentes) completarCompras(db, comprasRecentes, fetchImpl, { orcamentoMs: 240000, maxCompras: 300 }).catch(() => {});
+  const recentesPrimeiro = [...itens].sort((a, b) => String(b.data).localeCompare(String(a.data)));
+  const marcasPendentes = await completarMarcas(db, cnpj, recentesPrimeiro, fetchImpl, { orcamentoMs: 6000 });
+  if (marcasPendentes) completarMarcas(db, cnpj, recentesPrimeiro, fetchImpl, { orcamentoMs: 300000, maxCompras: 400 }).catch(() => {});
 
   const det = db.prepare('SELECT descricao, unidade, quantidade, valor_unit_estimado, situacao, criterio FROM compra_itens WHERE compra_controle = ? AND numero_item = ?');
   const completos = itens.map((i) => {
@@ -216,6 +223,7 @@ export async function vitoriasDoFornecedor(db, ni, { anos = 3, fetchImpl = fetch
     return {
       ...i,
       titulo: tituloItem(d?.descricao),
+      marca: marcaDoItem(db, i.compra, i.item, cnpj),
       descricao: d?.descricao ?? null,
       unidade: d?.unidade ?? null,
       quantidadeEstimada: d?.quantidade ?? null,
@@ -249,6 +257,7 @@ export async function vitoriasDoFornecedor(db, ni, { anos = 3, fetchImpl = fetch
       compras: new Set(completos.map((i) => i.compra)).size,
       valor: soma(completos),
       orgaos: new Set(completos.map((i) => i.orgaoCnpj).filter(Boolean)).size,
+      comMarca: completos.filter((i) => i.marca).length,
       beneficioMeEpp: completos.filter((i) => i.beneficioMeEpp).length,
       descontoMedio: comDesconto.length ? comDesconto.reduce((a, i) => a + i.desconto, 0) / comDesconto.length : null,
     },
@@ -259,6 +268,11 @@ export async function vitoriasDoFornecedor(db, ni, { anos = 3, fetchImpl = fetch
       .sort((a, b) => b.valor - a.valor).slice(0, 10),
     produtos: produtosVendidos(completos).slice(0, 200),
     itensSemDescricao: completos.filter((i) => !i.titulo).length,
+    marcas: [...Map.groupBy(completos.filter((i) => i.marca), (i) => normalizar(i.marca).replace(/\s+/g, ' ').trim())]
+      .map(([, m]) => ({ marca: maisComum(m.map((i) => i.marca.trim())), vezes: m.length, valor: soma(m), produtos: [...new Set(m.map((i) => i.titulo).filter(Boolean))].slice(0, 5) }))
+      .sort((a, b) => b.valor - a.valor).slice(0, 100),
+    itensComMarca: completos.filter((i) => i.marca).length,
+    marcasPendentes,
     itens: completos.slice(0, 500),
     detalhesPendentes: pendentes,
     falhas,

@@ -131,7 +131,14 @@
                     <div class="text-caption text-grey-7">O que esta empresa venceu nas licitações, agrupado por produto. Clique para ver os itens.</div>
                   </div>
                 </div>
-                <q-input v-model="filtroProdutos" dense outlined clearable placeholder="Procurar produto (ex.: caneta, papel, detergente)" class="q-mb-sm" @update:model-value="mostrarProdutos = 10">
+                <div v-if="vit.marcas?.length" class="q-mb-sm">
+                  <div class="text-caption text-weight-medium text-grey-8 q-mb-xs">Marcas que mais vende</div>
+                  <q-chip v-for="m in vit.marcas.slice(0, 12)" :key="m.marca" dense clickable color="deep-purple-1" text-color="deep-purple-9" class="marca-badge" @click="filtroProdutos = m.marca; mostrarProdutos = 10">
+                    {{ m.marca }}<span class="q-ml-xs text-caption">· {{ brlCurto(m.valor) }}</span>
+                    <q-tooltip>{{ m.vezes }} item(ns): {{ m.produtos.join(', ') }}</q-tooltip>
+                  </q-chip>
+                </div>
+                <q-input v-model="filtroProdutos" dense outlined clearable placeholder="Procurar produto ou marca (ex.: caneta, papel, BIC)" class="q-mb-sm" @update:model-value="mostrarProdutos = 10">
                   <template #prepend><q-icon name="search" /></template>
                 </q-input>
                 <div v-if="!produtosFiltrados.length" class="text-grey-7 q-pa-sm">Nenhum produto com esse nome.</div>
@@ -141,6 +148,11 @@
                       <q-item-label class="text-weight-medium">{{ pr.nome }}</q-item-label>
                       <q-item-label caption>
                         {{ num(pr.vezes) }} item(ns) vencido(s) em {{ num(pr.compras) }} licitação(ões) · {{ num(pr.orgaos) }} órgão(s)<span v-if="pr.ufs.length"> · {{ pr.ufs.slice(0, 6).join(', ') }}{{ pr.ufs.length > 6 ? '…' : '' }}</span> · último em {{ data(pr.ultima) }}
+                      </q-item-label>
+                      <q-item-label v-if="pr.marcas?.length" class="q-mt-xs">
+                        <span class="text-caption text-grey-7 q-mr-xs">Marca:</span>
+                        <q-badge v-for="m in pr.marcas.slice(0, 4)" :key="m.marca" color="deep-purple-1" text-color="deep-purple-9" class="q-mr-xs q-mb-xs marca-badge" :label="pr.marcas.length > 1 ? `${m.marca} (${m.vezes})` : m.marca" />
+                        <span v-if="pr.marcas.length > 4" class="text-caption text-grey-7">+{{ pr.marcas.length - 4 }}</span>
                       </q-item-label>
                       <q-item-label v-if="pr.precoMediano != null" caption>
                         Preço unitário<span v-if="pr.unidade"> ({{ pr.unidade }})</span>:
@@ -158,6 +170,7 @@
                 </div>
                 <div class="text-caption text-grey-6 q-mt-xs">
                   Valores homologados nas licitações vencidas (dados oficiais).
+                  Marca: como a empresa declarou no Compras.gov.br (a fonte guarda até 20 letras; outros portais não publicam a marca)<span v-if="vit.resumo.itens"> · encontrada em {{ num(vit.itensComMarca) }} de {{ num(vit.resumo.itens) }} itens</span><span v-if="vit.marcasPendentes"> (ainda buscando; abra de novo em alguns minutos)</span>.
                   <span v-if="vit.itensSemDescricao">{{ num(vit.itensSemDescricao) }} item(ns) ainda sem descrição do PNCP não entraram na lista<span v-if="vit.detalhesPendentes"> (carregando; abra de novo em alguns minutos)</span>.</span>
                 </div>
               </div>
@@ -190,6 +203,7 @@
                 </div>
                 <div class="row items-center q-mt-xs q-gutter-x-sm">
                   <div class="text-subtitle1 text-weight-bold">Item {{ i.item }} — {{ i.titulo || 'Descrição não informada' }}</div>
+                  <q-badge v-if="i.marca" color="deep-purple-1" text-color="deep-purple-9" class="marca-badge" :label="`Marca: ${i.marca}`" />
                   <q-badge v-if="i.situacaoItem" color="green-1" text-color="green-9" :label="i.situacaoItem" />
                   <q-badge v-if="i.beneficioMeEpp" color="teal-1" text-color="teal-9" label="Benefício ME/EPP" />
                 </div>
@@ -411,7 +425,7 @@ const itensFiltrados = computed(() => {
   const termos = semAcento(filtroItens.value).split(/\s+/).filter(Boolean);
   const lista = (vit.value?.itens ?? []).filter((i) => {
     if (!termos.length) return true;
-    const texto = semAcento([i.titulo, i.descricao, i.orgao, i.unidadeCompradora, i.municipio, i.uf, i.portal, i.modalidade, i.numeroCompra].join(' '));
+    const texto = semAcento([i.titulo, i.marca, i.descricao, i.orgao, i.unidadeCompradora, i.municipio, i.uf, i.portal, i.modalidade, i.numeroCompra].join(' '));
     return termos.every((t) => texto.includes(t));
   });
   const chave = { data: (i) => i.data ?? '', valor: (i) => i.valorTotal ?? 0, desconto: (i) => i.desconto ?? -1 }[ordemItens.value];
@@ -419,9 +433,14 @@ const itensFiltrados = computed(() => {
 });
 const produtosFiltrados = computed(() => {
   const termos = semAcento(filtroProdutos.value).split(/\s+/).filter(Boolean);
-  return (vit.value?.produtos ?? []).filter((pr) => termos.every((t) => semAcento(`${pr.nome} ${pr.chave}`).includes(t)));
+  return (vit.value?.produtos ?? []).filter((pr) => termos.every((t) => semAcento(`${pr.nome} ${pr.chave} ${(pr.marcas ?? []).map((m) => m.marca).join(' ')}`).includes(t)));
 });
-const pctValor = (v) => (vit.value?.resumo.valor ? `${((v / vit.value.resumo.valor) * 100).toLocaleString('pt-BR', { maximumFractionDigits: v / vit.value.resumo.valor < 0.01 ? 1 : 0 })}%` : '—');
+const pctValor = (v) => {
+  const t = vit.value?.resumo.valor;
+  if (!t) return '—';
+  const f = v / t;
+  return f < 0.001 ? 'menos de 0,1%' : `${(f * 100).toLocaleString('pt-BR', { maximumFractionDigits: f < 0.01 ? 1 : 0 })}%`;
+};
 function verItensDoProduto(pr) {
   filtroItens.value = pr.chave;
   mostrarItens.value = 20;
@@ -502,6 +521,7 @@ onMounted(async () => {
 <style scoped>
 .vit-item { border: 1px solid #e3e6ea; border-radius: 10px; padding: 14px 16px; }
 .vit-caixa { background: #f6f8fa; border-radius: 8px; padding: 10px 12px; height: 100%; }
+.marca-badge { font-weight: 600; }
 .produtos-caixa { border: 1px solid rgba(29, 78, 216, 0.25); background: rgba(29, 78, 216, 0.04); border-radius: 10px; padding: 12px; }
 .vit-vencedor { background: #f1f8f4; }
 .vit-rotulo { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: #6b7280; }

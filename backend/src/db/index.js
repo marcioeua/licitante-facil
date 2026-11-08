@@ -436,6 +436,10 @@ CREATE TABLE IF NOT EXISTS empresas_cadastro (cnpj TEXT PRIMARY KEY, dados TEXT 
 -- Vitórias por fornecedor (Compras.gov.br Dados Abertos), por janela de 365 dias.
 CREATE TABLE IF NOT EXISTS vitorias_cache (cnpj TEXT NOT NULL, janela TEXT NOT NULL, dados TEXT NOT NULL, buscado_em TEXT NOT NULL, PRIMARY KEY (cnpj, janela));
 
+-- Marca declarada pelo vencedor de cada item (Compras.gov.br, pesquisa de preço). marca NULL = consultado sem marca.
+CREATE TABLE IF NOT EXISTS marcas_itens (compra_controle TEXT NOT NULL, numero_item INTEGER NOT NULL, fornecedor_ni TEXT NOT NULL, marca TEXT, PRIMARY KEY (compra_controle, numero_item, fornecedor_ni));
+CREATE TABLE IF NOT EXISTS marcas_compras (compra_controle TEXT PRIMARY KEY, buscado_em TEXT NOT NULL, achou INTEGER NOT NULL DEFAULT 0);
+
 -- Cabeçalho das compras (órgão, modalidade, número, abertura, portal), vindo do PNCP.
 CREATE TABLE IF NOT EXISTS compras_cabecalho (controle TEXT PRIMARY KEY, dados TEXT NOT NULL, buscado_em TEXT NOT NULL);
 

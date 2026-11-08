@@ -95,6 +95,16 @@ test('vitórias: janelas de 365 dias, paginação, cancelados fora, cache e desc
     porteFornecedorNome: 'ME', aplicacaoBeneficioMeepp: item === 1, ...extra });
   const fake = async (url) => {
     const u = new URL(String(url));
+    if (u.pathname.includes('2.1_consultarItens')) {
+      chamadas.marcas = (chamadas.marcas ?? 0) + 1;
+      if (u.searchParams.get('codigo') !== '05853163000130-1-000155/2026') return Response.json({ resultado: [] });
+      return Response.json({ resultado: [{ numeroItemPncp: 1, numeroItemCompra: 1, codItemCatalogo: 279310, idCompra: '92566505900232026', descricaoResumida: 'Caneta' }, { numeroItemPncp: 2, numeroItemCompra: 2, codItemCatalogo: null }] });
+    }
+    if (u.pathname.includes('pesquisa-preco')) {
+      assert.equal(u.searchParams.get('codigo'), '279310');
+      assert.equal(u.searchParams.get('idCompra'), '92566505900232026');
+      return Response.json({ resultado: [{ numeroItemCompra: 1, niFornecedor: '31650693000191', marca: 'BIC ' }, { numeroItemCompra: 1, niFornecedor: '11111111000191', marca: 'Faber' }] });
+    }
     if (u.hostname.includes('dadosabertos')) {
       chamadas.dados++;
       const ini = u.searchParams.get('dataResultadoPncpInicial');
@@ -109,10 +119,14 @@ test('vitórias: janelas de 365 dias, paginação, cancelados fora, cache e desc
     return new Response(null, { status: 500 });
   };
   const v = await vitoriasDoFornecedor(db, '31650693000191', { anos: 2, fetchImpl: fake });
-  assert.deepEqual({ ...v.resumo, descontoMedio: Math.round(v.resumo.descontoMedio * 1000) / 1000 }, { itens: 3, compras: 2, valor: 267578, orgaos: 1, beneficioMeEpp: 2, descontoMedio: 0.5 });
+  assert.deepEqual({ ...v.resumo, descontoMedio: Math.round(v.resumo.descontoMedio * 1000) / 1000 }, { itens: 3, compras: 2, valor: 267578, orgaos: 1, comMarca: 1, beneficioMeEpp: 2, descontoMedio: 0.5 });
   assert.deepEqual(v.porAno.map((a) => [a.chave, a.valor]), [['2025', 54078], ['2026', 213500]]);
   const card = v.itens.find((i) => i.valorUnitario === 115000);
   assert.equal(card.titulo, 'Caneta Esferográfica');
+  assert.equal(card.marca, 'BIC');
+  assert.equal(v.itens.find((i) => i.valorUnitario === 98500).marca, null, 'item sem código de catálogo: sem marca');
+  assert.deepEqual(v.marcas.map((m) => [m.marca, m.vezes]), [['BIC', 1]]);
+  assert.deepEqual(v.produtos.find((p) => p.chave === 'caneta esferografica').marcas.map((m) => m.marca), ['BIC']);
   assert.equal(card.situacaoItem, 'Homologado');
   assert.equal(card.desconto, 0.5);
   assert.deepEqual([card.orgao, card.modalidade, card.numeroCompra, card.anoCompra, card.portal, card.municipio], ['MUNICIPIO DE MARABA', 'Pregão - Eletrônico', '90074', 2026, 'Compras.gov.br', 'Marabá']);
@@ -123,6 +137,7 @@ test('vitórias: janelas de 365 dias, paginação, cancelados fora, cache e desc
   await vitoriasDoFornecedor(db, '31650693000191', { anos: 2, fetchImpl: fake });
   assert.equal(chamadas.dados, antes.dados, 'janelas em cache');
   assert.equal(chamadas.pncp, antes.pncp, 'não insiste no PNCP que acabou de falhar');
+  assert.equal(chamadas.marcas, antes.marcas, 'marcas já consultadas não são buscadas de novo');
 });
 
 test('produtos que o fornecedor vende: agrupa itens vencidos por produto', async () => {
