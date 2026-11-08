@@ -177,8 +177,8 @@ async function pesquisar() {
 }
 
 // Contratos
-const fc = reactive({ q: aba.value === 'contratos' ? route.query.q ?? '' : '', uf: null, fornecedor: null, orgao: null, pagina: 1 });
-const filtroNome = ref('');
+const fc = reactive({ q: aba.value === 'contratos' ? route.query.q ?? '' : '', uf: null, fornecedor: route.query.fornecedor ?? null, orgao: route.query.orgao ?? null, pagina: 1 });
+const filtroNome = ref(String(route.query.nome ?? ''));
 const contratos = ref(null);
 const carregandoContratos = ref(false);
 const paginasContratos = computed(() => (contratos.value ? Math.ceil(contratos.value.total / contratos.value.tamanho) : 0));

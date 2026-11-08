@@ -214,10 +214,12 @@
               </div>
             </q-card-section>
             <q-list separator>
-              <q-item v-for="c in p.clientes" :key="c.cnpj">
+              <q-item v-for="c in p.clientes" :key="c.cnpj" clickable
+                :to="{ name: 'historico', query: { aba: 'contratos', orgao: c.cnpj, fornecedor: p.cnpj, nome: `${p.nome} com ${c.nome}` } }">
                 <q-item-section>
                   <q-item-label>{{ c.nome }}</q-item-label>
                   <q-item-label caption>{{ c.municipio ? `${c.municipio}/` : '' }}{{ c.uf }} · {{ c.contratos }} contrato(s) · última {{ data(c.ultima) }}</q-item-label>
+                  <q-item-label caption class="text-primary">Ver os contratos com este cliente</q-item-label>
                 </q-item-section>
                 <q-item-section side class="items-end">
                   <div class="text-weight-medium text-dark">{{ brl(c.valor) }}</div>
@@ -233,7 +235,10 @@
               <thead><tr><th class="text-left">Item</th><th class="text-right">Preço unit.</th><th class="text-left">Unidade</th><th class="text-left">Comprador</th><th class="text-right">Data</th></tr></thead>
               <tbody>
                 <tr v-for="(i, k) in p.itens" :key="k">
-                  <td class="text-left" style="white-space: normal; max-width: 320px">{{ i.descricao }}</td>
+                  <td class="text-left" style="white-space: normal; max-width: 320px">
+                    <a v-if="linkPncp(i.compra_controle)" :href="linkPncp(i.compra_controle)" target="_blank" rel="noopener" class="text-primary">{{ i.descricao }}</a>
+                    <span v-else>{{ i.descricao }}</span>
+                  </td>
                   <td class="text-right">{{ brl2(i.valor_unitario) }}</td><td class="text-left">{{ i.unidade }}</td>
                   <td class="text-left" style="white-space: normal">{{ i.orgao ?? '—' }}</td><td class="text-right">{{ data(i.data_resultado) }}</td>
                 </tr>
@@ -245,8 +250,15 @@
           <q-card flat bordered class="lf-card">
             <q-card-section class="text-subtitle1 text-weight-medium q-pb-none">Contratos recentes</q-card-section>
             <q-list separator>
-              <q-item v-for="c in p.recentes" :key="c.id">
-                <q-item-section><q-item-label lines="2">{{ c.objeto }}</q-item-label><q-item-label caption>{{ c.orgao_nome }} · {{ c.municipio }}/{{ c.uf }}</q-item-label></q-item-section>
+              <q-item v-for="c in p.recentes" :key="c.id" :clickable="!!linkContrato(c.numero_controle_pncp)" @click="abrirExterno(linkContrato(c.numero_controle_pncp))">
+                <q-item-section>
+                  <q-item-label lines="2">{{ c.objeto }}</q-item-label>
+                  <q-item-label caption>{{ c.orgao_nome }} · {{ c.municipio }}/{{ c.uf }}</q-item-label>
+                  <q-item-label v-if="linkContrato(c.numero_controle_pncp)" caption class="text-primary q-mt-xs">
+                    <q-icon name="open_in_new" size="14px" /> Ver contrato no PNCP
+                    <a v-if="linkPncp(c.compra_controle)" :href="linkPncp(c.compra_controle)" target="_blank" rel="noopener" class="q-ml-md text-primary" @click.stop>Ver edital da licitação</a>
+                  </q-item-label>
+                </q-item-section>
                 <q-item-section side top class="text-right"><div class="text-weight-medium text-dark">{{ brl(c.valor_global) }}</div><div class="text-caption">{{ data(c.data_assinatura) }}</div></q-item-section>
               </q-item>
             </q-list>
@@ -362,6 +374,12 @@ const itensFiltrados = computed(() => {
   const chave = { data: (i) => i.data ?? '', valor: (i) => i.valorTotal ?? 0, desconto: (i) => i.desconto ?? -1 }[ordemItens.value];
   return [...lista].sort((a, b) => (chave(a) < chave(b) ? 1 : chave(a) > chave(b) ? -1 : 0));
 });
+const abrirExterno = (url) => { if (url) window.open(url, '_blank', 'noopener'); };
+// Número de controle do contrato no PNCP: CNPJ-2-SEQUENCIAL/ANO.
+function linkContrato(controle) {
+  const m = String(controle ?? '').match(/^(\d{14})-\d+-0*(\d+)\/(\d{4})$/);
+  return m ? `https://pncp.gov.br/app/contratos/${m[1]}/${m[3]}/${m[2]}` : null;
+}
 function linkPncp(controle) {
   const m = String(controle ?? '').match(/^(\d{14})-\d+-0*(\d+)\/(\d{4})$/);
   return m ? `https://pncp.gov.br/app/editais/${m[1]}/${m[3]}/${m[2]}` : null;

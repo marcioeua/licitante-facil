@@ -135,12 +135,12 @@ export async function perfilEmpresa(db, ni, q = {}, { fetchImpl } = {}) {
     GROUP BY c.fornecedor_ni ORDER BY clientesEmComum DESC, valor DESC LIMIT 10`).all(p);
 
   // Itens vencidos com preço unitário (das compras já consultadas na pesquisa de preços).
-  const itens = db.prepare(`SELECT ci.descricao, ci.unidade, r.quantidade, r.valor_unitario, r.data_resultado, r.porte,
+  const itens = db.prepare(`SELECT ci.descricao, ci.unidade, r.quantidade, r.valor_unitario, r.data_resultado, r.porte, r.compra_controle,
       (SELECT max(orgao_nome) FROM contratos x WHERE x.compra_controle = r.compra_controle) AS orgao
     FROM item_resultados r JOIN compra_itens ci ON ci.compra_controle = r.compra_controle AND ci.numero_item = r.numero_item
     WHERE r.fornecedor_ni = :ni ORDER BY r.data_resultado DESC LIMIT 30`).all({ ni: cnpj });
 
-  const recentes = db.prepare(`SELECT c.id, c.objeto, c.valor_global, c.orgao_nome, c.uf, c.municipio, c.data_assinatura ${base}
+  const recentes = db.prepare(`SELECT c.id, c.objeto, c.valor_global, c.orgao_nome, c.uf, c.municipio, c.data_assinatura, c.numero_controle_pncp, c.compra_controle ${base}
     ORDER BY c.data_assinatura DESC LIMIT 20`).all(p);
 
   return {
