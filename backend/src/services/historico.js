@@ -261,7 +261,12 @@ function mediana(v) {
  * Pesquisa de preços: itens homologados cuja descrição contém os termos.
  * Consulta no PNCP até `maxCompras` compras novas relacionadas (pelos contratos) e guarda tudo.
  */
-export async function pesquisarPrecos(db, q = {}, { fetchImpl = fetch, maxCompras = 12, concorrencia = 3 } = {}) {
+export async function pesquisarPrecos(db, q = {}, { fetchImpl = fetch, maxCompras = 12, concorrencia = 3, prazoMs = null } = {}) {
+  // Com prazo: para de esperar o PNCP e responde com o que já tem (as consultas em andamento terminam em segundo plano).
+  const fim = prazoMs ? Date.now() + prazoMs : Infinity;
+  let incompleto = false;
+  const comPrazo = (pr) => (fim === Infinity ? pr : Promise.race([pr,
+    new Promise((_, rej) => setTimeout(() => { incompleto = true; rej(new Error('prazo')); }, Math.max(0, fim - Date.now())))]));
   const termos = norm(q.q).match(/[a-z0-9]+/g)?.filter((t) => t.length > 1) ?? [];
   if (!termos.length) return { termos: [], grupos: [], itens: [], consultadas: 0 };
   const fts = ftsQuery(q.q);
@@ -276,8 +281,9 @@ export async function pesquisarPrecos(db, q = {}, { fetchImpl = fetch, maxCompra
     ORDER BY c.data_assinatura DESC LIMIT :lim`).all(p).map((r) => r.compra_controle);
   let falhas = 0;
   for (let i = 0; i < novas.length; i += concorrencia) {
+    if (Date.now() >= fim) { incompleto = true; break; }
     const lote = novas.slice(i, i + concorrencia);
-    const r = await Promise.allSettled(lote.map((c) => buscarItensDaCompra(db, c, termos, { fetchImpl })));
+    const r = await Promise.allSettled(lote.map((c) => comPrazo(buscarItensDaCompra(db, c, termos, { fetchImpl }))));
     falhas += r.filter((x) => x.status === 'rejected').length;
   }
   // Itens já guardados que combinam, mas cujo resultado ainda não foi buscado (de pesquisas anteriores).
@@ -287,7 +293,8 @@ export async function pesquisarPrecos(db, q = {}, { fetchImpl = fetch, maxCompra
     .filter((it) => temTodosOsTermos(it.descricao, termos));
   const porCompra = Map.groupBy(pendentes, (x) => x.compra_controle);
   for (const [controle] of porCompra) {
-    try { await buscarItensDaCompra(db, controle, termos, { fetchImpl }); } catch { falhas++; }
+    if (Date.now() >= fim) { incompleto = true; break; }
+    try { await comPrazo(buscarItensDaCompra(db, controle, termos, { fetchImpl })); } catch { falhas++; }
   }
 
   const linhas = db.prepare(`SELECT ci.descricao, ci.unidade, ci.valor_unit_estimado, r.*, c.orgao_nome, c.uf, c.municipio
@@ -315,6 +322,7 @@ export async function pesquisarPrecos(db, q = {}, { fetchImpl = fetch, maxCompra
     termos,
     consultadas: novas.length,
     falhas,
+    incompleto,
     grupos,
     itens: linhas.slice(0, 100).map((l) => ({
       descricao: l.descricao, unidade: l.unidade, quantidade: l.quantidade, valorUnitario: l.valor_unitario,

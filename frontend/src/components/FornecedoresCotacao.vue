@@ -1,6 +1,13 @@
 <template>
   <div>
-    <q-card flat bordered class="lf-card q-mb-md">
+    <q-banner v-if="!itens.length" rounded class="bg-amber-1 text-amber-10 q-mb-md">
+      <template #avatar><q-icon name="inventory_2" /></template>
+      Esta sala ainda não tem itens.
+      <span v-if="negocio.numero_controle_pncp">Clique em <b>Importar itens do PNCP</b> (no topo)</span><span v-else>Clique em <b>Adicionar item</b> (no topo)</span>
+      para buscar fornecedores item por item e montar a planilha de cotação. Enquanto isso, use a busca por produto abaixo.
+    </q-banner>
+
+    <q-card v-if="itens.length" flat bordered class="lf-card q-mb-md">
       <q-card-section>
         <div class="text-subtitle1 text-weight-bold">Pedido de cotação</div>
         <div class="text-body2 text-grey-7">Baixe a planilha com os itens e mande o e-mail para os fornecedores. Quando receber os preços, preencha o <b>custo</b> em “1. Preparar preços”.</div>
@@ -21,8 +28,16 @@
     <div class="text-subtitle1 text-weight-bold q-mb-xs">Quem vende cada item</div>
     <div class="text-body2 text-grey-7 q-mb-sm">Empresas que <b>venceram itens parecidos</b> em compras públicas (PNCP), com os preços homologados. O contato vem do cadastro público na Receita (às vezes é o do contador).</div>
 
-    <q-card v-for="i in itens" :key="i.id" flat bordered class="lf-card q-mb-md">
-      <q-card-section class="row items-center no-wrap q-py-sm">
+    <q-card v-for="i in cartoes" :key="i.id" flat bordered class="lf-card q-mb-md" :class="{ 'cartao-livre': i.livre }">
+      <q-card-section v-if="i.livre" class="q-pb-sm">
+        <div class="text-weight-bold"><q-icon name="search" class="q-mr-xs" />Buscar fornecedores por produto</div>
+        <div class="text-caption text-grey-7 q-mb-sm">Digite o produto ou serviço (ex.: copo descartável, detergente).</div>
+        <div class="row q-gutter-sm items-center">
+          <q-input v-model="termos.livre" dense outlined class="col" placeholder="Produto ou serviço" @keyup.enter="buscar(i, termos.livre)" />
+          <q-btn unelevated no-caps color="primary" icon="person_search" label="Buscar" :loading="carregando.livre" :disable="(termos.livre ?? '').trim().length < 3" @click="buscar(i, termos.livre)" />
+        </div>
+      </q-card-section>
+      <q-card-section v-else class="row items-center no-wrap q-py-sm">
         <div class="col">
           <div class="text-weight-bold">{{ i.numero_item ? `Item ${i.numero_item} — ` : '' }}{{ titulo(i.descricao) }}</div>
           <div class="text-caption text-grey-7">{{ i.quantidade ? `${num(i.quantidade)} ${i.unidade || 'un.'}` : '' }}{{ i.valor_estimado ? ` · estimado ${brl2(i.valor_estimado)}` : '' }}{{ i.custo != null ? ` · seu custo ${brl2(i.custo)}` : '' }}</div>
@@ -31,10 +46,13 @@
       </q-card-section>
 
       <template v-if="res[i.id]">
-        <q-card-section class="q-pt-none row items-center q-gutter-sm">
+        <q-card-section v-if="!i.livre" class="q-pt-none row items-center q-gutter-sm">
           <q-input v-model="termos[i.id]" dense outlined label="Buscar por" style="min-width: 220px" @keyup.enter="buscar(i, termos[i.id])" />
           <q-btn flat dense no-caps icon="search" label="Buscar de novo" :loading="carregando[i.id]" @click="buscar(i, termos[i.id])" />
           <span v-if="res[i.id].grupos?.[0]" class="text-caption text-grey-7">Mediana paga: <b>{{ brl2(res[i.id].grupos[0].mediana) }}</b> por {{ res[i.id].grupos[0].unidade }} ({{ res[i.id].grupos[0].quantidade }} compras)</span>
+        </q-card-section>
+        <q-card-section v-if="res[i.id].incompleto" class="q-pt-none">
+          <q-banner dense rounded class="bg-blue-1 text-blue-10">O PNCP está lento agora: mostrando o que já foi encontrado. Busque de novo em alguns minutos para ver mais fornecedores.</q-banner>
         </q-card-section>
         <q-card-section v-if="!res[i.id].fornecedores.length" class="q-pt-none text-grey-7">Nenhum vencedor encontrado. Tente palavras mais curtas (ex.: só o nome do produto).</q-card-section>
         <q-list v-else separator class="q-px-sm q-pb-sm">
@@ -93,6 +111,10 @@ const titulo = (d) => {
 };
 const telefone = (t) => (t ? String(t).replace(/^(\d{2})(\d{4,5})(\d{4})$/, '($1) $2-$3') : '');
 
+// Cartão de busca livre (por produto) + um cartão por item da sala.
+const objetoCurto = String(props.negocio.objeto ?? props.negocio.titulo ?? '').replace(/^(aquisi[cç][aã]o|contrata[cç][aã]o|fornecimento|registro de pre[cç]os)( de| para)?( eventual)?( aquisi[cç][aã]o)?( de)?\s+/i, '').split(/[,;.(]/)[0].trim().slice(0, 60);
+termos.value.livre = objetoCurto;
+const cartoes = computed(() => [{ id: 'livre', livre: true, descricao: objetoCurto }, ...props.itens]);
 const assunto = computed(() => `Pedido de cotação — ${props.negocio.objeto ? titulo(props.negocio.objeto).slice(0, 60) : props.negocio.titulo.slice(0, 60)}`);
 const textoEmail = computed(() => [
   'Prezados,',
@@ -111,7 +133,8 @@ const textoEmail = computed(() => [
 async function buscar(i, q) {
   carregando.value[i.id] = true;
   try {
-    const r = (await api.get(`/disputa/itens/${i.id}/fornecedores`, { params: q ? { q } : {}, timeout: 120000 })).data;
+    const url = i.livre ? `/disputa/negocio/${props.negocio.id}/fornecedores` : `/disputa/itens/${i.id}/fornecedores`;
+    const r = (await api.get(url, { params: q ? { q } : {}, timeout: 120000 })).data;
     res.value[i.id] = r;
     termos.value[i.id] = r.q;
   } finally {
@@ -155,3 +178,7 @@ function baixarPlanilha() {
   setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 5000);
 }
 </script>
+
+<style scoped>
+.cartao-livre { border-color: #1d4ed8; }
+</style>

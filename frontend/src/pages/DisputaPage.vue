@@ -43,7 +43,7 @@
           </div>
         </div>
 
-        <div v-if="modo !== 'chat' && !sala.itens.length" class="text-center text-grey-7 q-pa-xl">
+        <div v-if="!['chat', 'fornecedores'].includes(modo) && !sala.itens.length" class="text-center text-grey-7 q-pa-xl">
           <q-icon name="inventory_2" size="48px" class="q-mb-sm" /><div>Nenhum item ainda.</div>
           <div class="text-body2">Importe os itens do PNCP ou adicione manualmente.</div>
         </div>

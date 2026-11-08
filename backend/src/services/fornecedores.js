@@ -36,9 +36,10 @@ export async function fornecedoresDoItem(db, descricao, { q, uf, objeto, fetchIm
   const assunto = assuntoDoObjeto(objeto);
   const pesquisar = async (termo) => {
     // Primeiro pelo próprio produto; depois pelo assunto da licitação (contratos descrevem o objeto de forma geral).
-    let r = await pesquisarPrecos(db, { q: termo }, { fetchImpl, maxCompras: 10 });
+    let r = await pesquisarPrecos(db, { q: termo }, { fetchImpl, maxCompras: 10, prazoMs: 20000 });
     if (assunto && new Set(r.itens.map((i) => i.fornecedorNi)).size < 5) {
-      r = await pesquisarPrecos(db, { q: termo, assunto }, { fetchImpl, maxCompras: 20 });
+      const r2 = await pesquisarPrecos(db, { q: termo, assunto }, { fetchImpl, maxCompras: 20, prazoMs: 25000 });
+      r = { ...r2, incompleto: r.incompleto || r2.incompleto };
     }
     return r;
   };
@@ -72,7 +73,7 @@ export async function fornecedoresDoItem(db, descricao, { q, uf, objeto, fetchIm
     // Quem atende o mesmo estado e vendeu mais vezes aparece primeiro.
     .sort((a, b) => (uf ? Number(b.ufsAtendidas.includes(uf)) - Number(a.ufsAtendidas.includes(uf)) : 0) || b.vitorias - a.vitorias || (b.ultimaVenda ?? '').localeCompare(a.ultimaVenda ?? ''))
     .slice(0, 15);
-  return { q: busca, assunto: assunto || null, grupos: r.grupos.slice(0, 3), fornecedores };
+  return { q: busca, assunto: assunto || null, grupos: r.grupos.slice(0, 3), fornecedores, incompleto: !!r.incompleto };
 }
 
 /** Contato público do fornecedor (cadastro na Receita). */

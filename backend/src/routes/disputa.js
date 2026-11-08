@@ -153,6 +153,22 @@ export default async function (app) {
       return reply.code(502).send({ erro: 'Não foi possível consultar o PNCP agora. Tente novamente em instantes.' });
     }
   });
+  // Busca livre por produto (funciona mesmo sem itens na sala).
+  app.get('/negocio/:id/fornecedores', async (req, reply) => {
+    const n = negocio(req.usuarioId, req.params.id);
+    const q = String(req.query.q ?? '').trim();
+    if (q.length < 3) return reply.code(400).send({ erro: 'Digite pelo menos 3 letras do produto.' });
+    try {
+      // O assunto da licitação só ajuda quando o produto digitado é do mesmo assunto; senão, usa o próprio texto.
+      const norm = (t) => String(t ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const objeto = n.objeto ?? n.titulo;
+      const mesmoAssunto = norm(q).split(/\s+/).some((w) => w.length >= 4 && norm(objeto).includes(w.slice(0, 5)));
+      return await fornecedoresDoItem(db, q, { uf: n.uf, objeto: mesmoAssunto ? objeto : `material ${q}`, fetchImpl: app.fetchPncp });
+    } catch (e) {
+      req.log.warn(e);
+      return reply.code(502).send({ erro: 'Não foi possível consultar o PNCP agora. Tente novamente em instantes.' });
+    }
+  });
   app.get('/fornecedores/:ni/contato', async (req, reply) => {
     const ni = String(req.params.ni).replace(/\D/g, '');
     if (ni.length !== 14) return reply.code(400).send({ erro: 'CNPJ inválido.' });

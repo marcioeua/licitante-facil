@@ -151,3 +151,17 @@ test('agente fornecedor: assunto da licitação a partir do objeto', async () =>
   assert.equal(assuntoDoObjeto('Registro de preços para eventual aquisição de gêneros alimentícios'), 'generos alimenticios');
   assert.equal(assuntoDoObjeto('Contratação de empresa especializada em manutenção predial'), 'manutencao predial');
 });
+
+test('agente fornecedor: busca por produto na sala sem itens', async () => {
+  const db = openDatabase(':memory:');
+  const ins = db.prepare('INSERT INTO compra_itens (compra_controle, numero_item, descricao, unidade, quantidade, valor_unit_estimado, tem_resultado, resultado_buscado) VALUES (?, 1, ?, ?, 10, 5, 1, 1)');
+  const res = db.prepare("INSERT INTO item_resultados (compra_controle, numero_item, sequencial, fornecedor_ni, fornecedor_nome, porte, quantidade, valor_unitario, valor_total, data_resultado) VALUES (?, 1, 1, ?, ?, 'ME', 10, ?, ?, '2026-10-01')");
+  ins.run('11111111000111-1-000009/2026', 'Copo descartável 200 ml pacote com 100', 'Pacote');
+  res.run('11111111000111-1-000009/2026', '11222333000181', 'COPOS BAHIA LTDA', 4.5, 45);
+  const app = await buildApp({ db, serveFrontend: false, ia: null, fetchImpl: async () => Response.json([]) });
+  const cookie = (await app.inject({ method: 'POST', url: '/api/auth/cadastro', payload: { nome: 'Teste', email: 'l@e.com', senha: 'senha-segura-1' } })).headers['set-cookie'].split(';')[0];
+  const neg = (await app.inject({ method: 'POST', url: '/api/negocios', payload: { titulo: 'Aquisição de copos descartáveis' }, headers: { cookie } })).json();
+  assert.equal((await app.inject({ method: 'GET', url: `/api/disputa/negocio/${neg.id}/fornecedores?q=co`, headers: { cookie } })).statusCode, 400);
+  const r = (await app.inject({ method: 'GET', url: `/api/disputa/negocio/${neg.id}/fornecedores?q=copo%20descartavel`, headers: { cookie } })).json();
+  assert.deepEqual(r.fornecedores.map((f) => [f.nome, f.precoMediano]), [['COPOS BAHIA LTDA', 4.5]]);
+});
