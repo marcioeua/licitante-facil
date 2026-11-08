@@ -97,6 +97,14 @@ export default async function (app) {
     return recarregar(it.id);
   });
 
+  // Zera os lances registrados da sala (ex.: depois de um teste). Mantém itens, custos e preços mínimos.
+  app.delete('/negocio/:id/lances', async (req) => {
+    const n = negocio(req.usuarioId, req.params.id);
+    db.prepare('DELETE FROM disputa_lances WHERE item_id IN (SELECT id FROM disputa_itens WHERE negocio_id = ?)').run(n.id);
+    db.prepare("UPDATE disputa_itens SET melhor_lance = NULL, meu_lance = NULL, situacao = 'pendente', atualizado_em = datetime('now') WHERE negocio_id = ?").run(n.id);
+    return { ok: true };
+  });
+
   // Desfaz o último registro (erro de digitação na hora da disputa).
   app.delete('/itens/:id/lances/ultimo', async (req) => {
     const it = item(req.usuarioId, req.params.id);

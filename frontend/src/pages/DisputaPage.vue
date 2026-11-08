@@ -105,6 +105,7 @@
               <q-btn flat dense no-caps :icon="som ? 'notifications_active' : 'notifications_off'" :color="som ? 'primary' : 'grey-7'" :label="som ? 'Som ligado' : 'Som desligado'" @click="alternarSom" />
               <q-input v-model.number="intervalo" type="number" min="0" dense outlined style="width: 210px" label="Intervalo entre seus lances (s)" hint="Confira no edital" @update:model-value="guardarIntervalo" />
               <q-space />
+              <q-btn flat dense no-caps icon="restart_alt" color="grey-8" label="Zerar lances" @click="zerarLances" />
               <q-btn flat dense no-caps icon="keyboard" label="Atalhos" @click="ajudaAtalhos = !ajudaAtalhos" />
             </q-card-section>
             <q-slide-transition>
@@ -399,6 +400,15 @@ async function registrar(i, tipo, valor) {
   if (novo.sugestao.estado === 'parar') tocar('parar');
   else if (tipo === 'melhor' && novo.sugestao.estado === 'cobrir') tocar('coberto');
   if (tipo === 'melhor') digitado.value[i.id] = '';
+}
+function zerarLances() {
+  $q.dialog({ title: 'Zerar os lances desta sala?', message: 'Apaga os lances registrados aqui (melhor da sala e seus lances) e volta os itens para "Aguardando". Custos, margens e preços mínimos continuam. Nada muda no portal.',
+    cancel: { flat: true, label: 'Cancelar' }, ok: { label: 'Zerar', color: 'negative', unelevated: true } })
+    .onOk(async () => {
+      await api.delete(`/disputa/negocio/${route.params.id}/lances`);
+      await carregar();
+      modo.value = 'disputa';
+    });
 }
 async function desfazer(i) {
   trocar((await api.delete(`/disputa/itens/${i.id}/lances/ultimo`)).data);

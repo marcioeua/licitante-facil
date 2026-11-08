@@ -165,3 +165,16 @@ test('agente fornecedor: busca por produto na sala sem itens', async () => {
   const r = (await app.inject({ method: 'GET', url: `/api/disputa/negocio/${neg.id}/fornecedores?q=copo%20descartavel`, headers: { cookie } })).json();
   assert.deepEqual(r.fornecedores.map((f) => [f.nome, f.precoMediano]), [['COPOS BAHIA LTDA', 4.5]]);
 });
+
+test('zerar lances da sala mantém itens e custos', async () => {
+  const db = openDatabase(':memory:');
+  const app = await buildApp({ db, serveFrontend: false, ia: null });
+  const cookie = (await app.inject({ method: 'POST', url: '/api/auth/cadastro', payload: { nome: 'Teste', email: 'z@e.com', senha: 'senha-segura-1' } })).headers['set-cookie'].split(';')[0];
+  const req = (method, url, payload) => app.inject({ method, url, payload, headers: { cookie } });
+  const neg = (await req('POST', '/api/negocios', { titulo: 'Teste' })).json();
+  const it = (await req('POST', `/api/disputa/negocio/${neg.id}/itens`, { descricao: 'Copo', custo: 4, margem_minima: 0.1 })).json();
+  await req('POST', `/api/disputa/itens/${it.id}/lances`, { tipo: 'meu', valor: 5.74 });
+  assert.equal((await req('DELETE', `/api/disputa/negocio/${neg.id}/lances`)).statusCode, 200);
+  const sala = (await req('GET', `/api/disputa/negocio/${neg.id}`)).json();
+  assert.deepEqual([sala.itens[0].meu_lance, sala.itens[0].melhor_lance, sala.itens[0].situacao, sala.itens[0].lances.length, sala.itens[0].custo], [null, null, 'pendente', 0, 4]);
+});
