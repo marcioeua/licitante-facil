@@ -57,7 +57,9 @@ export default async function (app) {
              n.valor_proposta, o.orgao_nome, o.uf, o.valor_estimado, o.data_encerramento, o.modalidade,
              e.razao_social AS empresa_nome,
              (SELECT count(*) FROM checklist_itens c WHERE c.negocio_id = n.id) AS checklist_total,
-             (SELECT count(*) FROM checklist_itens c WHERE c.negocio_id = n.id AND c.feito = 1) AS checklist_feitos
+             (SELECT count(*) FROM checklist_itens c WHERE c.negocio_id = n.id AND c.feito = 1) AS checklist_feitos,
+             (SELECT count(*) FROM disputa_itens d WHERE d.negocio_id = n.id) AS itens_disputa,
+             (SELECT count(*) FROM disputa_itens d WHERE d.negocio_id = n.id AND d.custo IS NOT NULL) AS itens_com_custo
       FROM negocios n
       LEFT JOIN oportunidades o ON o.id = n.oportunidade_id
       LEFT JOIN empresas e ON e.id = n.empresa_id

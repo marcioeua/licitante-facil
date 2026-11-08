@@ -90,6 +90,7 @@ const itens = [
   { to: 'chat', nome: 'Busca no Chat', icone: 'forum' },
   { to: 'oportunidades', nome: 'Oportunidades', icone: 'travel_explore' },
   { to: 'negocios', nome: 'Meus negócios', icone: 'view_kanban' },
+  { to: 'salas', nome: 'Sala de disputa', icone: 'gavel' },
   { to: 'juridico', nome: 'Peças jurídicas', icone: 'balance' },
   { to: 'agenda', nome: 'Agenda', icone: 'event' },
   { to: 'documentos', nome: 'Documentos', icone: 'folder_shared' },
@@ -100,6 +101,7 @@ const itens = [
   { to: 'pagometro', nome: 'Pagômetro', icone: 'speed' },
   { to: 'empresas', nome: 'Empresas', icone: 'business' },
   { to: 'uso-ia', nome: 'Uso da IA', icone: 'paid' },
+  { to: 'como-usar', nome: 'Como usar', icone: 'help' },
 ];
 
 async function sair() {

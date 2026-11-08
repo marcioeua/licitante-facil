@@ -22,6 +22,8 @@ export default [
       { path: 'assistente', name: 'assistente', component: () => import('pages/AssistentePage.vue') },
       { path: 'juridico', name: 'juridico', component: () => import('pages/JuridicoPage.vue') },
       { path: 'uso-ia', name: 'uso-ia', component: () => import('pages/UsoIAPage.vue') },
+      { path: 'salas', name: 'salas', component: () => import('pages/SalasPage.vue') },
+      { path: 'como-usar', name: 'como-usar', component: () => import('pages/ComoUsarPage.vue') },
     ],
   },
   { path: '/entrar', name: 'login', meta: { publica: true }, component: () => import('pages/LoginPage.vue') },
