@@ -13,6 +13,7 @@
             <q-list style="min-width: 180px">
               <q-item-label header>{{ auth.usuario?.email }}</q-item-label>
               <q-item clickable v-close-popup :to="{ name: 'empresas' }"><q-item-section avatar><q-icon name="business" /></q-item-section><q-item-section>Minhas empresas</q-item-section></q-item>
+              <q-item clickable v-close-popup :to="{ name: 'uso-ia' }"><q-item-section avatar><q-icon name="paid" /></q-item-section><q-item-section>Uso da IA (custos)</q-item-section></q-item>
               <q-item clickable v-close-popup @click="dlgSenha = true"><q-item-section avatar><q-icon name="key" /></q-item-section><q-item-section>Alterar senha</q-item-section></q-item>
               <q-item clickable v-close-popup @click="sair"><q-item-section avatar><q-icon name="logout" /></q-item-section><q-item-section>Sair</q-item-section></q-item>
             </q-list>
@@ -93,6 +94,7 @@ const itens = [
   { to: 'historico', nome: 'Histórico de compras', icone: 'query_stats' },
   { to: 'pagometro', nome: 'Pagômetro', icone: 'speed' },
   { to: 'empresas', nome: 'Empresas', icone: 'business' },
+  { to: 'uso-ia', nome: 'Uso da IA', icone: 'paid' },
 ];
 
 async function sair() {

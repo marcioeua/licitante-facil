@@ -116,7 +116,7 @@ export async function analisarEdital(db, negocioId, uid, { client, fetchImpl } =
       output_config: { effort: 'high', format: betaZodOutputFormat(AnaliseSchema) },
       messages: [{ role: 'user', content: [...docs.blocos, { type: 'text', text: `${textoContexto(n)}\n\nAnalise o edital e aponte possíveis irregularidades, cláusulas restritivas à competição, exigências desproporcionais de habilitação, contradições entre edital e termo de referência, e omissões. Seja criterioso: só aponte o que tiver base no texto.` }] }],
     });
-    registrarUso(db, uid, 'juridico_analise', resp.usage);
+    registrarUso(db, uid, 'juridico_analise', resp.usage, { modelo: resp.model ?? MODELO, referencia: `neg:${negocioId}` });
     if (resp.stop_reason === 'refusal' || !resp.parsed_output) throw httpError(502, 'A IA não conseguiu analisar este edital. Tente novamente.');
     const p = salvar(db, uid, negocioId, 'analise', `${TIPOS.analise} — ${n.titulo}`.slice(0, 300), JSON.stringify(resp.parsed_output), { arquivos: docs.arquivos }, resp.model ?? MODELO);
     return formatarPeca(p);
@@ -152,7 +152,7 @@ export async function redigirPeca(db, negocioId, uid, tipo, dados = {}, { client
       output_config: { effort: 'high' },
       messages: [{ role: 'user', content: [...docs.blocos, { type: 'text', text: partes }] }],
     });
-    registrarUso(db, uid, `juridico_${tipo}`, resp.usage);
+    registrarUso(db, uid, `juridico_${tipo}`, resp.usage, { modelo: resp.model ?? MODELO, referencia: `neg:${negocioId}` });
     const texto = resp.content.filter((b) => b.type === 'text').map((b) => b.text).join('\n').trim();
     if (resp.stop_reason === 'refusal' || !texto) throw httpError(502, 'A IA não conseguiu redigir a peça. Tente novamente com mais detalhes.');
     const p = salvar(db, uid, negocioId, tipo, `${TIPOS[tipo]} — ${n.titulo}`.slice(0, 300), texto,

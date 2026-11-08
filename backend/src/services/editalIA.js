@@ -4,6 +4,7 @@ import { betaZodOutputFormat } from '@anthropic-ai/sdk/helpers/beta/zod';
 import { z } from 'zod';
 import { tx } from '../db/index.js';
 import { httpError } from '../http.js';
+import { configIA, gastoDoMesUsd } from './iaCusto.js';
 import { baixarArquivosEdital, selecionarPartes } from './editalArquivos.js';
 
 export const MODELO = process.env.ANTHROPIC_MODEL ?? 'claude-opus-5-5';
@@ -81,11 +82,18 @@ function exigirCliente(client) {
 export function checarLimite(db, uid) {
   const { n } = db.prepare("SELECT count(*) AS n FROM ia_uso WHERE usuario_id = ? AND criado_em >= datetime('now', 'start of day')").get(uid);
   if (n >= LIMITE_DIARIO) throw httpError(429, `Você atingiu o limite de ${LIMITE_DIARIO} análises com IA por dia. Tente amanhã.`);
+  // Limite de gasto mensal definido pelo usuário no painel "Uso da IA".
+  const { limiteMensalUsd, cotacaoDolar } = configIA(db, uid);
+  if (limiteMensalUsd != null && gastoDoMesUsd(db, uid) >= limiteMensalUsd) {
+    throw httpError(429, `O limite de gasto com IA deste mês (US$ ${limiteMensalUsd.toFixed(2)} ≈ R$ ${(limiteMensalUsd * cotacaoDolar).toFixed(2)}) foi atingido. Aumente o limite no painel "Uso da IA".`);
+  }
 }
 
-export function registrarUso(db, uid, tipo, usage) {
-  db.prepare('INSERT INTO ia_uso (usuario_id, tipo, input_tokens, output_tokens, cache_read_tokens) VALUES (?, ?, ?, ?, ?)')
-    .run(uid, tipo, usage?.input_tokens ?? null, usage?.output_tokens ?? null, usage?.cache_read_input_tokens ?? null);
+export function registrarUso(db, uid, tipo, usage, { modelo = null, referencia = null } = {}) {
+  db.prepare(`INSERT INTO ia_uso (usuario_id, tipo, input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, modelo, referencia)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
+    .run(uid, tipo, usage?.input_tokens ?? null, usage?.output_tokens ?? null, usage?.cache_read_input_tokens ?? null,
+      usage?.cache_creation_input_tokens ?? null, modelo, referencia);
 }
 
 // Evita baixar/analisar o mesmo edital duas vezes ao mesmo tempo.
@@ -184,7 +192,7 @@ export async function resumirEdital(db, op, uid, { client, fetchImpl } = {}) {
         ],
       }],
     });
-    registrarUso(db, uid, 'resumo', resp.usage);
+    registrarUso(db, uid, 'resumo', resp.usage, { modelo: resp.model ?? MODELO, referencia: `op:${op.id}` });
     checarRecusa(resp);
     if (!resp.parsed_output) throw httpError(502, 'A IA não devolveu um resumo válido. Tente novamente.');
     db.prepare('INSERT OR REPLACE INTO edital_resumos (oportunidade_id, resumo, modelo) VALUES (?, ?, ?)')
@@ -245,7 +253,7 @@ export async function perguntarEdital(db, op, uid, pergunta, { client, fetchImpl
     cache_control: { type: 'ephemeral' },
     messages,
   });
-  registrarUso(db, uid, 'pergunta', resp.usage);
+  registrarUso(db, uid, 'pergunta', resp.usage, { modelo: resp.model ?? MODELO, referencia: `op:${op.id}` });
   checarRecusa(resp);
   const { texto, citacoes } = extrairResposta(resp.content);
   if (!texto) throw httpError(502, 'A IA não devolveu resposta. Tente novamente.');

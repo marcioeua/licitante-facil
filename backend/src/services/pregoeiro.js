@@ -78,7 +78,7 @@ export async function analisarChat(db, negocioId, uid, texto, { client, agora = 
     if (e.status === 401) throw httpError(503, 'A chave da IA (ANTHROPIC_API_KEY) é inválida. Avise o administrador.');
     throw httpError(502, 'A IA não respondeu agora. Tente novamente em instantes.');
   }
-  registrarUso(db, uid, 'chat_pregoeiro', resp.usage);
+  registrarUso(db, uid, 'chat_pregoeiro', resp.usage, { modelo: resp.model ?? MODELO, referencia: `neg:${negocioId}` });
   if (resp.stop_reason === 'refusal' || !resp.parsed_output) throw httpError(502, 'A IA não conseguiu ler este texto. Tente colar de novo.');
   const analise = resp.parsed_output;
 

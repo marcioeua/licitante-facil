@@ -241,6 +241,13 @@ CREATE TABLE IF NOT EXISTS whatsapp_fila (
   criado_em TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- Limite de gasto mensal com IA e cotação do dólar (por usuário).
+CREATE TABLE IF NOT EXISTS ia_config (
+  usuario_id INTEGER PRIMARY KEY REFERENCES usuarios(id) ON DELETE CASCADE,
+  limite_mensal_usd REAL,
+  cotacao_dolar REAL
+);
+
 CREATE TABLE IF NOT EXISTS conector_tokens (
   usuario_id INTEGER PRIMARY KEY REFERENCES usuarios(id) ON DELETE CASCADE,
   token_hash TEXT NOT NULL UNIQUE,
@@ -415,6 +422,9 @@ CREATE TABLE IF NOT EXISTS ia_uso (
 
 // Colunas adicionadas depois da primeira versão (bancos já existentes).
 const MIGRACOES = [
+  'ALTER TABLE ia_uso ADD COLUMN cache_write_tokens INTEGER',
+  'ALTER TABLE ia_uso ADD COLUMN modelo TEXT',
+  'ALTER TABLE ia_uso ADD COLUMN referencia TEXT',
   'ALTER TABLE usuarios ADD COLUMN telegram_chat_id TEXT',
   'ALTER TABLE usuarios ADD COLUMN telegram_ativo INTEGER NOT NULL DEFAULT 0',
   'ALTER TABLE usuarios ADD COLUMN telegram_codigo TEXT',

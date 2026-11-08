@@ -25,6 +25,7 @@ import disputaRoutes from './routes/disputa.js';
 import juridicoRoutes from './routes/juridico.js';
 import whatsappRoutes from './routes/whatsapp.js';
 import { habilitacaoDoNegocio } from './services/habilitacao.js';
+import { painelUso, salvarConfigIA } from './services/iaCusto.js';
 import { clienteWhatsApp } from './services/whatsapp.js';
 import telegramRoutes from './routes/telegram.js';
 import { clienteTelegram } from './services/telegram.js';
@@ -131,6 +132,14 @@ export async function buildApp({ db, logger = false, serveFrontend = true, ia, f
     if (String(req.params.ni).replace(/\D/g, '').length < 11) return reply.code(400).send({ erro: 'CNPJ inválido.' });
     return perfilEmpresa(db, req.params.ni, req.query, { fetchImpl: app.fetchCnpj ?? fetch });
   });
+
+  // Painel "Uso da IA": custo de cada leitura, total do mês e limite de gasto.
+  app.get('/api/ia/uso', async (req) => painelUso(db, req.usuarioId, req.query));
+  app.put('/api/ia/config', {
+    schema: { body: { type: 'object', additionalProperties: false, properties: {
+      limiteMensalUsd: { type: ['number', 'null'], minimum: 0, maximum: 100000 }, cotacaoDolar: { type: 'number', minimum: 0.5, maximum: 50 },
+    } } },
+  }, async (req) => salvarConfigIA(db, req.usuarioId, req.body));
 
   // Agente Habilitação: documentos exigidos no edital x documentos cadastrados.
   app.get('/api/habilitacao/negocio/:id', async (req, reply) => {

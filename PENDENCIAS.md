@@ -54,6 +54,11 @@ Para retomar, é só abrir a conversa e dizer qual item quer fazer.
 - [x] **Proposta pronta** (Sala de disputa → Gerar proposta): inicial ou ajustada, dados da empresa salvos,
       valor por extenso, baixa em Word. O cadastro no portal continua manual (login gov.br + captcha).
 
+## 3c. Custos
+
+- [x] **Painel Uso da IA** (menu Uso da IA): custo de cada uso pelos tokens e preços oficiais, total do dia e do mês,
+      média por edital, gasto por dia e por tipo, limite de gasto mensal que pausa as análises e cotação do dólar.
+
 ## 4. Outras melhorias anotadas
 
 - [x] **Vitórias em licitações** na Análise de empresas (feito), com dados oficiais do Compras.gov.br
