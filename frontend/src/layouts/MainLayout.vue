@@ -109,6 +109,7 @@ const itens = [
   { to: 'alertas', nome: 'Alertas', icone: 'notifications_active' },
   { to: 'mercado', nome: 'Análise de mercado', icone: 'insights' },
   { to: 'analise-empresas', nome: 'Análise de empresas', icone: 'domain' },
+  { to: 'orgaos', nome: 'Órgãos', icone: 'account_balance' },
   { to: 'historico', nome: 'Histórico de compras', icone: 'query_stats' },
   { to: 'pagometro', nome: 'Pagômetro', icone: 'speed' },
   { to: 'empresas', nome: 'Empresas', icone: 'business' },

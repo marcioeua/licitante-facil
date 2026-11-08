@@ -26,6 +26,7 @@ import juridicoRoutes from './routes/juridico.js';
 import whatsappRoutes from './routes/whatsapp.js';
 import { habilitacaoDoNegocio } from './services/habilitacao.js';
 import { painelUso, salvarConfigIA } from './services/iaCusto.js';
+import { listarOrgaos, perfilOrgao, orgaosDosNegocios } from './services/orgaos.js';
 import { clienteWhatsApp } from './services/whatsapp.js';
 import telegramRoutes from './routes/telegram.js';
 import assistenteRoutes from './routes/assistente.js';
@@ -133,6 +134,10 @@ export async function buildApp({ db, logger = false, serveFrontend = true, ia, f
     if (String(req.params.ni).replace(/\D/g, '').length < 11) return reply.code(400).send({ erro: 'CNPJ inválido.' });
     return perfilEmpresa(db, req.params.ni, req.query, { fetchImpl: app.fetchCnpj ?? fetch });
   });
+
+  // Órgãos públicos: lista com Pagômetro e compras dos últimos 12 meses, e página de cada órgão.
+  app.get('/api/orgaos', async (req) => ({ ...listarOrgaos(db, req.query), meus: orgaosDosNegocios(db, req.usuarioId) }));
+  app.get('/api/orgaos/:cnpj', async (req, reply) => perfilOrgao(db, req.params.cnpj) ?? reply.code(404).send({ erro: 'Órgão não encontrado.' }));
 
   // Painel "Uso da IA": custo de cada leitura, total do mês e limite de gasto.
   app.get('/api/ia/uso', async (req) => painelUso(db, req.usuarioId, req.query));

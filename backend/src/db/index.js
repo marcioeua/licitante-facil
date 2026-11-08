@@ -265,6 +265,24 @@ CREATE TABLE IF NOT EXISTS assistente_mensagens (
 );
 CREATE INDEX IF NOT EXISTS idx_assist_msg ON assistente_mensagens(conversa_id, id);
 
+-- Órgãos públicos (resumo dos últimos 12 meses), recalculado todo dia a partir de contratos e licitações.
+CREATE TABLE IF NOT EXISTS orgaos (
+  cnpj TEXT PRIMARY KEY,
+  nome TEXT NOT NULL,
+  nome_norm TEXT,
+  esfera TEXT,
+  uf TEXT,
+  municipio TEXT,
+  codigo_ibge TEXT,
+  contratos_12m INTEGER NOT NULL DEFAULT 0,
+  valor_12m REAL NOT NULL DEFAULT 0,
+  licitacoes_12m INTEGER NOT NULL DEFAULT 0,
+  ultima_compra TEXT,
+  atualizado_em TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_orgaos_uf ON orgaos(uf, esfera);
+CREATE INDEX IF NOT EXISTS idx_op_orgao ON oportunidades(orgao_cnpj);
+
 CREATE TABLE IF NOT EXISTS conector_tokens (
   usuario_id INTEGER PRIMARY KEY REFERENCES usuarios(id) ON DELETE CASCADE,
   token_hash TEXT NOT NULL UNIQUE,

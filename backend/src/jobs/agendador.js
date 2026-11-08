@@ -6,6 +6,7 @@ import { config } from '../config.js';
 import { sincronizarPropostasAbertas, sincronizarAtualizacoes } from '../services/pncp.js';
 import { enviarAlertas } from '../services/alertas.js';
 import { atualizarCapag } from '../services/capag.js';
+import { atualizarOrgaos } from '../services/orgaos.js';
 import { arquivarVencidas, usuariosCom, executarVigia, executarProspector, executarLeitor, enviarNotificacoesPorEmail, querWhatsApp, querTelegram } from '../services/agentes.js';
 import { clienteTelegram, processarMensagensTelegram, enviarNotificacoesPorTelegram, processarFilaTelegram } from '../services/telegram.js';
 import { enviarNotificacoesPorWhatsApp, processarFilaWhatsApp } from '../services/whatsapp.js';
@@ -99,6 +100,14 @@ const marcarTarefa = (db, nome, valor) => db.prepare('INSERT OR REPLACE INTO tar
 
 /** Agentes: Vigia a cada 2h, Prospector 1x por dia a partir das 7h, Leitor a cada 30 min. */
 export async function executarAgentesAgendados(db, { log = console.log, ia = null, fetchImpl = fetch, agora = new Date() } = {}) {
+  // Resumo dos órgãos: uma vez por dia (madrugada) ou se ainda não existe.
+  try {
+    const hoje = agoraBrasilia(agora).data;
+    if (ultimaTarefa(db, 'orgaos') !== hoje && (agoraBrasilia(agora).hora >= 5 || !db.prepare('SELECT 1 FROM orgaos LIMIT 1').get())) {
+      marcarTarefa(db, 'orgaos', hoje);
+      log(`[orgaos] ${atualizarOrgaos(db)} órgão(s) atualizados`);
+    }
+  } catch (e) { log(`[orgaos] ${e.message}`); }
   try { const n = arquivarVencidas(db); if (n) log(`[agentes] ${n} licitação(ões) vencida(s) saíram da triagem`); } catch (e) { log(`[agentes] arquivar vencidas: ${e.message}`); }
   const passou = (nome, ms) => {
     const u = ultimaTarefa(db, nome);

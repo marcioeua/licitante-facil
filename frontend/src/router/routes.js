@@ -23,6 +23,8 @@ export default [
       { path: 'juridico', name: 'juridico', component: () => import('pages/JuridicoPage.vue') },
       { path: 'uso-ia', name: 'uso-ia', component: () => import('pages/UsoIAPage.vue') },
       { path: 'salas', name: 'salas', component: () => import('pages/SalasPage.vue') },
+      { path: 'orgaos', name: 'orgaos', component: () => import('pages/OrgaosPage.vue') },
+      { path: 'orgaos/:cnpj', name: 'orgao', component: () => import('pages/OrgaoPage.vue') },
       { path: 'como-usar', name: 'como-usar', component: () => import('pages/ComoUsarPage.vue') },
     ],
   },

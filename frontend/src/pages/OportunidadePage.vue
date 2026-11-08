@@ -16,7 +16,8 @@
         <div class="row q-col-gutter-md">
           <div v-for="c in campos" :key="c.nome" class="col-12 col-sm-6 col-md-4">
             <div class="text-caption text-grey-7">{{ c.nome }}</div>
-            <div class="text-body1">{{ c.valor || '—' }}</div>
+            <router-link v-if="c.to && c.valor" :to="c.to" class="text-body1 text-primary">{{ c.valor }}</router-link>
+            <div v-else class="text-body1">{{ c.valor || '—' }}</div>
           </div>
         </div>
       </q-card-section>
@@ -72,7 +73,7 @@ const PARADAS = new Set(['aquisicao', 'contratacao', 'registro', 'precos', 'futu
 const termoHistorico = computed(() => (op.value?.objeto ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
   .match(/[a-z]{4,}/g)?.filter((w) => !PARADAS.has(w)).slice(0, 3).join(' ') ?? '');
 const campos = computed(() => [
-  { nome: 'Órgão', valor: op.value.orgao_nome },
+  { nome: 'Órgão', valor: op.value.orgao_nome, to: op.value.orgao_cnpj ? { name: 'orgao', params: { cnpj: op.value.orgao_cnpj } } : null },
   { nome: 'CNPJ do órgão', valor: cnpj(op.value.orgao_cnpj) },
   { nome: 'Unidade', valor: op.value.unidade_nome },
   { nome: 'Local', valor: [op.value.municipio, op.value.uf].filter(Boolean).join(' / ') },
