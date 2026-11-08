@@ -14,6 +14,13 @@
               <q-item-label header>{{ auth.usuario?.email }}</q-item-label>
               <q-item clickable v-close-popup :to="{ name: 'empresas' }"><q-item-section avatar><q-icon name="business" /></q-item-section><q-item-section>Minhas empresas</q-item-section></q-item>
               <q-item clickable v-close-popup :to="{ name: 'uso-ia' }"><q-item-section avatar><q-icon name="paid" /></q-item-section><q-item-section>Uso da IA (custos)</q-item-section></q-item>
+              <q-item>
+                <q-item-section avatar><q-icon :name="tema === 'escuro' ? 'dark_mode' : tema === 'auto' ? 'brightness_auto' : 'light_mode'" /></q-item-section>
+                <q-item-section>
+                  <q-btn-toggle v-model="tema" no-caps unelevated dense size="sm" toggle-color="primary" @update:model-value="trocarTema"
+                    :options="[{ label: 'Claro', value: 'claro' }, { label: 'Escuro', value: 'escuro' }, { label: 'Auto', value: 'auto' }]" />
+                </q-item-section>
+              </q-item>
               <q-item clickable v-close-popup @click="dlgSenha = true"><q-item-section avatar><q-icon name="key" /></q-item-section><q-item-section>Alterar senha</q-item-section></q-item>
               <q-item clickable v-close-popup @click="sair"><q-item-section avatar><q-icon name="logout" /></q-item-section><q-item-section>Sair</q-item-section></q-item>
             </q-list>
@@ -65,6 +72,7 @@ import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { Notify } from 'quasar';
 import { api } from 'boot/axios';
+import { temaSalvo, definirTema } from 'boot/tema';
 import { useAuth } from 'stores/auth';
 import SinoNotificacoes from 'components/SinoNotificacoes.vue';
 
@@ -72,6 +80,8 @@ const auth = useAuth();
 const router = useRouter();
 const menu = ref(false);
 const dlgSenha = ref(false);
+const tema = ref(temaSalvo());
+const trocarTema = (t) => { tema.value = definirTema(t); };
 const salvandoSenha = ref(false);
 const senha = ref({ atual: '', nova: '', confirma: '' });
 async function trocarSenha() {

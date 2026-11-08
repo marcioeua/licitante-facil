@@ -3,3 +3,66 @@ body { background: #f1f5f9; }
 .lf-card { border-radius: 12px; }
 .text-objeto { line-height: 1.35; }
 .ellipsis-3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+
+/* ---------- Tema escuro ----------
+   Os componentes do Quasar já mudam sozinhos; aqui ficam as cores que o sistema usa fixas. */
+$escuro-fundo: #0b1120;
+$escuro-cartao: #111827;
+$escuro-cartao2: #1f2937;
+$escuro-borda: #2d3748;
+$escuro-texto: #e5e7eb;
+
+.body--dark {
+  background: $escuro-fundo;
+  color: $escuro-texto;
+
+  .bg-white { background: $escuro-cartao !important; }
+  /* Azul da marca é escuro demais para texto sobre fundo escuro: versão clara para textos, ícones e bordas */
+  .text-primary { color: #8ab4ff !important; }
+  .q-btn.bg-primary .q-icon, .q-btn.bg-primary { color: #fff !important; }
+  .q-field--outlined.q-field--focused .q-field__control:after { border-color: #8ab4ff; }
+  .text-dark { color: $escuro-texto !important; }
+  .q-card, .lf-card { background: $escuro-cartao; }
+  .q-header { border-color: $escuro-borda; }
+  .bg-grey-1 { background: #151d2b !important; }
+  .bg-grey-2 { background: $escuro-cartao2 !important; }
+  .bg-grey-3 { background: #2a3445 !important; }
+  .text-grey-6 { color: #9ca3af !important; }
+  .text-grey-7 { color: #a8b0bd !important; }
+  .text-grey-8, .text-grey-9, .text-grey-10 { color: #c9ced6 !important; }
+
+  /* Fundos claros "tingidos" viram versões escuras do mesmo tom, com texto claro */
+  .bg-blue-1, .bg-light-blue-1 { background: rgba(59, 130, 246, 0.18) !important; }
+  .text-blue-10, .text-blue-9 { color: #bfdbfe !important; }
+  .bg-green-1 { background: rgba(34, 197, 94, 0.16) !important; }
+  .text-green-9, .text-green-10 { color: #bbf7d0 !important; }
+  .bg-teal-1 { background: rgba(20, 184, 166, 0.16) !important; }
+  .text-teal-9 { color: #99f6e4 !important; }
+  .bg-amber-1, .bg-orange-1, .bg-orange-2 { background: rgba(245, 158, 11, 0.16) !important; }
+  .text-amber-10, .text-orange-10, .text-orange-9 { color: #fde68a !important; }
+  .bg-red-1 { background: rgba(239, 68, 68, 0.16) !important; }
+  .bg-deep-purple-1, .bg-purple-1 { background: rgba(139, 92, 246, 0.18) !important; }
+
+  /* Cores fixas de componentes */
+  .sugestao, .sug-mini { color: $escuro-texto; }
+  .sug-inicial, .sug-cobrir, .q-azul { background: rgba(59, 130, 246, 0.2) !important; color: #bfdbfe !important; }
+  .sug-parar, .sug-abaixo_minimo, .q-vermelho, .prazo.meu { background: rgba(239, 68, 68, 0.2) !important; color: #fecaca !important; }
+  .sug-ganhando { background: rgba(34, 197, 94, 0.18) !important; color: #bbf7d0 !important; }
+  .sug-sem_dados, .sug-encerrado, .q-cinza, .prazo, .vit-caixa { background: $escuro-cartao2 !important; color: $escuro-texto !important; }
+  .q-laranja { background: rgba(245, 158, 11, 0.18) !important; color: #fde68a !important; }
+  .vit-vencedor { background: rgba(34, 197, 94, 0.12) !important; }
+  .painel-disputa tr.selecionado td { background: rgba(59, 130, 246, 0.16) !important; }
+  kbd { background: $escuro-cartao2 !important; border-color: #4b5563 !important; color: $escuro-texto; }
+  .bp-barra, .bh-trilho { background: $escuro-cartao2 !important; }
+  .bh-linha.cursor-pointer:hover { background: $escuro-cartao2 !important; }
+  .proposta-doc th, .texto-md th { background: $escuro-cartao2 !important; }
+
+  /* Assistente IA */
+  .assist-lista, .assist-topo, .assist-entrada { background: $escuro-cartao !important; border-color: $escuro-borda !important; }
+  .assist-chat { background: $escuro-fundo !important; }
+  .balao-ia { background: $escuro-cartao !important; border-color: $escuro-borda !important; color: $escuro-texto; }
+
+  /* Bordas claras */
+  .vit-item, .q-markup-table, .q-table__card { border-color: $escuro-borda; }
+  a { color: #93c5fd; }
+}
