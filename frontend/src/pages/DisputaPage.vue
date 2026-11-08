@@ -97,9 +97,77 @@
         <ChatPregoeiro v-else-if="modo === 'chat'" :negocio-id="Number(route.params.id)" :tem-empresa="!!sala.negocio.empresa_id" />
 
         <!-- 2. Modo disputa -->
+        <div v-else>
+          <q-card flat bordered class="lf-card q-mb-md">
+            <q-card-section class="row items-center q-gutter-sm q-py-sm">
+              <q-btn-toggle v-model="visao" no-caps unelevated dense toggle-color="primary" color="grey-2" text-color="grey-9"
+                :options="[{ label: 'Painel (todos os itens)', value: 'painel', icon: 'view_list' }, { label: 'Cartões', value: 'cartoes', icon: 'view_module' }]" />
+              <q-btn flat dense no-caps :icon="som ? 'notifications_active' : 'notifications_off'" :color="som ? 'primary' : 'grey-7'" :label="som ? 'Som ligado' : 'Som desligado'" @click="alternarSom" />
+              <q-input v-model.number="intervalo" type="number" min="0" dense outlined style="width: 210px" label="Intervalo entre seus lances (s)" hint="Confira no edital" @update:model-value="guardarIntervalo" />
+              <q-space />
+              <q-btn flat dense no-caps icon="keyboard" label="Atalhos" @click="ajudaAtalhos = !ajudaAtalhos" />
+            </q-card-section>
+            <q-slide-transition>
+              <q-card-section v-show="ajudaAtalhos" class="q-pt-none text-body2">
+                <div class="row q-col-gutter-md">
+                  <div class="col-12 col-sm-6">
+                    <div><kbd>↑</kbd> <kbd>↓</kbd> escolher o item</div>
+                    <div><kbd>Enter</kbd> ou <kbd>/</kbd> digitar o melhor lance da sala do item escolhido</div>
+                    <div><kbd>Enter</kbd> (no campo) registrar e continuar · <kbd>Esc</kbd> sair do campo</div>
+                  </div>
+                  <div class="col-12 col-sm-6">
+                    <div><kbd>C</kbd> copiar o próximo lance (cole no portal)</div>
+                    <div><kbd>D</kbd> marcar "dei este lance" · <kbd>U</kbd> desfazer o último registro</div>
+                    <div><kbd>S</kbd> ligar/desligar o som</div>
+                  </div>
+                </div>
+              </q-card-section>
+            </q-slide-transition>
+          </q-card>
+
+          <!-- Painel: todos os itens numa tela só -->
+          <q-card v-if="visao === 'painel'" flat bordered class="lf-card">
+            <q-markup-table flat dense separator="horizontal" class="painel-disputa">
+              <thead>
+                <tr><th class="text-left">Item</th><th class="text-right">Mínimo</th><th class="text-left" style="width: 170px">Melhor da sala</th><th class="text-right">Seu último</th>
+                  <th class="text-left">Próximo lance</th><th class="text-left">Cronômetro</th></tr>
+              </thead>
+              <tbody>
+                <tr v-for="(i, k) in sala.itens" :key="i.id" :class="[{ selecionado: k === selecionado }, `linha-${i.sugestao.estado}`]" @click="selecionado = k">
+                  <td class="text-left" style="white-space: normal; max-width: 280px">
+                    <div class="text-weight-medium">{{ i.numero_item ? `${i.numero_item}. ` : '' }}{{ titulo(i.descricao) }}</div>
+                    <div class="text-caption text-grey-7">{{ SITUACOES[i.situacao] }}</div>
+                  </td>
+                  <td class="text-right">{{ i.preco_minimo == null ? '—' : brl2(i.preco_minimo) }}</td>
+                  <td class="text-left">
+                    <div class="text-weight-bold">{{ i.melhor_lance == null ? '—' : brl2(i.melhor_lance) }}</div>
+                    <q-input v-model="digitado[i.id]" :for="`melhor-${i.id}`" type="number" step="any" min="0" dense outlined placeholder="novo + Enter"
+                      :disable="i.sugestao.estado === 'encerrado'" @keyup.enter="registrar(i, 'melhor', digitado[i.id])" @focus="selecionado = k" />
+                  </td>
+                  <td class="text-right">{{ i.meu_lance == null ? '—' : brl2(i.meu_lance) }}</td>
+                  <td class="text-left">
+                    <div class="sug-mini" :class="`sug-${i.sugestao.estado}`">
+                      <div class="text-caption text-weight-medium">{{ ROTULO[i.sugestao.estado] }}</div>
+                      <div v-if="i.sugestao.valor != null" class="text-subtitle1 text-weight-bold">{{ brl2(i.sugestao.valor) }}</div>
+                    </div>
+                    <div v-if="i.sugestao.valor != null && ['cobrir', 'inicial'].includes(i.sugestao.estado)" class="row q-gutter-xs q-mt-xs">
+                      <q-btn unelevated dense no-caps size="sm" color="primary" icon="content_copy" label="Copiar" @click.stop="copiar(i.sugestao.valor)" />
+                      <q-btn outline dense no-caps size="sm" color="primary" icon="check" label="Dei" @click.stop="registrar(i, 'meu', i.sugestao.valor)" />
+                    </div>
+                  </td>
+                  <td class="text-left">
+                    <q-chip v-if="restante(i) > 0" dense color="orange-2" text-color="orange-10" icon="timer">Aguarde {{ restante(i) }}s</q-chip>
+                    <q-chip v-else-if="i.meu_lance != null && i.sugestao.estado !== 'encerrado'" dense color="green-1" text-color="green-9" icon="check_circle">Pode dar lance</q-chip>
+                    <span v-else class="text-grey-5">—</span>
+                  </td>
+                </tr>
+              </tbody>
+            </q-markup-table>
+          </q-card>
+
         <div v-else class="row q-col-gutter-md">
-          <div v-for="i in sala.itens" :key="i.id" class="col-12 col-md-6">
-            <q-card flat bordered class="lf-card full-height disp-lance" :class="`borda-${i.sugestao.estado}`">
+          <div v-for="(i, k) in sala.itens" :key="i.id" class="col-12 col-md-6">
+            <q-card flat bordered class="lf-card full-height disp-lance" :class="[`borda-${i.sugestao.estado}`, { 'cartao-selecionado': k === selecionado }]" @click="selecionado = k">
               <q-card-section class="row items-start no-wrap q-pb-xs">
                 <div class="col">
                   <div class="text-subtitle1 text-weight-bold">{{ i.numero_item ? `Item ${i.numero_item} — ` : '' }}{{ titulo(i.descricao) }}</div>
@@ -120,8 +188,9 @@
                   <div v-if="i.meu_lance != null" class="text-caption">Seu último: {{ brl2(i.meu_lance) }}</div>
                 </div>
                 <div class="col-6">
-                  <q-input v-model="digitado[i.id]" type="number" step="any" min="0" dense outlined label="Novo melhor lance" hint="Digite e aperte Enter"
-                    :disable="i.sugestao.estado === 'encerrado'" @keyup.enter="registrar(i, 'melhor', digitado[i.id])" />
+                  <q-input v-model="digitado[i.id]" :for="visao === 'cartoes' ? `melhor-${i.id}` : undefined" type="number" step="any" min="0" dense outlined label="Novo melhor lance" hint="Digite e aperte Enter"
+                    :disable="i.sugestao.estado === 'encerrado'" @keyup.enter="registrar(i, 'melhor', digitado[i.id])" @focus="selecionado = k" />
+                  <q-chip v-if="restante(i) > 0" dense color="orange-2" text-color="orange-10" icon="timer" class="q-mt-sm">Aguarde {{ restante(i) }}s para o próximo lance</q-chip>
                 </div>
               </q-card-section>
               <q-card-section class="q-pt-none">
@@ -152,6 +221,7 @@
               </q-card-actions>
             </q-card>
           </div>
+        </div>
         </div>
       </template>
     </template>
@@ -190,7 +260,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { useQuasar, copyToClipboard, Notify } from 'quasar';
 import { api } from 'boot/axios';
@@ -214,6 +284,82 @@ const precoQ = ref('');
 const precoItem = ref(null);
 const precos = ref(null);
 const carregandoPrecos = ref(false);
+
+// ---- Modo disputa: painel, som, atalhos e cronômetro ----
+const ler = (k, padrao) => { try { return localStorage.getItem(k) ?? padrao; } catch { return padrao; } };
+const gravar = (k, v) => { try { localStorage.setItem(k, v); } catch { /* sem armazenamento */ } };
+const visao = ref(ler('disputa_visao', 'painel'));
+const som = ref(ler('disputa_som', '1') === '1');
+const intervalo = ref(Number(ler(`disputa_intervalo_${route.params.id}`, '20')));
+const ajudaAtalhos = ref(false);
+const selecionado = ref(0);
+const agora = ref(Date.now());
+let relogio = null;
+watch(visao, (v) => gravar('disputa_visao', v));
+function alternarSom() { som.value = !som.value; gravar('disputa_som', som.value ? '1' : '0'); if (som.value) tocar('liberado'); }
+function guardarIntervalo(v) { gravar(`disputa_intervalo_${route.params.id}`, String(Number(v) || 0)); }
+
+// Sons gerados no navegador (sem arquivos): coberto = dois bipes agudos; parar = três graves; liberado = um curto.
+let audio = null;
+function tocar(tipo) {
+  if (!som.value) return;
+  try {
+    audio ??= new (window.AudioContext || window.webkitAudioContext)();
+    const notas = { coberto: [[880, 0], [1175, 0.18]], parar: [[330, 0], [330, 0.25], [262, 0.5]], liberado: [[660, 0]] }[tipo] ?? [];
+    for (const [freq, inicio] of notas) {
+      const o = audio.createOscillator();
+      const g = audio.createGain();
+      o.frequency.value = freq;
+      o.type = 'sine';
+      g.gain.setValueAtTime(0.0001, audio.currentTime + inicio);
+      g.gain.exponentialRampToValueAtTime(0.3, audio.currentTime + inicio + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + inicio + 0.16);
+      o.connect(g).connect(audio.destination);
+      o.start(audio.currentTime + inicio);
+      o.stop(audio.currentTime + inicio + 0.18);
+    }
+  } catch { /* navegador sem áudio */ }
+}
+
+// Segundos que faltam para poder dar o próximo lance (intervalo mínimo entre os lances da própria empresa).
+function restante(i) {
+  const ult = i.lances.find((l) => l.tipo === 'meu');
+  if (!ult || !intervalo.value) return 0;
+  const passou = (agora.value - new Date(`${ult.criado_em.replace(' ', 'T')}Z`).getTime()) / 1000;
+  return Math.max(0, Math.ceil(intervalo.value - passou));
+}
+const contagem = {};
+function verificarLiberados() {
+  for (const i of sala.value?.itens ?? []) {
+    const r = restante(i);
+    if (contagem[i.id] > 0 && r === 0) tocar('liberado');
+    contagem[i.id] = r;
+  }
+}
+
+function digitando(ev) { return ['INPUT', 'TEXTAREA', 'SELECT'].includes(ev.target?.tagName) || ev.target?.isContentEditable; }
+function atalho(ev) {
+  if (modo.value !== 'disputa' || !sala.value?.itens.length || ev.ctrlKey || ev.metaKey || ev.altKey) return;
+  if (digitando(ev)) { if (ev.key === 'Escape') ev.target.blur(); return; }
+  const itens = sala.value.itens;
+  const i = itens[selecionado.value];
+  const tecla = ev.key.toLowerCase();
+  if (ev.key === 'ArrowDown') selecionado.value = Math.min(itens.length - 1, selecionado.value + 1);
+  else if (ev.key === 'ArrowUp') selecionado.value = Math.max(0, selecionado.value - 1);
+  else if (ev.key === 'Enter' || ev.key === '/') document.getElementById(`melhor-${i.id}`)?.focus();
+  else if (tecla === 'c' && i.sugestao.valor != null) copiar(i.sugestao.valor);
+  else if (tecla === 'd' && i.sugestao.valor != null && ['cobrir', 'inicial'].includes(i.sugestao.estado)) registrar(i, 'meu', i.sugestao.valor);
+  else if (tecla === 'u' && i.lances.length) desfazer(i);
+  else if (tecla === 's') alternarSom();
+  else if (ev.key === '?') ajudaAtalhos.value = !ajudaAtalhos.value;
+  else return;
+  ev.preventDefault();
+}
+onMounted(() => {
+  window.addEventListener('keydown', atalho);
+  relogio = setInterval(() => { agora.value = Date.now(); verificarLiberados(); }, 500);
+});
+onBeforeUnmount(() => { window.removeEventListener('keydown', atalho); clearInterval(relogio); });
 
 const num = (v) => Number(v ?? 0).toLocaleString('pt-BR');
 const round = (v) => Math.round(v * 100) / 100;
@@ -247,7 +393,11 @@ async function salvar(i, campos) {
 async function registrar(i, tipo, valor) {
   const v = Number(String(valor ?? '').replace(',', '.'));
   if (!(v > 0)) return;
-  trocar((await api.post(`/disputa/itens/${i.id}/lances`, { tipo, valor: v })).data);
+  const novo = (await api.post(`/disputa/itens/${i.id}/lances`, { tipo, valor: v })).data;
+  trocar(novo);
+  // Alertas sonoros: cobriram seu lance / chegou no seu mínimo.
+  if (novo.sugestao.estado === 'parar') tocar('parar');
+  else if (tipo === 'melhor' && novo.sugestao.estado === 'cobrir') tocar('coberto');
   if (tipo === 'melhor') digitado.value[i.id] = '';
 }
 async function desfazer(i) {
@@ -312,4 +462,12 @@ onMounted(carregar);
 .sug-sem_dados, .sug-encerrado { background: #f1f3f4; color: #5f6368; }
 .borda-parar { border-color: #e57373; }
 .borda-ganhando { border-color: #66bb6a; }
+.cartao-selecionado { box-shadow: 0 0 0 2px #1d4ed8; }
+.painel-disputa tbody tr { cursor: pointer; }
+.painel-disputa tr.selecionado td { background: #eef3ff; }
+.painel-disputa tr.linha-parar td:first-child { box-shadow: inset 4px 0 0 #e57373; }
+.painel-disputa tr.linha-ganhando td:first-child { box-shadow: inset 4px 0 0 #66bb6a; }
+.painel-disputa tr.linha-cobrir td:first-child { box-shadow: inset 4px 0 0 #1d4ed8; }
+.sug-mini { border-radius: 8px; padding: 4px 8px; display: inline-block; min-width: 140px; }
+kbd { display: inline-block; border: 1px solid #ccc; border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; font-size: 12px; background: #fafafa; font-family: inherit; }
 </style>
