@@ -44,7 +44,7 @@ Para retomar, é só abrir a conversa e dizer qual item quer fazer.
 - [x] **Agente Fornecedor** (Sala de disputa → 4. Fornecedores): quem venceu itens parecidos no PNCP, preços por
       unidade, contato público da Receita, planilha e e-mail de cotação.
 - [x] **Busca Pregão no Chat** (conector MCP para Claude e ChatGPT, página *Busca no Chat*, link pessoal).
-- [ ] Testar o conector no Claude/ChatGPT com o link gerado em produção.
+- [x] Conector testado em produção no Claude e no ChatGPT (servidor MCP personalizado, autenticação: nenhuma).
 - [ ] (Opcional) Assistente de chat dentro do próprio sistema.
 
 ## 3b. Automação do começo ao fim
