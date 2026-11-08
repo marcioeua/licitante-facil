@@ -158,8 +158,44 @@ export async function completarCompras(db, compras, fetchImpl, { orcamentoMs = 8
 /** Título curto do item ("Caneta Esferográfica") a partir da descrição do catálogo. */
 export function tituloItem(descricao) {
   if (!descricao) return null;
-  const t = String(descricao).split(/\s+(?:Material|Tipo|Modelo|Características|Especificação|Marca|Cor|Tamanho|Dimens)\b|[,;:]/i)[0].trim();
+  const t = String(descricao).split(/\s+(?:Material|Tipo|Modelo|Características|Especificação|Marca|Cor|Tamanho|Dimens|Aspecto|Aplicação|Composição|Formato|Capacidade|Apresentação|Embalagem|Comprimento|Largura|Altura|Peso|Volume)\b|[,;:]/i)[0].trim();
   return (t.length > 3 ? t : String(descricao)).slice(0, 90);
+}
+
+const PARADAS = new Set(['de', 'da', 'do', 'das', 'dos', 'e', 'em', 'para', 'com', 'sem', 'a', 'o', 'as', 'os', 'tipo', 'uso', 'p', 'c']);
+const normalizar = (t) => String(t ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9 ]+/g, ' ');
+/** Chave do produto: as 3 primeiras palavras significativas do título ("caneta esferografica"). */
+export function chaveProduto(titulo) {
+  const p = normalizar(titulo).split(/\s+/).filter((w) => w.length > 1 && !PARADAS.has(w) && !/^\d+$/.test(w));
+  return p.slice(0, 3).join(' ') || null;
+}
+const mediana = (v) => { const s = [...v].sort((a, b) => a - b); const m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+const maisComum = (v) => [...Map.groupBy(v.filter(Boolean), (x) => x)].sort((a, b) => b[1].length - a[1].length)[0]?.[0] ?? null;
+
+/** Agrupa os itens vencidos por produto: quantas vezes, quanto, faixa de preço unitário e para quantos órgãos. */
+export function produtosVendidos(itens) {
+  const comTitulo = itens.filter((i) => i.titulo && chaveProduto(i.titulo));
+  return [...Map.groupBy(comTitulo, (i) => chaveProduto(i.titulo))].map(([chave, l]) => {
+    const unidade = maisComum(l.map((i) => i.unidade));
+    const precos = l.filter((i) => i.valorUnitario > 0 && (!unidade || i.unidade === unidade)).map((i) => i.valorUnitario);
+    const datas = l.map((i) => i.data).filter(Boolean).sort();
+    return {
+      chave,
+      nome: maisComum(l.map((i) => i.titulo)),
+      vezes: l.length,
+      compras: new Set(l.map((i) => i.compra)).size,
+      valor: l.reduce((a, i) => a + (i.valorTotal || 0), 0),
+      quantidade: l.reduce((a, i) => a + (Number(i.quantidade) || 0), 0),
+      unidade,
+      precoMin: precos.length ? Math.min(...precos) : null,
+      precoMediano: precos.length ? mediana(precos) : null,
+      precoMax: precos.length ? Math.max(...precos) : null,
+      orgaos: new Set(l.map((i) => i.orgaoCnpj).filter(Boolean)).size,
+      ufs: [...new Set(l.map((i) => i.uf).filter(Boolean))].sort(),
+      ultima: datas.at(-1) ?? null,
+      exemplos: l.slice(0, 5).map((i) => ({ descricao: i.descricao, valorUnitario: i.valorUnitario, unidade: i.unidade, orgao: i.orgao, uf: i.uf, data: i.data, linkPncp: i.linkPncp })),
+    };
+  }).sort((a, b) => b.valor - a.valor || b.vezes - a.vezes);
 }
 
 export async function vitoriasDoFornecedor(db, ni, { anos = 3, fetchImpl = fetch } = {}) {
@@ -221,6 +257,8 @@ export async function vitoriasDoFornecedor(db, ni, { anos = 3, fetchImpl = fetch
     porPortal: agrupar((i) => i.portal ?? 'Não identificado').sort((a, b) => b.itens - a.itens),
     orgaos: [...Map.groupBy(completos, (i) => i.orgaoCnpj ?? '—')].map(([k, l]) => ({ cnpj: k, nome: l[0].orgao, itens: l.length, valor: soma(l), uf: l[0].uf }))
       .sort((a, b) => b.valor - a.valor).slice(0, 10),
+    produtos: produtosVendidos(completos).slice(0, 200),
+    itensSemDescricao: completos.filter((i) => !i.titulo).length,
     itens: completos.slice(0, 500),
     detalhesPendentes: pendentes,
     falhas,

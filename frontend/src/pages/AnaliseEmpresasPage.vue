@@ -122,10 +122,50 @@
             Nenhuma vitória registrada nos dados abertos no período. Licitações da lei antiga e de alguns portais podem não aparecer.
           </q-card-section>
           <template v-else>
+            <q-card-section v-if="vit.produtos?.length" class="q-pt-none">
+              <div class="produtos-caixa">
+                <div class="row items-center q-mb-sm">
+                  <q-icon name="inventory_2" color="primary" size="22px" class="q-mr-sm" />
+                  <div class="col">
+                    <div class="text-subtitle1 text-weight-bold">Produtos que vende ({{ num(vit.produtos.length) }})</div>
+                    <div class="text-caption text-grey-7">O que esta empresa venceu nas licitações, agrupado por produto. Clique para ver os itens.</div>
+                  </div>
+                </div>
+                <q-input v-model="filtroProdutos" dense outlined clearable placeholder="Procurar produto (ex.: caneta, papel, detergente)" class="q-mb-sm" @update:model-value="mostrarProdutos = 10">
+                  <template #prepend><q-icon name="search" /></template>
+                </q-input>
+                <div v-if="!produtosFiltrados.length" class="text-grey-7 q-pa-sm">Nenhum produto com esse nome.</div>
+                <q-list separator>
+                  <q-item v-for="pr in produtosFiltrados.slice(0, mostrarProdutos)" :key="pr.chave" clickable class="q-px-sm" @click="verItensDoProduto(pr)">
+                    <q-item-section>
+                      <q-item-label class="text-weight-medium">{{ pr.nome }}</q-item-label>
+                      <q-item-label caption>
+                        {{ num(pr.vezes) }} item(ns) vencido(s) em {{ num(pr.compras) }} licitação(ões) · {{ num(pr.orgaos) }} órgão(s)<span v-if="pr.ufs.length"> · {{ pr.ufs.slice(0, 6).join(', ') }}{{ pr.ufs.length > 6 ? '…' : '' }}</span> · último em {{ data(pr.ultima) }}
+                      </q-item-label>
+                      <q-item-label v-if="pr.precoMediano != null" caption>
+                        Preço unitário<span v-if="pr.unidade"> ({{ pr.unidade }})</span>:
+                        <b class="text-positive">{{ brl2(pr.precoMediano) }}</b> típico<span v-if="pr.precoMin !== pr.precoMax"> · de {{ brl2(pr.precoMin) }} a {{ brl2(pr.precoMax) }}</span>
+                      </q-item-label>
+                    </q-item-section>
+                    <q-item-section side class="text-right">
+                      <div class="text-weight-bold">{{ brlCurto(pr.valor) }}</div>
+                      <div class="text-caption">{{ pctValor(pr.valor) }} do total</div>
+                    </q-item-section>
+                  </q-item>
+                </q-list>
+                <div v-if="produtosFiltrados.length > mostrarProdutos" class="q-mt-xs">
+                  <q-btn flat dense no-caps color="primary" :label="`Ver mais produtos (${num(produtosFiltrados.length - mostrarProdutos)} restantes)`" @click="mostrarProdutos += 20" />
+                </div>
+                <div class="text-caption text-grey-6 q-mt-xs">
+                  Valores homologados nas licitações vencidas (dados oficiais).
+                  <span v-if="vit.itensSemDescricao">{{ num(vit.itensSemDescricao) }} item(ns) ainda sem descrição do PNCP não entraram na lista<span v-if="vit.detalhesPendentes"> (carregando; abra de novo em alguns minutos)</span>.</span>
+                </div>
+              </div>
+            </q-card-section>
             <q-card-section v-if="vit.porAno.length > 1" class="q-pt-none">
               <BarrasVerticais :itens="vit.porAno.map((a) => ({ rotulo: a.chave, valor: a.valor, detalhe: `${a.itens} item(ns) em ${a.compras} compra(s)` }))" :formatar="brlCurto" :altura="150" titulo="Valor vencido por ano" />
             </q-card-section>
-            <q-card-section class="q-pt-none row q-col-gutter-sm items-center">
+            <q-card-section ref="secaoItens" class="q-pt-none row q-col-gutter-sm items-center">
               <div class="col-12 col-sm"><q-input v-model="filtroItens" dense outlined clearable placeholder="Filtrar por item, órgão, cidade ou portal" @update:model-value="mostrarItens = 20"><template #prepend><q-icon name="search" /></template></q-input></div>
               <div class="col-12 col-sm-auto"><q-btn-toggle v-model="ordemItens" no-caps unelevated dense toggle-color="primary" color="grey-2" text-color="grey-9"
                 :options="[{ label: 'Mais recentes', value: 'data' }, { label: 'Maior valor', value: 'valor' }, { label: 'Maior desconto', value: 'desconto' }]" /></div>
@@ -335,6 +375,9 @@ const anosVitorias = ref(3);
 const mostrarItens = ref(20);
 const filtroItens = ref('');
 const ordemItens = ref('data');
+const filtroProdutos = ref('');
+const mostrarProdutos = ref(10);
+const secaoItens = ref(null);
 const tabelaComparacao = ref([]);
 
 const num = (v) => Number(v ?? 0).toLocaleString('pt-BR');
@@ -374,6 +417,17 @@ const itensFiltrados = computed(() => {
   const chave = { data: (i) => i.data ?? '', valor: (i) => i.valorTotal ?? 0, desconto: (i) => i.desconto ?? -1 }[ordemItens.value];
   return [...lista].sort((a, b) => (chave(a) < chave(b) ? 1 : chave(a) > chave(b) ? -1 : 0));
 });
+const produtosFiltrados = computed(() => {
+  const termos = semAcento(filtroProdutos.value).split(/\s+/).filter(Boolean);
+  return (vit.value?.produtos ?? []).filter((pr) => termos.every((t) => semAcento(`${pr.nome} ${pr.chave}`).includes(t)));
+});
+const pctValor = (v) => (vit.value?.resumo.valor ? `${((v / vit.value.resumo.valor) * 100).toLocaleString('pt-BR', { maximumFractionDigits: v / vit.value.resumo.valor < 0.01 ? 1 : 0 })}%` : '—');
+function verItensDoProduto(pr) {
+  filtroItens.value = pr.chave;
+  mostrarItens.value = 20;
+  ordemItens.value = 'data';
+  secaoItens.value?.$el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
 const abrirExterno = (url) => { if (url) window.open(url, '_blank', 'noopener'); };
 // Número de controle do contrato no PNCP: CNPJ-2-SEQUENCIAL/ANO.
 function linkContrato(controle) {
@@ -391,6 +445,8 @@ async function carregarVitorias(ni) {
   carregandoVitorias.value = true;
   mostrarItens.value = 20;
   filtroItens.value = '';
+  filtroProdutos.value = '';
+  mostrarProdutos.value = 10;
   try {
     vit.value = (await api.get(`/analise-empresas/${ni}/vitorias`, { params: { anos: anosVitorias.value }, timeout: 180000, silencioso: true })).data;
   } catch {
@@ -446,6 +502,7 @@ onMounted(async () => {
 <style scoped>
 .vit-item { border: 1px solid #e3e6ea; border-radius: 10px; padding: 14px 16px; }
 .vit-caixa { background: #f6f8fa; border-radius: 8px; padding: 10px 12px; height: 100%; }
+.produtos-caixa { border: 1px solid rgba(29, 78, 216, 0.25); background: rgba(29, 78, 216, 0.04); border-radius: 10px; padding: 12px; }
 .vit-vencedor { background: #f1f8f4; }
 .vit-rotulo { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: #6b7280; }
 .vit-origem { line-height: 1.4; }

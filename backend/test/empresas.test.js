@@ -124,3 +124,18 @@ test('vitórias: janelas de 365 dias, paginação, cancelados fora, cache e desc
   assert.equal(chamadas.dados, antes.dados, 'janelas em cache');
   assert.equal(chamadas.pncp, antes.pncp, 'não insiste no PNCP que acabou de falhar');
 });
+
+test('produtos que o fornecedor vende: agrupa itens vencidos por produto', async () => {
+  const { produtosVendidos, chaveProduto } = await import('../src/services/vitorias.js');
+  assert.equal(chaveProduto('Caneta Esferográfica'), 'caneta esferografica');
+  assert.equal(chaveProduto('Papel de A4'), 'papel a4');
+  const p = produtosVendidos([
+    { titulo: 'Caneta Esferográfica', compra: 'A', orgaoCnpj: '1', uf: 'MG', unidade: 'Unidade', valorUnitario: 1, valorTotal: 100, quantidade: 100, data: '2026-01-02' },
+    { titulo: 'Caneta esferografica', compra: 'B', orgaoCnpj: '2', uf: 'SP', unidade: 'Unidade', valorUnitario: 3, valorTotal: 300, quantidade: 100, data: '2026-03-02' },
+    { titulo: 'Papel A4', compra: 'B', orgaoCnpj: '2', uf: 'SP', unidade: 'Resma', valorUnitario: 20, valorTotal: 1000, quantidade: 50, data: '2026-02-01' },
+    { titulo: null, compra: 'C', valorTotal: 5 },
+  ]);
+  assert.deepEqual(p.map((x) => [x.chave, x.vezes, x.compras, x.valor, x.orgaos]), [['papel a4', 1, 1, 1000, 1], ['caneta esferografica', 2, 2, 400, 2]]);
+  assert.deepEqual([p[1].precoMin, p[1].precoMediano, p[1].precoMax, p[1].unidade, p[1].ultima], [1, 2, 3, 'Unidade', '2026-03-02']);
+  assert.deepEqual(p[1].ufs, ['MG', 'SP']);
+});
