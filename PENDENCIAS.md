@@ -45,7 +45,8 @@ Para retomar, é só abrir a conversa e dizer qual item quer fazer.
       unidade, contato público da Receita, planilha e e-mail de cotação.
 - [x] **Busca Pregão no Chat** (conector MCP para Claude e ChatGPT, página *Busca no Chat*, link pessoal).
 - [x] Conector testado em produção no Claude e no ChatGPT (servidor MCP personalizado, autenticação: nenhuma).
-- [ ] (Opcional) Assistente de chat dentro do próprio sistema.
+- [x] **Assistente IA dentro do sistema** (menu Assistente IA e botão "Pergunte à IA" em todas as páginas): busca licitações,
+      lê editais, confere habilitação, consulta e adiciona negócios; conversas guardadas; custo no painel Uso da IA.
 
 ## 3b. Automação do começo ao fim
 

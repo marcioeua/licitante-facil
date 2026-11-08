@@ -1,6 +1,16 @@
 // Markdown simples (títulos, negrito, itálico, listas e parágrafos) para HTML seguro.
 const esc = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-const inline = (t) => esc(t).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<em>$2</em>');
+// Links [texto](url): só http(s) e rotas internas (#/...). Links do próprio sistema abrem na mesma aba.
+const link = (_, texto, url) => {
+  const u = url.replace(/&amp;/g, '&');
+  if (!/^(https?:\/\/|#\/)/.test(u)) return texto;
+  const interno = u.startsWith('#/') || (typeof window !== 'undefined' && u.startsWith(`${window.location.origin}/#/`));
+  const href = interno ? u.slice(u.indexOf('#/')) : u;
+  return `<a href="${href.replace(/"/g, '%22')}"${interno ? '' : ' target="_blank" rel="noopener"'}>${texto}</a>`;
+};
+const inline = (t) => esc(t)
+  .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, link)
+  .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<em>$2</em>');
 
 export function markdownParaHtml(md) {
   const linhas = String(md ?? '').replace(/\r/g, '').split('\n');

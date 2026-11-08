@@ -50,6 +50,10 @@
 
     <q-page-container>
       <router-view />
+      <!-- Atalho para o assistente de IA em todas as páginas -->
+      <q-page-sticky v-if="$route.name !== 'assistente'" position="bottom-right" :offset="[18, 18]">
+        <q-btn fab color="primary" icon="auto_awesome" :label="$q.screen.gt.xs ? 'Pergunte à IA' : ''" no-caps :to="{ name: 'assistente' }" />
+      </q-page-sticky>
     </q-page-container>
   </q-layout>
 </template>
@@ -81,6 +85,7 @@ async function trocarSenha() {
 }
 const itens = [
   { to: 'inicio', nome: 'Início', icone: 'space_dashboard' },
+  { to: 'assistente', nome: 'Assistente IA', icone: 'auto_awesome' },
   { to: 'agentes', nome: 'Agentes', icone: 'smart_toy' },
   { to: 'chat', nome: 'Busca no Chat', icone: 'forum' },
   { to: 'oportunidades', nome: 'Oportunidades', icone: 'travel_explore' },

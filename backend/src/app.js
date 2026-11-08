@@ -28,6 +28,7 @@ import { habilitacaoDoNegocio } from './services/habilitacao.js';
 import { painelUso, salvarConfigIA } from './services/iaCusto.js';
 import { clienteWhatsApp } from './services/whatsapp.js';
 import telegramRoutes from './routes/telegram.js';
+import assistenteRoutes from './routes/assistente.js';
 import { clienteTelegram } from './services/telegram.js';
 
 import { COOKIE } from './http.js';
@@ -189,6 +190,7 @@ export async function buildApp({ db, logger = false, serveFrontend = true, ia, f
   await app.register(juridicoRoutes, { prefix: '/api/juridico' });
   await app.register(whatsappRoutes, { prefix: '/api/whatsapp' });
   await app.register(telegramRoutes, { prefix: '/api/telegram' });
+  await app.register(assistenteRoutes, { prefix: '/api/assistente' });
   await app.register(notificacoesRoutes, { prefix: '/api/notificacoes' });
 
   // Em produção o backend também entrega o front-end compilado (SPA).

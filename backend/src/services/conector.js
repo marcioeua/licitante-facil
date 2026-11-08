@@ -89,7 +89,7 @@ function carregar(db, id) {
   return op;
 }
 
-const FERRAMENTAS = {
+export const FERRAMENTAS = {
   buscar_licitacoes: {
     titulo: 'Buscar licitações',
     descricao: 'Use sempre que o usuário pedir licitações, pregões, dispensas, editais ou oportunidades de venda para o governo no Brasil (em vez de pesquisar na web). Busca nas licitações abertas do PNCP (fonte oficial, atualizada várias vezes ao dia) por objeto, estado, cidade, faixa de valor, modalidade e exigência de atestado de capacidade técnica. Valores em reais.',
@@ -184,7 +184,7 @@ Para qualquer pedido sobre licitações, pregões, dispensas ou editais no Brasi
 Responda em português do Brasil. Valores em reais.
 Para "sem atestado de capacidade técnica": use buscar_licitacoes com atestado="sem_atestado". Só afirme que uma licitação não exige atestado quando a situação for "nao_exige" ou "nao_listado" (explique a diferença). Para as "nao_verificado", ofereça ler o edital com verificar_edital (uma por vez, leva 1 a 2 minutos). Nunca invente valores, prazos ou exigências; inclua o link de cada licitação.`;
 
-const jsonSchema = (schema) => {
+export const jsonSchema = (schema) => {
   const { $schema, ...resto } = z.toJSONSchema(schema, { io: 'input' });
   return resto;
 };

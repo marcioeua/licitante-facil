@@ -248,6 +248,23 @@ CREATE TABLE IF NOT EXISTS ia_config (
   cotacao_dolar REAL
 );
 
+-- Assistente de IA dentro do sistema: conversas e mensagens (formato da API, com blocos de ferramenta).
+CREATE TABLE IF NOT EXISTS assistente_conversas (
+  id INTEGER PRIMARY KEY,
+  usuario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+  titulo TEXT NOT NULL,
+  criado_em TEXT NOT NULL DEFAULT (datetime('now')),
+  atualizado_em TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS assistente_mensagens (
+  id INTEGER PRIMARY KEY,
+  conversa_id INTEGER NOT NULL REFERENCES assistente_conversas(id) ON DELETE CASCADE,
+  papel TEXT NOT NULL CHECK (papel IN ('user', 'assistant')),
+  conteudo TEXT NOT NULL,
+  criado_em TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_assist_msg ON assistente_mensagens(conversa_id, id);
+
 CREATE TABLE IF NOT EXISTS conector_tokens (
   usuario_id INTEGER PRIMARY KEY REFERENCES usuarios(id) ON DELETE CASCADE,
   token_hash TEXT NOT NULL UNIQUE,

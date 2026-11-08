@@ -43,7 +43,7 @@ export function gastoDoMesUsd(db, uid) {
 
 const NOMES_TIPO = {
   resumo: 'Leitura do edital', pergunta: 'Pergunta ao edital', chat_pregoeiro: 'Chat do pregoeiro', juridico_analise: 'Análise jurídica',
-  juridico_esclarecimento: 'Pedido de esclarecimento', juridico_impugnacao: 'Impugnação', juridico_recurso: 'Recurso', juridico_contrarrazoes: 'Contrarrazões',
+  assistente: 'Assistente (chat no sistema)', juridico_esclarecimento: 'Pedido de esclarecimento', juridico_impugnacao: 'Impugnação', juridico_recurso: 'Recurso', juridico_contrarrazoes: 'Contrarrazões',
 };
 
 /** Painel "Uso da IA": hoje, mês, por dia, por tipo e cada uso com o edital/negócio. */
@@ -57,6 +57,10 @@ export function painelUso(db, uid, { mes } = {}) {
     if (t === 'op') {
       const o = db.prepare('SELECT objeto, orgao_nome, municipio, uf FROM oportunidades WHERE id = ?').get(Number(id));
       return o ? { titulo: o.objeto, detalhe: [o.orgao_nome, o.municipio && `${o.municipio}/${o.uf}`].filter(Boolean).join(' · '), link: `/oportunidades/${id}` } : null;
+    }
+    if (t === 'conv') {
+      const c = db.prepare('SELECT titulo FROM assistente_conversas WHERE id = ? AND usuario_id = ?').get(Number(id), uid);
+      return c ? { titulo: `Conversa: ${c.titulo}`, detalhe: null, link: `/assistente?c=${id}` } : null;
     }
     if (t === 'neg') {
       const n = db.prepare('SELECT titulo FROM negocios WHERE id = ? AND usuario_id = ?').get(Number(id), uid);

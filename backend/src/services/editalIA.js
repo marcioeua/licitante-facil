@@ -80,7 +80,7 @@ function exigirCliente(client) {
 }
 
 export function checarLimite(db, uid) {
-  const { n } = db.prepare("SELECT count(*) AS n FROM ia_uso WHERE usuario_id = ? AND criado_em >= datetime('now', 'start of day')").get(uid);
+  const { n } = db.prepare("SELECT count(*) AS n FROM ia_uso WHERE usuario_id = ? AND tipo != 'assistente' AND criado_em >= datetime('now', 'start of day')").get(uid);
   if (n >= LIMITE_DIARIO) throw httpError(429, `Você atingiu o limite de ${LIMITE_DIARIO} análises com IA por dia. Tente amanhã.`);
   // Limite de gasto mensal definido pelo usuário no painel "Uso da IA".
   const { limiteMensalUsd, cotacaoDolar } = configIA(db, uid);
