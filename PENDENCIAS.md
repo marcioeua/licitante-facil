@@ -78,3 +78,5 @@ Para retomar, é só abrir a conversa e dizer qual item quer fazer.
 - [ ] App para celular (Android/iPhone).
 - [ ] Equipe com permissões.
 - [ ] Planos e cobrança, se for vender o sistema para outras empresas.
+- [ ] Antes de vender: trocar o nome "Pagômetro" (mesmo nome do concorrente; pode ser marca registrada).
+      Sugestões: Termômetro de Pagamento, Risco de Pagamento, Bom Pagador, PagoCerto.
