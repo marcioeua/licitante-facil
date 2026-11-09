@@ -436,6 +436,42 @@ CREATE TABLE IF NOT EXISTS empresas_cadastro (cnpj TEXT PRIMARY KEY, dados TEXT 
 -- Vitórias por fornecedor (Compras.gov.br Dados Abertos), por janela de 365 dias.
 CREATE TABLE IF NOT EXISTS vitorias_cache (cnpj TEXT NOT NULL, janela TEXT NOT NULL, dados TEXT NOT NULL, buscado_em TEXT NOT NULL, PRIMARY KEY (cnpj, janela));
 
+-- Itens de licitações (Dados Abertos do Compras.gov.br), para a busca por item.
+CREATE TABLE IF NOT EXISTS itens_licitacao (
+  id INTEGER PRIMARY KEY,
+  compra_controle TEXT NOT NULL,
+  numero_item INTEGER NOT NULL,
+  descricao TEXT NOT NULL,
+  material INTEGER, unidade TEXT, quantidade REAL, valor_estimado REAL,
+  situacao TEXT, criterio TEXT, beneficio TEXT,
+  fornecedor_ni TEXT, fornecedor_nome TEXT, valor_resultado REAL, quantidade_resultado REAL, data_resultado TEXT,
+  data_inclusao TEXT, orgao_cnpj TEXT,
+  UNIQUE (compra_controle, numero_item)
+);
+CREATE INDEX IF NOT EXISTS itens_licitacao_data ON itens_licitacao (data_inclusao);
+CREATE INDEX IF NOT EXISTS itens_licitacao_compra ON itens_licitacao (compra_controle);
+CREATE VIRTUAL TABLE IF NOT EXISTS itens_licitacao_fts USING fts5(
+  descricao, content='itens_licitacao', content_rowid='id', tokenize = 'unicode61 remove_diacritics 2'
+);
+CREATE TRIGGER IF NOT EXISTS il_ai AFTER INSERT ON itens_licitacao BEGIN
+  INSERT INTO itens_licitacao_fts(rowid, descricao) VALUES (new.id, new.descricao);
+END;
+CREATE TRIGGER IF NOT EXISTS il_ad AFTER DELETE ON itens_licitacao BEGIN
+  INSERT INTO itens_licitacao_fts(itens_licitacao_fts, rowid, descricao) VALUES ('delete', old.id, old.descricao);
+END;
+CREATE TRIGGER IF NOT EXISTS il_au AFTER UPDATE OF descricao ON itens_licitacao BEGIN
+  INSERT INTO itens_licitacao_fts(itens_licitacao_fts, rowid, descricao) VALUES ('delete', old.id, old.descricao);
+  INSERT INTO itens_licitacao_fts(rowid, descricao) VALUES (new.id, new.descricao);
+END;
+CREATE TABLE IF NOT EXISTS itens_dias (dia TEXT PRIMARY KEY, importados INTEGER NOT NULL, importado_em TEXT NOT NULL);
+-- Cabeçalho das compras dos itens (órgão, UF, modalidade, datas), para filtros e exibição.
+CREATE TABLE IF NOT EXISTS itens_compras (
+  controle TEXT PRIMARY KEY, orgao TEXT, unidade TEXT, municipio TEXT, uf TEXT, modalidade TEXT, numero TEXT, ano INTEGER,
+  abertura TEXT, encerramento TEXT, objeto TEXT, srp INTEGER, link_origem TEXT, buscado_em TEXT NOT NULL
+);
+-- Licitações abertas cujos itens já foram buscados no PNCP.
+CREATE TABLE IF NOT EXISTS itens_pncp (controle TEXT PRIMARY KEY, itens INTEGER NOT NULL, buscado_em TEXT NOT NULL);
+
 -- Marca declarada pelo vencedor de cada item (Compras.gov.br, pesquisa de preço). marca NULL = consultado sem marca.
 CREATE TABLE IF NOT EXISTS marcas_itens (compra_controle TEXT NOT NULL, numero_item INTEGER NOT NULL, fornecedor_ni TEXT NOT NULL, marca TEXT, PRIMARY KEY (compra_controle, numero_item, fornecedor_ni));
 CREATE TABLE IF NOT EXISTS marcas_compras (compra_controle TEXT PRIMARY KEY, buscado_em TEXT NOT NULL, achou INTEGER NOT NULL DEFAULT 0);
@@ -461,6 +497,7 @@ CREATE TABLE IF NOT EXISTS ia_uso (
 
 // Colunas adicionadas depois da primeira versão (bancos já existentes).
 const MIGRACOES = [
+  'ALTER TABLE itens_compras ADD COLUMN link_origem TEXT',
   'ALTER TABLE ia_uso ADD COLUMN cache_write_tokens INTEGER',
   'ALTER TABLE ia_uso ADD COLUMN modelo TEXT',
   'ALTER TABLE ia_uso ADD COLUMN referencia TEXT',

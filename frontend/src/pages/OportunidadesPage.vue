@@ -13,6 +13,7 @@
           <q-input v-model="f.q" outlined dense clearable debounce="400" placeholder="O que você vende? Ex.: notebook, limpeza, medicamentos">
             <template #prepend><q-icon name="search" /></template>
           </q-input>
+          <div class="text-caption q-mt-xs"><router-link :to="{ name: 'itens', query: f.q ? { q: f.q } : {} }" class="text-primary">Procurar dentro dos itens das licitações →</router-link></div>
         </div>
         <div class="col-6 col-md-2">
           <q-select v-model="f.uf" :options="filtros.ufs" multiple outlined dense label="UF" options-dense use-chips emit-value />

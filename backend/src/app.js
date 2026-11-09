@@ -15,6 +15,7 @@ import alertasRoutes from './routes/alertas.js';
 import agendaRoutes from './routes/agenda.js';
 import { buscarEntes } from './services/capag.js';
 import { consultarContratos, pesquisarPrecos, disco } from './services/historico.js';
+import { buscarItens } from './services/itens.js';
 import { analisarMercado, analisarEmpresa, rankingMercado } from './services/mercado.js';
 import { sugerirEmpresas, perfilEmpresa, compararEmpresas } from './services/empresas.js';
 import { vitoriasDoFornecedor } from './services/vitorias.js';
@@ -91,6 +92,10 @@ export async function buildApp({ db, logger = false, serveFrontend = true, ia, f
   app.get('/api/pagometro', async (req) => buscarEntes(db, req.query));
 
   // Histórico de compras: quem comprou, quem venceu e por quanto.
+  app.get('/api/itens', async (req, reply) => {
+    if (String(req.query.q ?? '').trim().length < 3) return reply.code(400).send({ erro: 'Digite pelo menos 3 letras.' });
+    return buscarItens(db, req.query, { fetchImpl: app.fetchPncp });
+  });
   app.get('/api/historico/contratos', async (req) => consultarContratos(db, req.query));
   app.get('/api/historico/precos', async (req, reply) => {
     if (String(req.query.q ?? '').trim().length < 3) return reply.code(400).send({ erro: 'Digite pelo menos 3 letras do item.' });

@@ -65,6 +65,7 @@ const SECOES = [
     titulo: 'Ache licitações', resumo: 'Do jeito que preferir: busca, chat ou agentes.', cor: 'blue-7',
     passos: [
       { icone: 'travel_explore', texto: '<b>Oportunidades</b>: busque por palavra, estado, cidade, valor e modalidade.', ir: { name: 'oportunidades' } },
+      { icone: 'manage_search', texto: '<b>Busca por item</b>: procure o produto dentro dos itens das licitações, com situação, quantidade e quem venceu.', ir: { name: 'itens' } },
       { icone: 'auto_awesome', texto: '<b>Assistente IA</b>: pergunte por texto ou voz ("pregões de limpeza em MG até 100 mil").', ir: { name: 'assistente' } },
       { icone: 'forum', texto: '<b>Busca no Chat</b>: use o sistema dentro do Claude ou do ChatGPT.', ir: { name: 'chat' } },
       { icone: 'smart_toy', texto: 'O <b>Agente Prospector</b> faz isso sozinho todo dia às 7h e coloca as melhores em Meus negócios.', ir: { name: 'agentes' } },

@@ -140,6 +140,12 @@ export function proximoDiaContratos(db, agora = new Date()) {
 }
 
 let medirDisco = () => disco();
+/** Há espaço para guardar mais dados antigos? (banco abaixo do limite e disco com folga) */
+export function podeCrescer(db) {
+  if (bancoMb(db) >= LIMITE_BANCO_MB) return false;
+  const d = medirDisco();
+  return !(d && d.livre < reservaMb(d));
+}
 /** Permite simular o disco nos testes. */
 export function _definirMedidorDisco(fn) { medirDisco = fn ?? (() => disco()); }
 

@@ -101,6 +101,7 @@ const itens = [
   { to: 'agentes', nome: 'Agentes', icone: 'smart_toy' },
   { to: 'chat', nome: 'Busca no Chat', icone: 'forum' },
   { to: 'oportunidades', nome: 'Oportunidades', icone: 'travel_explore' },
+  { to: 'itens', nome: 'Busca por item', icone: 'manage_search' },
   { to: 'negocios', nome: 'Meus negócios', icone: 'view_kanban' },
   { to: 'salas', nome: 'Sala de disputa', icone: 'gavel' },
   { to: 'juridico', nome: 'Peças jurídicas', icone: 'balance' },

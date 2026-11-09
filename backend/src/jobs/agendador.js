@@ -12,6 +12,7 @@ import { clienteTelegram, processarMensagensTelegram, enviarNotificacoesPorTeleg
 import { enviarNotificacoesPorWhatsApp, processarFilaWhatsApp } from '../services/whatsapp.js';
 import { resumirEdital } from '../services/editalIA.js';
 import { proximoDiaContratos, importarContratosDoDia, limparHistoricoAntigo, liberarEspaco } from '../services/historico.js';
+import { proximoDiaItens, importarItensDoDia, completarCabecalhos, limparItensAntigos, importarItensDasOportunidades } from '../services/itens.js';
 
 const FUSO = 'America/Sao_Paulo';
 const HORA_COMPLETA = 3; // 3h da manhã
@@ -184,6 +185,20 @@ export function iniciarAgendador(db, { log = console.log, intervaloMs = 5 * 60 *
           const n = await importarContratosDoDia(db, dia);
           log(`[agendador] contratos de ${dia}: ${n}`);
           limparHistoricoAntigo(db);
+        }
+        // Itens das licitações (busca por item): um dia por rodada e os cabeçalhos que faltam.
+        try {
+          const diaItens = proximoDiaItens(db);
+          if (diaItens) {
+            const n = await importarItensDoDia(db, diaItens);
+            log(`[agendador] itens de licitações de ${diaItens}: ${n}`);
+            limparItensAntigos(db);
+          }
+          const ab = await importarItensDasOportunidades(db, { max: 200 });
+          if (ab.feitas) log(`[agendador] itens de licitações abertas (PNCP): ${ab.feitas} licitações`);
+          await completarCabecalhos(db, { max: 300 });
+        } catch (e) {
+          log(`[agendador] itens de licitações: ${e.message}`);
         }
       }
       await executarAgentesAgendados(db, { log, ia });
