@@ -95,7 +95,7 @@ export async function buildApp({ db, logger = false, serveFrontend = true, ia, f
   app.get('/api/historico/precos', async (req, reply) => {
     if (String(req.query.q ?? '').trim().length < 3) return reply.code(400).send({ erro: 'Digite pelo menos 3 letras do item.' });
     try {
-      return await pesquisarPrecos(db, req.query, { fetchImpl: app.fetchPncp });
+      return await pesquisarPrecos(db, req.query, { fetchImpl: app.fetchPncp, prazoMs: 45000 });
     } catch (e) {
       req.log.warn(e);
       return reply.code(502).send({ erro: 'Não foi possível consultar o PNCP agora. Tente novamente em instantes.' });

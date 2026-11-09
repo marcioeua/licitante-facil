@@ -124,7 +124,7 @@ export default async function (app) {
     const it = item(req.usuarioId, req.params.id);
     const q = String(req.query.q ?? tituloItem(it.descricao) ?? it.descricao).slice(0, 120);
     try {
-      const r = await pesquisarPrecos(db, { q }, { fetchImpl: app.fetchPncp, maxCompras: 8 });
+      const r = await pesquisarPrecos(db, { q }, { fetchImpl: app.fetchPncp, maxCompras: 8, prazoMs: 30000 });
       return { q, grupos: r.grupos, itens: r.itens.slice(0, 15) };
     } catch (e) {
       req.log.warn(e);

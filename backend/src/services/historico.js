@@ -37,11 +37,11 @@ const yyyymmdd = (d) => d.toISOString().slice(0, 10).replaceAll('-', '');
 const pncpApi = () => config.pncpBaseUrl.replace(/\/api\/consulta$/, '/api/pncp');
 const espera = (ms) => new Promise((r) => setTimeout(r, ms));
 
-async function getJson(url, fetchImpl, tentativas = 5) {
+async function getJson(url, fetchImpl, tentativas = 5, timeoutMs = 60000) {
   for (let i = 1; ; i++) {
     let res;
     try {
-      res = await fetchImpl(url, { headers: { accept: 'application/json' }, signal: AbortSignal.timeout(60000) });
+      res = await fetchImpl(url, { headers: { accept: 'application/json' }, signal: AbortSignal.timeout(timeoutMs) });
     } catch (e) {
       if (i >= tentativas) throw new Error(`Sem resposta do PNCP (${e.cause?.code ?? e.message})`);
       await espera(1000 * 2 ** i);
@@ -216,11 +216,55 @@ const temTodosOsTermos = (texto, termos) => {
   return termos.every((x) => t.includes(x));
 };
 
+const DADOS_ABERTOS = process.env.DADOS_ABERTOS_URL ?? 'https://dadosabertos.compras.gov.br';
+
+/** Itens e vencedor de cada item de uma compra, pelos Dados Abertos do Compras.gov.br (uma consulta por compra). */
+export async function itensPelosDadosAbertos(db, controle, termos, fetchImpl) {
+  const url = `${DADOS_ABERTOS}/modulo-contratacoes/2.1_consultarItensContratacoes_PNCP_14133_Id?tipo=numeroControlePNCPCompra&codigo=${encodeURIComponent(controle)}`;
+  const r = await fetchImpl(url, { headers: { accept: 'application/json' }, signal: AbortSignal.timeout(30000) });
+  if (r.status === 404 || r.status === 204) return { itens: 0, n: 0 };
+  if (!r.ok) throw new Error(`Compras.gov.br respondeu ${r.status}`);
+  const itens = (await r.json()).resultado ?? [];
+  const insItem = db.prepare(`INSERT INTO compra_itens (compra_controle, numero_item, descricao, unidade, quantidade, valor_unit_estimado, tem_resultado, resultado_buscado)
+    VALUES (?, ?, ?, ?, ?, ?, ?, 1) ON CONFLICT(compra_controle, numero_item) DO UPDATE SET tem_resultado = excluded.tem_resultado, resultado_buscado = 1`);
+  const insRes = db.prepare(`INSERT OR IGNORE INTO item_resultados (compra_controle, numero_item, sequencial, fornecedor_ni, fornecedor_nome,
+    porte, quantidade, valor_unitario, valor_total, data_resultado) VALUES (?, ?, 1, ?, ?, NULL, ?, ?, ?, ?)`);
+  let n = 0;
+  if (!itens.length) return { itens: 0, n: 0 };
+  tx(db, () => {
+    for (const it of itens) {
+      const desc = String(it.descricaodetalhada || it.descricaoResumida || '').replace(/\s+/g, ' ').trim().slice(0, 1000);
+      if (!desc) continue;
+      insItem.run(controle, it.numeroItemPncp, desc, it.unidadeMedida ?? null, it.quantidade ?? null, it.valorUnitarioEstimado ?? null, it.temResultado ? 1 : 0);
+      if (it.temResultado && it.codFornecedor && it.valorUnitarioResultado > 0 && temTodosOsTermos(desc, termos)) {
+        insRes.run(controle, it.numeroItemPncp, it.codFornecedor, it.nomeFornecedor ?? null, it.quantidadeResultado ?? null,
+          it.valorUnitarioResultado, it.valorTotalResultado ?? null, String(it.dataResultado ?? '').slice(0, 10) || null);
+        n++;
+      }
+    }
+    db.prepare("INSERT OR REPLACE INTO compras_consultadas (compra_controle, consultado_em) VALUES (?, datetime('now'))").run(controle);
+  });
+  return { itens: itens.length, n };
+}
+
+let pncpForaAte = 0;
+export function _pncpVoltou() { pncpForaAte = 0; }
+
 async function buscarItensDaCompra(db, controle, termos, { fetchImpl, maxResultados = 6 }) {
   const c = partesCompra(controle);
   if (!c) return 0;
   const base = `${pncpApi()}/v1/orgaos/${c.cnpj}/compras/${c.ano}/${c.seq}/itens`;
-  const itens = (await getJson(`${base}?pagina=1&tamanhoPagina=500`, fetchImpl)) ?? [];
+  // Primeiro os Dados Abertos do Compras.gov.br (uma consulta, rápida); o PNCP fica de reserva (às vezes trava por minutos).
+  const da = await itensPelosDadosAbertos(db, controle, termos, fetchImpl).catch(() => null);
+  if (da?.itens) return da.n;
+  if (Date.now() < pncpForaAte) throw new Error('PNCP fora do ar');
+  let itens;
+  try {
+    itens = (await getJson(`${base}?pagina=1&tamanhoPagina=500`, fetchImpl, 2, 15000)) ?? [];
+  } catch (e) {
+    if (!/respondeu 4/.test(e.message)) pncpForaAte = Date.now() + 120000; // PNCP fora: não insiste por 2 minutos
+    throw e;
+  }
   const insItem = db.prepare(`INSERT INTO compra_itens (compra_controle, numero_item, descricao, unidade, quantidade, valor_unit_estimado, tem_resultado)
     VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(compra_controle, numero_item) DO UPDATE SET descricao = excluded.descricao,
     unidade = excluded.unidade, quantidade = excluded.quantidade, valor_unit_estimado = excluded.valor_unit_estimado, tem_resultado = excluded.tem_resultado`);
@@ -236,7 +280,7 @@ async function buscarItensDaCompra(db, controle, termos, { fetchImpl, maxResulta
   const insRes = db.prepare(`INSERT OR REPLACE INTO item_resultados (compra_controle, numero_item, sequencial, fornecedor_ni, fornecedor_nome,
     porte, quantidade, valor_unitario, valor_total, data_resultado) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
   for (const it of alvo) {
-    const res = (await getJson(`${base}/${it.numeroItem}/resultados`, fetchImpl)) ?? [];
+    const res = (await getJson(`${base}/${it.numeroItem}/resultados`, fetchImpl, 2, 15000)) ?? [];
     tx(db, () => {
       for (const r of res) {
         if (r.dataCancelamento) continue;

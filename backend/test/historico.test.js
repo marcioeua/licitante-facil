@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 
 const { openDatabase } = await import('../src/db/index.js');
 const { buildApp } = await import('../src/app.js');
-const { mapContrato, gravarContratos, importarContratosDoDia, proximoDiaContratos, limparHistoricoAntigo, pesquisarPrecos } = await import('../src/services/historico.js');
+const { mapContrato, gravarContratos, importarContratosDoDia, proximoDiaContratos, limparHistoricoAntigo, pesquisarPrecos, _pncpVoltou } = await import('../src/services/historico.js');
 const { _definirMedidorDisco: medidor } = await import('../src/services/historico.js');
 // Nos testes o disco é simulado (com espaço), para não depender da máquina.
 const DISCO_FOLGADO = () => ({ total: 1e6, livre: 1e6, usoPct: 0 });
@@ -135,4 +135,43 @@ test('disco quase cheio: para de buscar dias antigos e libera espaço', async ()
   } finally {
     _definirMedidorDisco(DISCO_FOLGADO);
   }
+});
+
+test('pesquisa de preços: PNCP fora do ar usa os Dados Abertos do Compras.gov.br', async () => {
+  const db = openDatabase(':memory:');
+  const compra = '33333333000133-1-000077/2026';
+  gravarContratos(db, [mapContrato(contrato(70, 'Aquisição de ventiladores', FA, P1, 5000, compra))]);
+  const fake = async (url) => {
+    const u = new URL(String(url));
+    if (u.hostname.includes('dadosabertos')) {
+      assert.equal(u.searchParams.get('codigo'), compra);
+      return Response.json({ resultado: [
+        { numeroItemPncp: 1, descricaoResumida: 'Ventilador', descricaodetalhada: 'Ventilador de coluna 40 cm', unidadeMedida: 'Unidade', quantidade: 10, valorUnitarioEstimado: 300,
+          temResultado: true, codFornecedor: FA[0], nomeFornecedor: FA[1], quantidadeResultado: 10, valorUnitarioResultado: 250, valorTotalResultado: 2500, dataResultado: '2026-10-01 00:00:00.0000000' },
+        { numeroItemPncp: 2, descricaoResumida: 'Extensão elétrica', temResultado: true, codFornecedor: FB[0], valorUnitarioResultado: 30 }] });
+    }
+    return new Response('fora do ar', { status: 503 });
+  };
+  const r = await pesquisarPrecos(db, { q: 'ventilador' }, { fetchImpl: fake, prazoMs: 20000 });
+  assert.equal(r.itens.length, 1);
+  assert.deepEqual([r.itens[0].fornecedor, r.itens[0].valorUnitario, r.itens[0].data], [FA[1], 250, '2026-10-01']);
+  assert.equal(r.grupos[0].unidade, 'Unidade');
+  _pncpVoltou();
+});
+
+test('pesquisa de preços: PNCP fora do ar não trava a busca', async () => {
+  const db = openDatabase(':memory:');
+  gravarContratos(db, [1, 2, 3, 4, 5, 6].map((i) => mapContrato(contrato(80 + i, 'Aquisição de material de limpeza', FA, P1, 100, `33333333000133-1-00009${i}/2026`))));
+  let pncp = 0;
+  const fake = async (url) => {
+    if (String(url).includes('dadosabertos')) return Response.json({ resultado: [] });
+    pncp++;
+    return new Response('fora', { status: 503 });
+  };
+  const t = Date.now();
+  const r = await pesquisarPrecos(db, { q: 'detergente', assunto: 'limpeza' }, { fetchImpl: fake, prazoMs: 30000 });
+  assert.ok(Date.now() - t < 10000, 'responde rápido');
+  assert.ok(r.falhas > 0);
+  assert.ok(pncp <= 6, `não insiste no PNCP fora do ar (${pncp} chamadas)`);
+  _pncpVoltou();
 });

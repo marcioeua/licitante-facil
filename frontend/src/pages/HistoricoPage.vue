@@ -29,6 +29,11 @@
       </div>
 
       <template v-if="precos && !pesquisando">
+        <q-banner v-if="precos.incompleto || precos.falhas" rounded class="bg-amber-1 text-amber-10 q-mb-md">
+          <template #avatar><q-icon name="schedule" color="amber-9" /></template>
+          O site do governo (PNCP) está lento ou fora do ar agora, então mostramos só o que deu para consultar.
+          A consulta continua em segundo plano: pesquise de novo em alguns minutos para ver mais preços.
+        </q-banner>
         <div v-if="!precos.grupos.length" class="text-grey-7 q-pa-md">
           Nenhum preço homologado encontrado para "{{ ultimaBusca }}".
           Tente outro termo, preencha o assunto (ex.: "medicamentos") ou pesquise de novo para consultar mais compras.
