@@ -57,7 +57,9 @@ async function abrir(n) {
     n.lida = 1;
     naoLidas.value = Math.max(0, naoLidas.value - 1);
   }
-  if (n.link) router.push(n.link);
+  // Edital lido: abre o resumo do edital (página da licitação); avisos antigos apontavam para o negócio.
+  if (n.tipo === 'edital_lido' && n.oportunidade_id) router.push({ name: 'oportunidade', params: { id: n.oportunidade_id }, query: { ver: 'edital' } });
+  else if (n.link) router.push(n.link);
 }
 async function lerTodas() {
   await api.post('/notificacoes/lidas', { todas: true });

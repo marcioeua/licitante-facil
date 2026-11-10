@@ -101,7 +101,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import { api } from 'boot/axios';
@@ -184,4 +184,6 @@ function excluir() {
 onMounted(async () => {
   await Promise.all([recarregar(), filtros.carregarEmpresas(), api.get('/documentos').then((r) => (docs.value = r.data))]);
 });
+// Abrir outro negócio (ex.: pelo sino) estando nesta página: carrega o novo.
+watch(() => route.params.id, (id, antes) => { if (id && id !== antes && route.name === 'negocio') { recarregar(); versaoHabil.value++; } });
 </script>

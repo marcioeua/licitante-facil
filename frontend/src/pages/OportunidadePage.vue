@@ -33,13 +33,13 @@
         <q-btn v-if="op.link_origem" flat no-caps color="primary" icon="launch" label="Sistema de origem" :href="op.link_origem" target="_blank" rel="noopener" />
       </q-card-actions>
     </q-card>
-    <PagometroCard v-if="op" :oportunidade-id="op.id" class="q-mt-md" />
-    <EditalIA v-if="op" :oportunidade-id="op.id" :negocio-id="op.negocio_id" class="q-mt-md" />
+    <PagometroCard v-if="op" :key="`p${op.id}`" :oportunidade-id="op.id" class="q-mt-md" />
+    <EditalIA v-if="op" id="edital-ia" :key="op.id" :oportunidade-id="op.id" :negocio-id="op.negocio_id" class="q-mt-md" />
   </q-page>
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { api } from 'boot/axios';
 import { Notify } from 'quasar';
@@ -96,7 +96,16 @@ async function adicionar() {
   }
 }
 
-onMounted(async () => {
+async function carregarOp() {
+  op.value = null;
   op.value = (await api.get(`/oportunidades/${route.params.id}`)).data;
-});
+  // Veio do aviso "Edital lido": rola até o resumo do edital.
+  if (route.query.ver === 'edital') {
+    await nextTick();
+    // Repete depois que os quadros terminam de carregar (a altura da página muda).
+    for (const ms of [300, 1200, 2500]) setTimeout(() => document.getElementById('edital-ia')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), ms);
+  }
+}
+onMounted(carregarOp);
+watch(() => [route.params.id, route.query.ver], ([id]) => { if (id && route.name === 'oportunidade') carregarOp(); });
 </script>

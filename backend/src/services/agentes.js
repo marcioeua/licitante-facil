@@ -323,7 +323,7 @@ export async function executarLeitor(db, uid, { client, fetchImpl = fetch, resum
         titulo: `Edital lido: "${n.titulo.slice(0, 80)}"`,
         mensagem: [habil, resumo.resumo, docs.length ? `${docs.length} documento(s) de habilitação adicionados ao checklist.` : null,
           ...(resumo.pontos_atencao ?? []).slice(0, 3).map((p) => `Atenção: ${p}`)].filter(Boolean).join('\n'),
-        link: `/negocios/${n.negocio_id}`,
+        link: `/oportunidades/${n.id}?ver=edital`,
       });
       lidos++;
     } catch (e) {
