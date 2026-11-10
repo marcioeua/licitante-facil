@@ -25,7 +25,7 @@ export const AGENTES = {
   leitor: {
     nome: 'Agente Leitor',
     descricao: 'Quando uma licitação entra no funil, lê o edital com IA, coloca no checklist os documentos exigidos e confere se a sua documentação está em dia para participar.',
-    padrao: { maxPorDia: 5, email: false, whatsapp: true, telegram: true },
+    padrao: { automatico: true, maxPorDia: 5, email: false, whatsapp: true, telegram: true },
     precisaIA: true,
   },
 };
@@ -279,20 +279,33 @@ export async function executarVigia(db, uid, { fetchImpl = fetch, consultarArqui
 }
 
 // ---------------- Leitor ----------------
-export async function executarLeitor(db, uid, { client, fetchImpl = fetch, resumir } = {}) {
+/**
+ * Lê os editais do funil com IA.
+ * - negocioId: lê só aquele negócio (a pedido do usuário; pode ler de novo um que já foi lido).
+ * - agendado: execução automática do agendador; não faz nada se o usuário desligou a leitura automática.
+ */
+export async function executarLeitor(db, uid, { client, fetchImpl = fetch, resumir, negocioId = null, agendado = false } = {}) {
   const { config: cfg } = lerConfig(db, uid, 'leitor');
+  if (agendado && !negocioId && cfg.automatico === false) return { lidos: 0, pendentes: 0, automaticoDesligado: true };
   if (!client) {
     const r = { lidos: 0, aviso: 'A leitura com IA não está configurada (falta ANTHROPIC_API_KEY).' };
     registrarExecucao(db, uid, 'leitor', r);
     return r;
   }
+  let pendentes;
+  if (negocioId) {
+    pendentes = db.prepare(`SELECT n.id AS negocio_id, n.titulo, o.* FROM negocios n JOIN oportunidades o ON o.id = n.oportunidade_id
+      WHERE n.usuario_id = ? AND n.id = ?`).all(uid, Number(negocioId));
+    if (!pendentes.length) throw Object.assign(new Error('Negócio não encontrado ou sem licitação do PNCP ligada.'), { statusCode: 404 });
+  } else {
   const hoje = db.prepare("SELECT count(*) AS n FROM notificacoes WHERE usuario_id = ? AND agente = 'leitor' AND criado_em >= datetime('now', 'start of day')").get(uid).n;
   const limite = Math.max(0, cfg.maxPorDia - hoje);
   // Negócios ativos com licitação cujo edital ainda não foi lido por este agente.
-  const pendentes = db.prepare(`SELECT n.id AS negocio_id, n.titulo, o.* FROM negocios n JOIN oportunidades o ON o.id = n.oportunidade_id
+  pendentes = db.prepare(`SELECT n.id AS negocio_id, n.titulo, o.* FROM negocios n JOIN oportunidades o ON o.id = n.oportunidade_id
     WHERE n.usuario_id = ? AND n.arquivado = 0 AND n.etapa NOT IN ('ganho', 'perdido')
       AND NOT EXISTS (SELECT 1 FROM notificacoes x WHERE x.negocio_id = n.id AND x.agente = 'leitor')
     ORDER BY n.criado_em DESC LIMIT ?`).all(uid, limite);
+  }
   let lidos = 0;
   const erros = [];
   for (const n of pendentes) {
@@ -301,7 +314,9 @@ export async function executarLeitor(db, uid, { client, fetchImpl = fetch, resum
       const docs = resumo.documentos_habilitacao ?? [];
       const pos = db.prepare('SELECT coalesce(max(posicao), -1) + 1 AS p FROM checklist_itens WHERE negocio_id = ?').get(n.negocio_id).p;
       const ins = db.prepare('INSERT INTO checklist_itens (negocio_id, texto, posicao) VALUES (?, ?, ?)');
-      tx(db, () => docs.forEach((d, i) => ins.run(n.negocio_id, `Documento: ${d.descricao}`.slice(0, 500), pos + i)));
+      const existe = db.prepare('SELECT 1 FROM checklist_itens WHERE negocio_id = ? AND texto = ?');
+      tx(db, () => docs.map((d) => `Documento: ${d.descricao}`.slice(0, 500)).filter((t) => !existe.get(n.negocio_id, t))
+        .forEach((t, i) => ins.run(n.negocio_id, t, pos + i)));
       const habil = resumoHabilitacao(habilitacaoDoNegocio(db, uid, n.negocio_id));
       notificar(db, {
         usuarioId: uid, agente: 'leitor', tipo: 'edital_lido', negocioId: n.negocio_id, oportunidadeId: n.id,
@@ -315,7 +330,7 @@ export async function executarLeitor(db, uid, { client, fetchImpl = fetch, resum
       erros.push(`${n.titulo.slice(0, 60)}: ${e.message}`);
     }
   }
-  const r = { lidos, pendentes: pendentes.length, erros: erros.slice(0, 3) };
+  const r = { lidos, pendentes: pendentes.length, erros: erros.slice(0, 3), ...(negocioId ? { negocioId: Number(negocioId), titulo: pendentes[0].titulo } : {}) };
   registrarExecucao(db, uid, 'leitor', r);
   return r;
 }

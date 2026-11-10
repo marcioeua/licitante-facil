@@ -25,7 +25,7 @@ export default async function (app) {
     const a = agenteValido(req.params.agente);
     if (a === 'prospector') return executarProspector(db, req.usuarioId);
     if (a === 'vigia') return executarVigia(db, req.usuarioId, { fetchImpl: app.fetchPncp });
-    return executarLeitor(db, req.usuarioId, { client: app.ia, fetchImpl: app.fetchPncp, resumir: resumirEdital });
+    return executarLeitor(db, req.usuarioId, { client: app.ia, fetchImpl: app.fetchPncp, resumir: resumirEdital, negocioId: req.body?.negocioId ?? null });
   });
 }
 

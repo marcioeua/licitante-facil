@@ -40,6 +40,14 @@
               <div class="text-caption text-grey-7">Acompanha as licitações do seu funil (menos as ganhas, perdidas e arquivadas) a cada 2 horas.</div>
             </template>
             <template v-if="a.id === 'leitor'">
+              <q-toggle :model-value="a.config.automatico !== false" label="Ler sozinho tudo o que entra em Meus negócios"
+                @update:model-value="(v) => salvar(a, { config: { automatico: v } })" />
+              <div v-if="a.config.automatico === false" class="text-caption text-grey-7">Desligado: só lê o edital que você escolher abaixo ou no botão "Ler este edital com IA" do negócio.</div>
+              <div class="row q-col-gutter-sm items-center">
+                <div class="col"><q-select v-model="negocioParaLer" :options="negociosLer" option-value="id" option-label="titulo" emit-value map-options outlined dense
+                  label="Ler só um edital (✓ = já lido)" :disable="!a.iaDisponivel" options-dense><template #no-option><q-item><q-item-section class="text-grey-7">Nenhum negócio com licitação do PNCP</q-item-section></q-item></template></q-select></div>
+                <div class="col-auto"><q-btn unelevated no-caps color="primary" icon="auto_stories" label="Ler" :disable="!negocioParaLer || !a.iaDisponivel" :loading="executando === 'leitor-um'" @click="lerUm(a)" /></div>
+              </div>
               <q-select :model-value="a.config.maxPorDia" :options="[1, 3, 5, 10, 20]" outlined dense label="Editais lidos por dia (custo da IA)"
                 @update:model-value="(v) => salvar(a, { config: { maxPorDia: v } })" />
               <div v-if="!a.iaDisponivel" class="text-caption text-orange-9">Ative a chave da IA (ANTHROPIC_API_KEY) no Railway para ligar este agente.</div>
@@ -68,7 +76,7 @@
             </q-list>
           </q-card-section>
           <q-card-actions>
-            <q-btn flat no-caps color="primary" icon="play_arrow" label="Executar agora" :loading="executando === a.id"
+            <q-btn flat no-caps color="primary" icon="play_arrow" :label="a.id === 'leitor' ? 'Ler todos os pendentes' : 'Executar agora'" :loading="executando === a.id"
               :disable="a.precisaIA && !a.iaDisponivel" @click="executar(a)" />
           </q-card-actions>
         </q-card>
@@ -130,14 +138,18 @@
 <script setup>
 import { onMounted, ref } from 'vue';
 import { useQuasar } from 'quasar';
+import { useRouter } from 'vue-router';
 import { api } from 'boot/axios';
 import WhatsAppConfig from 'components/WhatsAppConfig.vue';
 import TelegramConfig from 'components/TelegramConfig.vue';
 
 const $q = useQuasar();
+const router = useRouter();
 const agentes = ref([]);
 const empresas = ref([]);
 const executando = ref(null);
+const negocioParaLer = ref(null);
+const negociosLer = ref([]);
 const whats = ref(null);
 const tele = ref(null);
 const VISUAL = {
@@ -163,6 +175,19 @@ async function salvar(a, mudanca) {
   Object.assign(a, data);
   if ('ativo' in mudanca) $q.notify({ type: 'positive', message: `${a.nome} ${data.ativo ? 'ligado' : 'desligado'}.` });
 }
+async function lerUm(a) {
+  executando.value = 'leitor-um';
+  try {
+    const { data } = await api.post('/agentes/leitor/executar', { negocioId: negocioParaLer.value }, { timeout: 300000 });
+    if (data.aviso) $q.notify({ type: 'warning', message: data.aviso });
+    else if (data.erros?.length) $q.notify({ type: 'negative', message: `Não deu para ler: ${data.erros[0]}` });
+    else $q.notify({ type: 'positive', message: `Edital lido: ${data.titulo}. Veja o resultado no negócio.`, actions: [{ label: 'Abrir', color: 'white', handler: () => router.push({ name: 'negocio', params: { id: data.negocioId } }) }] });
+    negocioParaLer.value = null;
+    await carregar();
+  } finally {
+    executando.value = null;
+  }
+}
 async function executar(a) {
   executando.value = a.id;
   try {
@@ -176,5 +201,7 @@ async function executar(a) {
 onMounted(async () => {
   await carregar();
   empresas.value = (await api.get('/empresas')).data;
+  negociosLer.value = (await api.get('/negocios')).data.filter((x) => x.oportunidade_id && !['ganho', 'perdido'].includes(x.etapa))
+    .map((x) => ({ ...x, titulo: `${x.edital_lido ? '✓ ' : ''}${x.titulo}` }));
 });
 </script>

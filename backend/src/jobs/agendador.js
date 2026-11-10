@@ -131,7 +131,7 @@ export async function executarAgentesAgendados(db, { log = console.log, ia = nul
   if (ia && passou('agente_leitor', 30 * 60000)) {
     marcarTarefa(db, 'agente_leitor', agoraTxt);
     for (const uid of usuariosCom(db, 'leitor')) {
-      try { await executarLeitor(db, uid, { client: ia, fetchImpl, resumir: resumirEdital }); } catch (e) { log(`[agentes] leitor ${uid}: ${e.message}`); }
+      try { await executarLeitor(db, uid, { client: ia, fetchImpl, resumir: resumirEdital, agendado: true }); } catch (e) { log(`[agentes] leitor ${uid}: ${e.message}`); }
     }
   }
   try { await enviarNotificacoesPorEmail(db); } catch (e) { log(`[agentes] e-mail: ${e.message}`); }

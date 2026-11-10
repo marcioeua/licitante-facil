@@ -40,7 +40,7 @@
           </q-card-section>
         </q-card>
 
-        <HabilitacaoCard :negocio-id="n.id" :oportunidade-id="n.oportunidade_id" />
+        <HabilitacaoCard :key="versaoHabil" :negocio-id="n.id" :oportunidade-id="n.oportunidade_id" />
 
         <q-card flat bordered class="lf-card">
           <q-card-section class="row items-center">
@@ -69,7 +69,8 @@
             <q-item><q-item-section><q-item-label caption>Número</q-item-label>{{ n.numero_compra }}/{{ n.ano_compra }}</q-item-section></q-item>
           </q-list>
           <q-card-actions>
-            <q-btn flat no-caps color="primary" icon="auto_awesome" label="Ler edital com IA" :to="{ name: 'oportunidade', params: { id: n.oportunidade_id } }" />
+            <q-btn unelevated no-caps color="primary" icon="auto_stories" label="Ler este edital com IA" :loading="lendo" @click="lerEsteEdital" />
+            <q-btn flat no-caps color="primary" icon="article" label="Ver resumo" :to="{ name: 'oportunidade', params: { id: n.oportunidade_id } }" />
             <q-btn v-if="n.link_pncp" flat no-caps color="primary" icon="open_in_new" label="Edital" :href="n.link_pncp" target="_blank" rel="noopener" />
           </q-card-actions>
         </q-card>
@@ -115,6 +116,8 @@ const filtros = useFiltros();
 const n = ref(null);
 const form = reactive({});
 const novoItem = ref('');
+const lendo = ref(false);
+const versaoHabil = ref(0);
 const docs = ref([]);
 const docParaVincular = ref(null);
 const docsDisponiveis = computed(() => docs.value.filter((d) => !n.value?.documentos.some((x) => x.id === d.id)));
@@ -129,6 +132,20 @@ function preencher(dados) {
 
 async function salvar(campos) {
   preencher((await api.patch(`/negocios/${n.value.id}`, campos)).data);
+}
+// Lê só o edital deste negócio (não mexe nos outros do funil).
+async function lerEsteEdital() {
+  lendo.value = true;
+  try {
+    const { data: r } = await api.post('/agentes/leitor/executar', { negocioId: n.value.id }, { timeout: 300000 });
+    if (r.aviso) $q.notify({ type: 'warning', message: r.aviso });
+    else if (r.erros?.length) $q.notify({ type: 'negative', message: `Não deu para ler o edital: ${r.erros[0]}` });
+    else $q.notify({ type: 'positive', message: 'Edital lido! Documentos exigidos foram para o checklist e o quadro de habilitação foi atualizado.' });
+    await recarregar();
+    versaoHabil.value++;
+  } finally {
+    lendo.value = false;
+  }
 }
 async function recarregar() {
   preencher((await api.get(`/negocios/${route.params.id}`)).data);

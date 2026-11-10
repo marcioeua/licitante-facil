@@ -53,7 +53,8 @@ export default async function (app) {
     arquivarVencidas(db, req.usuarioId);
     const arquivados = req.query.arquivados === 'true' ? 1 : 0;
     return db.prepare(`
-      SELECT n.id, n.titulo, n.etapa, n.responsavel, n.favorito, n.arquivado, n.posicao, n.data_disputa, n.origem, n.pontuacao,
+      SELECT n.id, n.titulo, n.etapa, n.oportunidade_id,
+             EXISTS (SELECT 1 FROM notificacoes x WHERE x.negocio_id = n.id AND x.agente = 'leitor') AS edital_lido, n.responsavel, n.favorito, n.arquivado, n.posicao, n.data_disputa, n.origem, n.pontuacao,
              n.valor_proposta, o.orgao_nome, o.uf, o.valor_estimado, o.data_encerramento, o.modalidade,
              e.razao_social AS empresa_nome,
              (SELECT count(*) FROM checklist_itens c WHERE c.negocio_id = n.id) AS checklist_total,

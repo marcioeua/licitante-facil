@@ -104,6 +104,21 @@ test('Leitor: sem IA avisa; com IA lê, completa o checklist e respeita o limite
   assert.equal(db.prepare("SELECT count(*) AS c FROM checklist_itens WHERE texto = 'Documento: CND federal'").get().c, 1);
   r = await executarLeitor(db, uid, { client: {}, resumir });
   assert.equal(r.lidos, 0, 'limite diário');
+  // Só um edital, a pedido: lê aquele (mesmo com o limite diário) e não duplica o checklist.
+  const [n1, n2] = db.prepare('SELECT id FROM negocios ORDER BY id').all().map((x) => x.id);
+  const lidosAntes = db.prepare("SELECT negocio_id FROM notificacoes WHERE agente = 'leitor'").all().map((x) => x.negocio_id);
+  const alvo = lidosAntes.includes(n1) ? n2 : n1;
+  r = await executarLeitor(db, uid, { client: {}, resumir, negocioId: alvo });
+  assert.deepEqual([r.lidos, r.pendentes, r.negocioId], [1, 1, alvo]);
+  await executarLeitor(db, uid, { client: {}, resumir, negocioId: alvo });
+  assert.equal(db.prepare("SELECT count(*) AS c FROM checklist_itens WHERE negocio_id = ? AND texto = 'Documento: CND federal'").get(alvo).c, 1);
+  await assert.rejects(executarLeitor(db, uid, { client: {}, resumir, negocioId: 999 }), /não encontrado/);
+  // Leitura automática desligada: o agendador não lê nada.
+  salvarConfig(db, uid, 'leitor', { config: { automatico: false, maxPorDia: 20 } });
+  db.prepare("DELETE FROM notificacoes WHERE agente = 'leitor'").run(); // todos pendentes de novo
+  r = await executarLeitor(db, uid, { client: {}, resumir, agendado: true });
+  assert.equal(r.lidos, 0);
+  assert.ok(r.automaticoDesligado);
 });
 
 test('API de agentes e notificações; agendamento e e-mail', async () => {
