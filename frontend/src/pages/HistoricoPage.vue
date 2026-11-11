@@ -96,15 +96,19 @@
           </div>
           <div v-if="!contratos.periodo?.dias" class="text-grey-7 q-pa-md">O histórico de contratos ainda está sendo carregado do PNCP. Volte em algumas horas.</div>
           <q-list bordered separator class="lf-card bg-white">
-            <q-item v-for="c in contratos.itens" :key="c.id">
+            <template v-for="c in contratos.itens" :key="c.id">
+            <q-item clickable @click="alternarItens(c)">
               <q-item-section>
                 <q-item-label class="ellipsis-3">{{ c.objeto }}</q-item-label>
                 <q-item-label caption>
-                  <q-icon name="account_balance" /> <a href="#" class="text-grey-8" @click.prevent="verOrgao(c.orgao_cnpj, c.orgao_nome)">{{ c.orgao_nome }}</a>
+                  <q-icon name="account_balance" /> <a href="#" class="text-grey-8" @click.prevent.stop="verOrgao(c.orgao_cnpj, c.orgao_nome)">{{ c.orgao_nome }}</a>
                   <span v-if="c.municipio"> · {{ c.municipio }}/{{ c.uf }}</span>
                 </q-item-label>
                 <q-item-label caption>
-                  <q-icon name="emoji_events" color="amber-8" /> <a href="#" class="text-primary" @click.prevent="verFornecedor(c.fornecedor_ni, c.fornecedor_nome)">{{ c.fornecedor_nome || 'Fornecedor não informado' }}</a>
+                  <q-icon name="emoji_events" color="amber-8" /> <a href="#" class="text-primary" @click.prevent.stop="verFornecedor(c.fornecedor_ni, c.fornecedor_nome)">{{ c.fornecedor_nome || 'Fornecedor não informado' }}</a>
+                </q-item-label>
+                <q-item-label caption class="text-primary text-weight-medium">
+                  <q-icon :name="itensAbertos[c.id] ? 'expand_less' : 'expand_more'" /> {{ itensAbertos[c.id] ? 'Esconder itens' : 'Ver itens, valores e marcas' }}
                 </q-item-label>
               </q-item-section>
               <q-item-section side top class="text-right">
@@ -112,6 +116,35 @@
                 <div class="text-caption">{{ data(c.data_assinatura) }}</div>
               </q-item-section>
             </q-item>
+            <div v-if="itensAbertos[c.id]" class="q-px-md q-pb-md itens-contrato">
+              <div v-if="itensAbertos[c.id].carregando" class="row items-center q-gutter-sm text-grey-7 q-py-sm">
+                <q-spinner-dots color="primary" size="24px" /><span>Buscando os itens e as marcas nos dados oficiais...</span>
+              </div>
+              <template v-else>
+                <div v-if="itensAbertos[c.id].aviso" class="text-caption text-orange-9 q-py-xs">{{ itensAbertos[c.id].aviso }}</div>
+                <div v-if="!itensAbertos[c.id].itens?.length && !itensAbertos[c.id].aviso" class="text-grey-7 text-caption q-py-xs">
+                  Não encontramos os itens vencidos por esta empresa na licitação de origem.
+                </div>
+                <div v-for="i in itensAbertos[c.id].itens" :key="i.numero" class="item-ganho q-mt-sm">
+                  <div class="text-body2"><b>Item {{ i.numero }}</b> — {{ i.descricao }}</div>
+                  <div class="row q-col-gutter-sm q-mt-xs">
+                    <div class="col-6 col-sm-3"><div class="rot">Marca</div><div class="val" :class="i.marca ? 'text-deep-purple-8' : 'text-grey-6'">{{ i.marca || 'Não informada' }}</div></div>
+                    <div class="col-6 col-sm-3"><div class="rot">Valor que ganhou (unit.)</div><div class="val text-positive">{{ brl2(i.valorUnitario) }}</div></div>
+                    <div class="col-6 col-sm-3"><div class="rot">Quantidade</div><div class="val">{{ num(i.quantidade) }} <span class="text-caption">{{ i.unidade }}</span></div></div>
+                    <div class="col-6 col-sm-3"><div class="rot">Total do item</div><div class="val">{{ brl2(i.valorTotal) }}</div></div>
+                  </div>
+                  <div v-if="i.valorEstimado && i.valorUnitario" class="text-caption text-grey-7">
+                    Estimado pelo órgão: {{ brl2(i.valorEstimado) }}<span v-if="i.valorUnitario < i.valorEstimado"> · {{ pct(1 - i.valorUnitario / i.valorEstimado) }} abaixo</span>
+                  </div>
+                </div>
+                <div class="text-caption text-grey-6 q-mt-sm">
+                  Fonte: {{ itensAbertos[c.id].fonte }}.
+                  <span v-if="itensAbertos[c.id].semMarca">A marca só é publicada nas compras feitas pelo Compras.gov.br com item de catálogo; outros portais e o PNCP não informam a marca.</span>
+                  <a v-if="itensAbertos[c.id].linkCompra" :href="itensAbertos[c.id].linkCompra" target="_blank" rel="noopener" class="text-primary q-ml-xs">Ver a licitação no PNCP</a>
+                </div>
+              </template>
+            </div>
+            </template>
           </q-list>
           <div class="flex flex-center q-mt-md" v-if="paginasContratos > 1">
             <q-pagination v-model="fc.pagina" :max="paginasContratos" :max-pages="7" direction-links />
@@ -157,6 +190,18 @@ const brl2 = (v) => (v == null ? '—' : Number(v).toLocaleString('pt-BR', { sty
 // Pesquisa de preços
 const fp = reactive({ q: route.query.q ?? '', assunto: route.query.assunto ?? '', uf: null });
 const precos = ref(null);
+const itensAbertos = ref({});
+const num = (v) => (v == null ? '—' : Number(v).toLocaleString('pt-BR'));
+const pct = (v) => `${(v * 100).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}%`;
+async function alternarItens(c) {
+  if (itensAbertos.value[c.id]) { delete itensAbertos.value[c.id]; return; }
+  itensAbertos.value[c.id] = { carregando: true };
+  try {
+    itensAbertos.value[c.id] = (await api.get(`/historico/contratos/${c.id}/itens`, { timeout: 90000, silencioso: true })).data;
+  } catch {
+    itensAbertos.value[c.id] = { itens: [], aviso: 'Não foi possível buscar os itens agora. Tente de novo em instantes.' };
+  }
+}
 const pesquisando = ref(false);
 const ultimaBusca = ref('');
 const colPrecos = [
@@ -223,3 +268,10 @@ onMounted(async () => {
   else if (fp.q) pesquisar();
 });
 </script>
+
+<style scoped>
+.itens-contrato { background: rgba(100, 116, 139, 0.06); }
+.item-ganho { border-left: 3px solid #1d4ed8; padding: 6px 10px; border-radius: 4px; }
+.rot { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: #6b7280; }
+.val { font-weight: 700; }
+</style>

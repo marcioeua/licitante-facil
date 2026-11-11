@@ -175,3 +175,25 @@ test('pesquisa de preços: PNCP fora do ar não trava a busca', async () => {
   assert.ok(pncp <= 6, `não insiste no PNCP fora do ar (${pncp} chamadas)`);
   _pncpVoltou();
 });
+
+test('itens do contrato: o que o fornecedor venceu, com valor e marca', async () => {
+  const { itensDoContrato } = await import('../src/services/contratoItens.js');
+  const db = openDatabase(':memory:');
+  const compra = '33333333000133-1-000055/2026';
+  gravarContratos(db, [mapContrato(contrato(90, 'Aquisição de copos descartáveis', FA, P1, 5000, compra))]);
+  const id = db.prepare('SELECT id FROM contratos').get().id;
+  const fake = async (url) => {
+    const u = new URL(String(url));
+    if (u.pathname.includes('2.1_consultarItens')) return Response.json({ resultado: [
+      { numeroItemPncp: 1, numeroItemCompra: 1, codItemCatalogo: 123, idCompra: '99', descricaoResumida: 'Copo', descricaodetalhada: 'Copo descartável biodegradável 200 ml', unidadeMedida: 'Pacote',
+        temResultado: true, codFornecedor: FA[0], quantidadeResultado: 100, valorUnitarioResultado: 4.5, valorTotalResultado: 450, valorUnitarioEstimado: 6 },
+      { numeroItemPncp: 2, descricaoResumida: 'Guardanapo', temResultado: true, codFornecedor: FB[0], valorUnitarioResultado: 2 }] });
+    if (u.pathname.includes('pesquisa-preco')) return Response.json({ resultado: [{ numeroItemCompra: 1, niFornecedor: FA[0], marca: 'ECOCOPO' }] });
+    return new Response(null, { status: 404 });
+  };
+  const r = await itensDoContrato(db, id, 0, { fetchImpl: fake });
+  assert.equal(r.itens.length, 1, 'só o item que este fornecedor venceu');
+  assert.deepEqual([r.itens[0].numero, r.itens[0].valorUnitario, r.itens[0].quantidade, r.itens[0].marca, r.itens[0].valorEstimado], [1, 4.5, 100, 'ECOCOPO', 6]);
+  assert.match(r.linkCompra, /editais\/33333333000133\/2026\/55$/);
+  await assert.rejects(itensDoContrato(db, 999, 0, { fetchImpl: fake }), /não encontrado/);
+});
