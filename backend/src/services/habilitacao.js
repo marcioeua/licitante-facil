@@ -33,32 +33,62 @@ export function categoriaDaExigencia(descricao) {
   return null;
 }
 
+// Certidões que costumam vir juntas numa só exigência ("CND federal, FGTS e CNDT").
+const CERTIDOES = ['certidao_federal', 'fgts', 'trabalhista', 'certidao_estadual', 'certidao_municipal', 'falencia'];
+/**
+ * Todas as certidões pedidas numa exigência. `qualquer` = basta uma (ex.: "estadual e/ou municipal").
+ */
+export function categoriasDaExigencia(descricao) {
+  const principal = categoriaDaExigencia(descricao);
+  if (!CERTIDOES.includes(principal)) return { categorias: principal ? [principal] : [], qualquer: false };
+  const texto = String(descricao ?? '');
+  const categorias = REGRAS.filter(([cat, re]) => CERTIDOES.includes(cat) && re.test(texto)).map(([cat]) => cat);
+  return { categorias, qualquer: categorias.length > 1 && /\be\/ou\b|\bou\b/i.test(texto) };
+}
+const PIOR = { falta: 4, vencido: 3, vence: 2, ok: 1 };
+
 /**
  * Situação de cada exigência:
  *  ok = tem documento válido na data da sessão; vence = válido hoje, mas vence antes da sessão;
  *  vencido = só tem documento vencido; falta = não tem; declaracao = feita na hora (no portal ou assinada);
  *  conferir = não foi possível classificar (confira manualmente).
  */
-export function conferirHabilitacao({ exigencias, documentos, dataSessao, hoje = new Date().toISOString().slice(0, 10) }) {
+export function conferirHabilitacao({ exigencias, documentos, dataSessao, hoje = new Date().toISOString().slice(0, 10), ajustes = new Map() }) {
   const sessao = dataSessao ? String(dataSessao).slice(0, 10) : hoje;
   const porCategoria = Map.groupBy(documentos, (d) => d.categoria);
-  const itens = exigencias.map((e) => {
-    const categoria = categoriaDaExigencia(e.descricao);
-    if (categoria === 'declaracao') return { ...e, categoria, situacao: 'declaracao' };
-    if (!categoria) return { ...e, categoria: null, situacao: 'conferir' };
-    // Prefere o documento que vale por mais tempo (sem validade = não vence).
-    const docs = [...(porCategoria.get(categoria) ?? [])].sort((a, b) => (b.validade ?? '9999').localeCompare(a.validade ?? '9999'));
-    const doc = docs[0];
+  // Situação de uma categoria: prefere o documento que vale por mais tempo (sem validade = não vence).
+  const avaliar = (categoria) => {
+    const doc = [...(porCategoria.get(categoria) ?? [])].sort((a, b) => (b.validade ?? '9999').localeCompare(a.validade ?? '9999'))[0];
     let situacao = 'falta';
     if (doc) situacao = !doc.validade || doc.validade >= sessao ? 'ok' : doc.validade >= hoje ? 'vence' : 'vencido';
-    return { ...e, categoria, situacao, documento: doc ? { id: doc.id, nome: doc.nome, validade: doc.validade } : null };
+    return { categoria, situacao, doc };
+  };
+  const itens = exigencias.map((e) => {
+    const base = (() => {
+      const categoria = categoriaDaExigencia(e.descricao);
+      if (categoria === 'declaracao') return { ...e, categoria, situacao: 'declaracao' };
+      if (!categoria) return { ...e, categoria: null, situacao: 'conferir' };
+      const { categorias, qualquer } = categoriasDaExigencia(e.descricao);
+      const partes = categorias.map(avaliar);
+      // Exige todas (pior situação manda) ou basta uma ("e/ou": melhor situação manda).
+      const escolhida = [...partes].sort((a, b) => (qualquer ? PIOR[a.situacao] - PIOR[b.situacao] : PIOR[b.situacao] - PIOR[a.situacao]))[0];
+      const doc = partes.find((x) => x.situacao === 'ok')?.doc ?? escolhida.doc;
+      return {
+        ...e, categoria, categorias, qualquer, situacao: escolhida.situacao,
+        faltam: partes.filter((x) => x.situacao !== 'ok').map((x) => ({ categoria: x.categoria, situacao: x.situacao })),
+        documento: doc ? { id: doc.id, nome: doc.nome, validade: doc.validade } : null,
+      };
+    })();
+    // Marcado pelo usuário ("já tenho" ou "não se aplica"): conta como resolvido.
+    const ajuste = ajustes.get(e.descricao);
+    return ajuste ? { ...base, situacaoCalculada: base.situacao, situacao: 'manual', ajuste } : base;
   });
   const conta = (s) => itens.filter((i) => i.situacao === s).length;
   const pendentes = conta('falta') + conta('vencido') + conta('vence');
   return {
     apto: pendentes === 0 && conta('conferir') === 0,
     pendentes,
-    contagem: { ok: conta('ok'), vence: conta('vence'), vencido: conta('vencido'), falta: conta('falta'), declaracao: conta('declaracao'), conferir: conta('conferir') },
+    contagem: { ok: conta('ok'), manual: conta('manual'), vence: conta('vence'), vencido: conta('vencido'), falta: conta('falta'), declaracao: conta('declaracao'), conferir: conta('conferir') },
     dataSessao: sessao,
     itens,
   };
@@ -75,16 +105,33 @@ export function habilitacaoDoNegocio(db, uid, negocioId) {
   // Documentos da empresa do negócio e os sem empresa (gerais). Sem empresa no negócio: todos.
   const documentos = db.prepare(`SELECT id, nome, categoria, validade FROM documentos WHERE usuario_id = ?
     ${n.empresa_id ? 'AND (empresa_id = ? OR empresa_id IS NULL)' : ''}`).all(...(n.empresa_id ? [uid, n.empresa_id] : [uid]));
-  return { lido: true, oportunidadeId: n.oportunidade_id, empresaId: n.empresa_id, ...conferirHabilitacao({ exigencias, documentos, dataSessao: n.data_sessao }) };
+  const ajustes = new Map(db.prepare('SELECT descricao, situacao FROM habilitacao_ajustes WHERE negocio_id = ?').all(n.id).map((a) => [a.descricao, a.situacao]));
+  return {
+    lido: true, oportunidadeId: n.oportunidade_id, empresaId: n.empresa_id, conferidoEm: new Date().toISOString(),
+    ...conferirHabilitacao({ exigencias, documentos, dataSessao: n.data_sessao, ajustes }),
+  };
+}
+
+/** O usuário marca uma exigência como resolvida ('ok' = já tenho, 'nao_se_aplica') ou desfaz (null). */
+export function ajustarHabilitacao(db, uid, negocioId, { descricao, situacao }) {
+  const n = db.prepare('SELECT id FROM negocios WHERE id = ? AND usuario_id = ?').get(negocioId, uid);
+  if (!n) return null;
+  if (situacao === 'ok' || situacao === 'nao_se_aplica') {
+    db.prepare('INSERT OR REPLACE INTO habilitacao_ajustes (negocio_id, descricao, situacao) VALUES (?, ?, ?)').run(n.id, String(descricao).slice(0, 2000), situacao);
+  } else {
+    db.prepare('DELETE FROM habilitacao_ajustes WHERE negocio_id = ? AND descricao = ?').run(n.id, String(descricao));
+  }
+  return habilitacaoDoNegocio(db, uid, negocioId);
 }
 
 /** Frase curta para avisos (sino, e-mail e WhatsApp). */
 export function resumoHabilitacao(h) {
   if (!h?.lido) return null;
   if (!h.itens.length) return 'A IA não encontrou a lista de documentos de habilitação no edital: confira manualmente.';
-  if (h.apto) return `✅ Documentação: você está apto (${h.contagem.ok} documento(s) em dia${h.contagem.declaracao ? ` + ${h.contagem.declaracao} declaração(ões) para assinar` : ''}).`;
+  if (h.apto) return `✅ Documentação: você está apto (${h.contagem.ok + (h.contagem.manual ?? 0)} documento(s) em dia${h.contagem.declaracao ? ` + ${h.contagem.declaracao} declaração(ões) para assinar` : ''}).`;
   const partes = [];
-  const lista = (s) => h.itens.filter((i) => i.situacao === s).map((i) => NOMES_CATEGORIA[i.categoria] ?? i.descricao.slice(0, 60));
+  const lista = (s) => h.itens.filter((i) => i.situacao === s).flatMap((i) => (i.faltam?.length ? i.faltam.filter((f) => f.situacao === s).map((f) => f.categoria) : [i.categoria]))
+    .map((c) => NOMES_CATEGORIA[c] ?? c);
   if (h.contagem.falta) partes.push(`falta: ${[...new Set(lista('falta'))].join(', ')}`);
   if (h.contagem.vencido) partes.push(`vencido: ${[...new Set(lista('vencido'))].join(', ')}`);
   if (h.contagem.vence) partes.push(`vence antes da sessão: ${[...new Set(lista('vence'))].join(', ')}`);

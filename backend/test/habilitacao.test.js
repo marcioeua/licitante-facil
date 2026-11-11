@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-const { categoriaDaExigencia, conferirHabilitacao, resumoHabilitacao, habilitacaoDoNegocio } = await import('../src/services/habilitacao.js');
+const { categoriaDaExigencia, conferirHabilitacao, resumoHabilitacao, habilitacaoDoNegocio, ajustarHabilitacao } = await import('../src/services/habilitacao.js');
 const { openDatabase } = await import('../src/db/index.js');
 const { upsertOportunidades, mapContratacao } = await import('../src/services/pncp.js');
 
@@ -71,4 +71,23 @@ test('conferência do negócio usa os documentos da empresa e o edital lido', ()
   db.prepare("INSERT INTO documentos (usuario_id, empresa_id, nome, categoria, validade) VALUES (?, ?, 'CNDT', 'trabalhista', '2099-12-31')").run(uid, e1);
   assert.equal(habilitacaoDoNegocio(db, uid, neg).apto, true);
   assert.equal(habilitacaoDoNegocio(db, uid + 1, neg), null);
+});
+
+test('exigência com várias certidões juntas, "e/ou" e itens marcados pelo usuário', () => {
+  const exigencias = [
+    { grupo: 'fiscal_trabalhista', descricao: 'Certidão conjunta RFB/PGFN, certidão de regularidade com o FGTS e CNDT (Anexo V, itens 2.3 a 2.5).' },
+    { grupo: 'fiscal_trabalhista', descricao: 'Inscrição no cadastro de contribuintes estadual e/ou municipal compatível com o objeto. O MEI é dispensado.' },
+  ];
+  const documentos = [
+    { id: 1, nome: 'CND Federal', categoria: 'certidao_federal', validade: '2026-12-31' },
+    { id: 2, nome: 'CNDT', categoria: 'trabalhista', validade: '2026-12-31' },
+    { id: 3, nome: 'Municipal', categoria: 'certidao_municipal', validade: '2026-12-31' },
+  ];
+  let h = conferirHabilitacao({ exigencias, documentos, dataSessao: '2026-11-18', hoje: '2026-11-06' });
+  assert.equal(h.itens[0].situacao, 'falta', 'falta o FGTS');
+  assert.deepEqual(h.itens[0].faltam, [{ categoria: 'fgts', situacao: 'falta' }]);
+  assert.equal(h.itens[1].situacao, 'ok', 'e/ou: basta uma');
+  assert.match(resumoHabilitacao({ lido: true, ...h }), /falta: Regularidade do FGTS/);
+  h = conferirHabilitacao({ exigencias, documentos, dataSessao: '2026-11-18', hoje: '2026-11-06', ajustes: new Map([[exigencias[0].descricao, 'ok']]) });
+  assert.deepEqual([h.itens[0].situacao, h.itens[0].situacaoCalculada, h.apto], ['manual', 'falta', true]);
 });

@@ -26,7 +26,7 @@ import agentesRoutes, { notificacoesRoutes } from './routes/agentes.js';
 import disputaRoutes from './routes/disputa.js';
 import juridicoRoutes from './routes/juridico.js';
 import whatsappRoutes from './routes/whatsapp.js';
-import { habilitacaoDoNegocio } from './services/habilitacao.js';
+import { habilitacaoDoNegocio, ajustarHabilitacao } from './services/habilitacao.js';
 import { painelUso, salvarConfigIA } from './services/iaCusto.js';
 import { listarOrgaos, perfilOrgao, orgaosDosNegocios } from './services/orgaos.js';
 import { clienteWhatsApp } from './services/whatsapp.js';
@@ -158,6 +158,12 @@ export async function buildApp({ db, logger = false, serveFrontend = true, ia, f
   app.get('/api/habilitacao/negocio/:id', async (req, reply) => {
     const id = Number(req.params.id);
     const h = Number.isInteger(id) ? habilitacaoDoNegocio(db, req.usuarioId, id) : null;
+    return h ?? reply.code(404).send({ erro: 'Negócio não encontrado.' });
+  });
+  app.put('/api/habilitacao/negocio/:id/ajuste', {
+    schema: { body: { type: 'object', required: ['descricao'], properties: { descricao: { type: 'string', minLength: 1 }, situacao: { type: ['string', 'null'] } } } },
+  }, async (req, reply) => {
+    const h = ajustarHabilitacao(db, req.usuarioId, Number(req.params.id), req.body);
     return h ?? reply.code(404).send({ erro: 'Negócio não encontrado.' });
   });
 

@@ -4,7 +4,7 @@
       <div class="text-h5 text-weight-bold col">Documentos</div>
       <q-select v-model="empresaFiltro" :options="filtros.empresas" option-value="id" option-label="razao_social" emit-value map-options
         outlined dense clearable label="Empresa" style="min-width: 220px" @update:model-value="carregar" />
-      <q-btn unelevated no-caps color="primary" icon="upload_file" label="Adicionar documento" @click="abrirNovo" />
+      <q-btn unelevated no-caps color="primary" icon="upload_file" label="Adicionar documento" @click="abrirNovo()" />
     </div>
 
     <q-table flat bordered class="lf-card" :rows="docs" :columns="colunas" row-key="id" :pagination="{ rowsPerPage: 25 }"
@@ -48,6 +48,7 @@
 
 <script setup>
 import { onMounted, reactive, ref } from 'vue';
+import { useRoute } from 'vue-router';
 import { useQuasar } from 'quasar';
 import { api } from 'boot/axios';
 import { useFiltros } from 'stores/filtros';
@@ -79,9 +80,9 @@ const colunas = [
 async function carregar() {
   docs.value = (await api.get('/documentos', { params: empresaFiltro.value ? { empresa_id: empresaFiltro.value } : {} })).data;
 }
-function abrirNovo() {
+function abrirNovo(categoria = 'outros') {
   Object.keys(form).forEach((k) => delete form[k]);
-  Object.assign(form, { nome: '', categoria: 'outros', validade: '', empresa_id: empresaFiltro.value, arquivo: null });
+  Object.assign(form, { nome: CATEGORIAS_DOC[categoria] && categoria !== 'outros' ? CATEGORIAS_DOC[categoria] : '', categoria: CATEGORIAS_DOC[categoria] ? categoria : 'outros', validade: '', empresa_id: empresaFiltro.value, arquivo: null });
   dialogo.value = true;
 }
 function editar(d) {
@@ -118,5 +119,10 @@ function remover(d) {
       carregar();
     });
 }
-onMounted(() => Promise.all([carregar(), filtros.carregarEmpresas()]));
+const route = useRoute();
+onMounted(async () => {
+  await Promise.all([carregar(), filtros.carregarEmpresas()]);
+  // Veio do quadro de habilitação: já abre o cadastro com o tipo de documento que falta.
+  if (route.query.novo) abrirNovo(String(route.query.novo));
+});
 </script>

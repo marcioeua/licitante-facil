@@ -436,6 +436,9 @@ CREATE TABLE IF NOT EXISTS empresas_cadastro (cnpj TEXT PRIMARY KEY, dados TEXT 
 -- Vitórias por fornecedor (Compras.gov.br Dados Abertos), por janela de 365 dias.
 CREATE TABLE IF NOT EXISTS vitorias_cache (cnpj TEXT NOT NULL, janela TEXT NOT NULL, dados TEXT NOT NULL, buscado_em TEXT NOT NULL, PRIMARY KEY (cnpj, janela));
 
+-- Exigências de habilitação que o usuário marcou como resolvidas ("já tenho" / "não se aplica").
+CREATE TABLE IF NOT EXISTS habilitacao_ajustes (negocio_id INTEGER NOT NULL REFERENCES negocios(id) ON DELETE CASCADE, descricao TEXT NOT NULL, situacao TEXT NOT NULL, PRIMARY KEY (negocio_id, descricao));
+
 -- Itens de licitações (Dados Abertos do Compras.gov.br), para a busca por item.
 CREATE TABLE IF NOT EXISTS itens_licitacao (
   id INTEGER PRIMARY KEY,
