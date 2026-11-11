@@ -30,6 +30,27 @@
         </div>
         <div class="col-6 col-md-2"><q-input v-model.number="f.valorMin" type="number" outlined dense label="Valor mín. (R$)" debounce="500" /></div>
         <div class="col-6 col-md-2"><q-input v-model.number="f.valorMax" type="number" outlined dense label="Valor máx. (R$)" debounce="500" /></div>
+        <div class="col-6 col-md-2">
+          <q-select v-model="f.dataTipo" :options="tiposData" emit-value map-options outlined dense label="Filtrar pela data de" />
+        </div>
+        <div class="col-6 col-md-3">
+          <q-input :model-value="periodoTexto" outlined dense readonly label="Período" placeholder="Qualquer data" class="cursor-pointer">
+            <template #prepend><q-icon name="event" class="cursor-pointer" /></template>
+            <template #append><q-icon v-if="f.dataDe || f.dataAte" name="close" class="cursor-pointer" @click.stop="limparPeriodo" /></template>
+            <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+              <q-card>
+                <q-card-section class="q-pb-none row q-gutter-xs">
+                  <q-btn v-for="a in atalhos" :key="a.nome" dense outline no-caps size="sm" color="primary" :label="a.nome" @click="aplicarAtalho(a)" v-close-popup />
+                </q-card-section>
+                <q-date v-model="periodo" range mask="YYYY-MM-DD" minimal flat :locale="LOCALE_PT" />
+                <q-card-actions align="right">
+                  <q-btn flat no-caps label="Limpar" color="grey-8" @click="limparPeriodo" v-close-popup />
+                  <q-btn unelevated no-caps label="Aplicar" color="primary" @click="aplicarPeriodo" v-close-popup />
+                </q-card-actions>
+              </q-card>
+            </q-popup-proxy>
+          </q-input>
+        </div>
         <div class="col-auto"><q-toggle v-model="f.srp" label="Só registro de preço" /></div>
         <div class="col-auto"><q-btn flat no-caps icon="notifications_active" color="primary" label="Salvar como alerta" :disable="!f.q" @click="salvarAlerta" /></div>
       </q-card-section>
@@ -80,6 +101,9 @@ const f = reactive({
   valorMax: route.query.valorMax ?? null,
   srp: route.query.srp === 'true',
   ordem: route.query.ordem ?? 'encerramento',
+  dataTipo: route.query.dataTipo ?? 'encerramento',
+  dataDe: route.query.dataDe ?? null,
+  dataAte: route.query.dataAte ?? null,
   pagina: Number(route.query.pagina) || 1,
 });
 const ordens = [
@@ -88,12 +112,56 @@ const ordens = [
   { label: 'Maior valor', value: 'valor' },
   { label: 'Relevância', value: 'relevancia' },
 ];
+const tiposData = [
+  { label: 'Prazo das propostas', value: 'encerramento' },
+  { label: 'Abertura das propostas', value: 'abertura' },
+  { label: 'Publicação', value: 'publicacao' },
+];
+const LOCALE_PT = {
+  days: 'Domingo_Segunda_Terça_Quarta_Quinta_Sexta_Sábado'.split('_'), daysShort: 'Dom_Seg_Ter_Qua_Qui_Sex_Sáb'.split('_'),
+  months: 'Janeiro_Fevereiro_Março_Abril_Maio_Junho_Julho_Agosto_Setembro_Outubro_Novembro_Dezembro'.split('_'),
+  monthsShort: 'Jan_Fev_Mar_Abr_Mai_Jun_Jul_Ago_Set_Out_Nov_Dez'.split('_'), firstDayOfWeek: 0,
+};
+const periodo = ref(f.dataDe ? { from: f.dataDe, to: f.dataAte ?? f.dataDe } : null);
+const br = (d) => (d ? d.split('-').reverse().join('/') : '');
+const periodoTexto = computed(() => {
+  if (!f.dataDe && !f.dataAte) return '';
+  if (f.dataDe === f.dataAte) return br(f.dataDe);
+  if (!f.dataAte) return `a partir de ${br(f.dataDe)}`;
+  if (!f.dataDe) return `até ${br(f.dataAte)}`;
+  return `${br(f.dataDe)} a ${br(f.dataAte)}`;
+});
+// Datas de hoje no horário de Brasília.
+const diaBr = (somaDias = 0) => new Date(Date.now() - 3 * 3600000 + somaDias * 86400000).toISOString().slice(0, 10);
+const atalhos = [
+  { nome: 'Hoje', de: 0, ate: 0 },
+  { nome: 'Amanhã', de: 1, ate: 1 },
+  { nome: 'Próximos 7 dias', de: 0, ate: 7 },
+  { nome: 'Próximos 30 dias', de: 0, ate: 30 },
+  { nome: 'Últimos 7 dias', de: -7, ate: 0 },
+];
+function aplicarAtalho(a) {
+  f.dataDe = diaBr(a.de);
+  f.dataAte = diaBr(a.ate);
+  periodo.value = { from: f.dataDe, to: f.dataAte };
+}
+function aplicarPeriodo() {
+  const v = periodo.value;
+  if (!v) return limparPeriodo();
+  if (typeof v === 'string') { f.dataDe = v; f.dataAte = v; } else { f.dataDe = v.from; f.dataAte = v.to; }
+}
+function limparPeriodo() {
+  periodo.value = null;
+  f.dataDe = null;
+  f.dataAte = null;
+}
 const resultado = ref({ total: 0, itens: [], tamanho: 20 });
 const carregando = ref(false);
 const paginas = computed(() => Math.ceil(resultado.value.total / resultado.value.tamanho));
 
 function params() {
-  const p = { ...f, uf: f.uf.join(','), municipio: f.municipio.join(','), modalidade: f.modalidade.join(',') };
+  const p = { ...f, uf: f.uf.join(','), municipio: f.municipio.join(','), modalidade: f.modalidade.join(','),
+    dataTipo: f.dataDe || f.dataAte ? f.dataTipo : null };
   return Object.fromEntries(Object.entries(p).filter(([, v]) => v !== '' && v !== null && v !== false));
 }
 
@@ -108,7 +176,7 @@ async function buscar() {
   }
 }
 
-watch(() => [f.q, f.uf, f.municipio, f.modalidade, f.valorMin, f.valorMax, f.srp, f.ordem], () => {
+watch(() => [f.q, f.uf, f.municipio, f.modalidade, f.valorMin, f.valorMax, f.srp, f.ordem, f.dataTipo, f.dataDe, f.dataAte], () => {
   if (f.pagina !== 1) f.pagina = 1;
   else buscar();
 }, { deep: true });

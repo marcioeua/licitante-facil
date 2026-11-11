@@ -58,3 +58,18 @@ test('licitação vencida não entra na triagem e sai dela quando o prazo acaba'
   const n = upsertOportunidades(db, [mapContratacao({ ...op('A6', 1), dataEncerramentoProposta: null })], { soAbertasOuConhecidas: true });
   assert.equal(n, 0);
 });
+
+test('filtro de data em Oportunidades: prazo, abertura e publicação', async () => {
+  const { buscarOportunidades } = await import('../src/services/busca.js');
+  const db = openDatabase(':memory:');
+  const op = (n, enc, pub) => ({ numeroControlePNCP: n, objetoCompra: `Ventilador ${n}`, modalidadeId: 6, modalidadeNome: 'Pregão - Eletrônico',
+    anoCompra: 2026, sequencialCompra: Number(n.slice(1)), srp: false, dataPublicacaoPncp: pub, dataAberturaProposta: pub, dataEncerramentoProposta: enc,
+    valorTotalEstimado: 1000, orgaoEntidade: { cnpj: '11222333000181', razaoSocial: 'P' }, unidadeOrgao: { ufSigla: 'SP', municipioNome: 'Campinas' } });
+  upsertOportunidades(db, [op('B1', '2099-03-10T09:00:00', '2099-03-01T08:00:00'), op('B2', '2099-03-11T23:59:00', '2099-03-05T08:00:00'), op('B3', '2099-03-20T09:00:00', '2099-03-05T10:00:00')].map(mapContratacao));
+  const nums = (f) => buscarOportunidades(db, f).itens.map((o) => o.numero_controle_pncp).sort();
+  assert.deepEqual(nums({ dataDe: '2099-03-10', dataAte: '2099-03-11' }), ['B1', 'B2'], 'prazo de propostas (padrão), até inclui o dia todo');
+  assert.deepEqual(nums({ dataAte: '2099-03-10' }), ['B1']);
+  assert.deepEqual(nums({ dataTipo: 'publicacao', dataDe: '2099-03-05', dataAte: '2099-03-05' }), ['B2', 'B3']);
+  assert.deepEqual(nums({ dataTipo: 'abertura', dataDe: '2099-03-02' }), ['B2', 'B3']);
+  assert.deepEqual(nums({ dataDe: 'xx' }), ['B1', 'B2', 'B3'], 'data inválida é ignorada');
+});

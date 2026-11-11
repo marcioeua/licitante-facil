@@ -78,6 +78,17 @@ export function buscarOportunidades(db, filtros = {}, usuarioId = null) {
     params.encDepois = new Date(new Date(filtros.encerraDepoisDe).getTime() - 3 * 3600000).toISOString().slice(0, 19);
   }
   if (filtros.comResumo) where.push('o.id IN (SELECT oportunidade_id FROM edital_resumos)');
+  // Período: escolhe qual data (prazo das propostas, abertura ou publicação). Datas no horário de Brasília, AAAA-MM-DD.
+  const colData = { encerramento: 'o.data_encerramento', abertura: 'o.data_abertura', publicacao: 'o.data_publicacao' }[filtros.dataTipo ?? 'encerramento'] ?? 'o.data_encerramento';
+  const dia = (v) => (/^\d{4}-\d{2}-\d{2}$/.test(String(v ?? '')) ? String(v) : null);
+  const de = dia(filtros.dataDe);
+  const ate = dia(filtros.dataAte);
+  if (de) { where.push(`${colData} >= :dataDe`); params.dataDe = de; }
+  if (ate) {
+    // Até o fim do dia: compara com o dia seguinte.
+    where.push(`${colData} < :dataAte`);
+    params.dataAte = new Date(new Date(`${ate}T12:00:00Z`).getTime() + 86400000).toISOString().slice(0, 10);
+  }
 
   const ordem = {
     encerramento: 'o.data_encerramento IS NULL, o.data_encerramento ASC',
