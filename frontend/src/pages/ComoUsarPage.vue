@@ -87,6 +87,7 @@ const SECOES = [
     passos: [
       { icone: 'gavel', texto: 'Abra a <b>Sala de disputa</b> (menu ou botão no negócio) e clique em <b>Importar itens do PNCP</b>.', ir: { name: 'salas' } },
       { icone: 'local_shipping', texto: 'Aba <b>4. Fornecedores</b>: veja quem vende cada item e mande a planilha e o e-mail de cotação.' },
+      { icone: 'calculate', texto: '<b>Calculadora de preço</b>: preço mínimo sem prejuízo, impostos do seu regime, DIFAL e lucro em cada lance (botão 🧮 em cada item da Sala).', ir: { name: 'calculadora' } },
       { icone: 'calculate', texto: 'Aba <b>1. Preparar preços</b>: coloque o custo, a margem e a marca. O sistema calcula o <b>preço mínimo</b>.' },
       { icone: 'request_quote', texto: 'Botão <b>Gerar proposta</b>: baixe o Word pronto e anexe no portal.', dica: 'O cadastro no portal é feito por você (login gov.br).' },
     ],

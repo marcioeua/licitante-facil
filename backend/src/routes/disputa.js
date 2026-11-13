@@ -29,7 +29,7 @@ export default async function (app) {
 
   const negocio = (uid, id) => {
     const n = db.prepare(`SELECT n.id, n.titulo, n.etapa, n.data_disputa, n.oportunidade_id, n.empresa_id, o.numero_controle_pncp, o.objeto, o.orgao_nome,
-        o.unidade_nome, o.uf, o.municipio, o.modalidade, o.numero_compra, o.ano_compra, o.data_abertura, o.data_encerramento, o.link_origem, o.link_pncp, o.valor_estimado, e.razao_social AS empresa, e.cnpj AS empresa_cnpj, e.endereco AS empresa_endereco,
+        o.unidade_nome, o.uf, o.esfera, o.municipio, o.modalidade, o.numero_compra, o.ano_compra, o.data_abertura, o.data_encerramento, o.link_origem, o.link_pncp, o.valor_estimado, e.razao_social AS empresa, e.cnpj AS empresa_cnpj, e.endereco AS empresa_endereco,
         e.representante AS empresa_representante, e.representante_cpf AS empresa_representante_cpf, e.representante_cargo AS empresa_representante_cargo,
         e.telefone AS empresa_telefone, e.email AS empresa_email, e.banco AS empresa_banco
       FROM negocios n LEFT JOIN oportunidades o ON o.id = n.oportunidade_id LEFT JOIN empresas e ON e.id = n.empresa_id WHERE n.id = ? AND n.usuario_id = ?`).get(idParam(id), uid);

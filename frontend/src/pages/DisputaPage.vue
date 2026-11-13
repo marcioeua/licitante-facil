@@ -60,11 +60,12 @@
                   <span v-if="i.valor_estimado"> · estimado pelo órgão <b>{{ brl2(i.valor_estimado) }}</b> por unidade</span>
                 </div>
               </div>
+              <q-btn flat round dense icon="calculate" color="primary" :to="{ name: 'calculadora', query: { item: i.id, estimado: i.valor_estimado || undefined, qtd: i.quantidade || undefined, uf: sala.negocio.uf || undefined, federal: sala.negocio.esfera === 'F' ? '1' : undefined, descricao: `Item ${i.numero_item ?? ''} — ${i.descricao ?? ''}` } }"><q-tooltip>Calcular preço mínimo com impostos e DIFAL</q-tooltip></q-btn>
               <q-btn flat round dense icon="query_stats" color="primary" @click="abrirPrecos(i)"><q-tooltip>Preços pagos em compras parecidas</q-tooltip></q-btn>
               <q-btn flat round dense icon="delete_outline" color="grey-7" @click="remover(i)"><q-tooltip>Remover item</q-tooltip></q-btn>
             </q-card-section>
             <q-card-section class="row q-col-gutter-sm q-pt-none">
-              <div class="col-6 col-sm-3"><q-input :model-value="i.custo" type="number" step="any" min="0" dense outlined label="Seu custo unit. (R$)" hint="Produto + frete + impostos" @change="(v) => salvar(i, { custo: numOuNulo(v) })" /></div>
+              <div class="col-6 col-sm-3"><q-input :model-value="i.custo" type="number" step="any" min="0" dense outlined label="Seu custo unit. (R$)" hint="Produto + frete + impostos (use a calculadora 🧮)" @change="(v) => salvar(i, { custo: numOuNulo(v) })" /></div>
               <div class="col-6 col-sm-2"><q-input :model-value="i.margem_minima == null ? null : round(i.margem_minima * 100)" type="number" step="any" dense outlined label="Margem mínima %" @change="(v) => salvar(i, { margem_minima: v === '' ? null : Number(v) / 100 })" /></div>
               <div class="col-6 col-sm-2"><q-input :model-value="i.lance_inicial" type="number" step="any" min="0" dense outlined label="Lance inicial (R$)" :hint="i.valor_estimado ? 'Vazio = estimado' : ''" @change="(v) => salvar(i, { lance_inicial: numOuNulo(v) })" /></div>
               <div class="col-6 col-sm-3">

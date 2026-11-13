@@ -104,6 +104,7 @@ const itens = [
   { to: 'itens', nome: 'Busca por item', icone: 'manage_search' },
   { to: 'negocios', nome: 'Meus negócios', icone: 'view_kanban' },
   { to: 'salas', nome: 'Sala de disputa', icone: 'gavel' },
+  { to: 'calculadora', nome: 'Calculadora de preço', icone: 'calculate' },
   { to: 'juridico', nome: 'Peças jurídicas', icone: 'balance' },
   { to: 'agenda', nome: 'Agenda', icone: 'event' },
   { to: 'documentos', nome: 'Documentos', icone: 'folder_shared' },
