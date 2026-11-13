@@ -65,6 +65,7 @@
             <div v-if="i.valorEstimado && i.valorResultado" class="col-6 col-sm-auto"><div class="rot">Abaixo do estimado</div><div class="val">{{ pct(1 - i.valorResultado / i.valorEstimado) }}</div></div>
           </div>
         </div>
+        <AtaLicitantes v-if="i.situacao === 'Homologado' || i.fornecedorNi" :compra="i.compra" :item="i.item" :destacar-cnpj="i.fornecedorNi" />
         <div class="row items-center q-gutter-sm q-mt-xs">
           <span v-if="i.beneficio && /ME\/EPP/.test(i.beneficio)" class="text-caption text-teal-8"><q-icon name="verified" /> {{ i.beneficio }}</span>
           <q-space />
@@ -88,6 +89,7 @@
 </template>
 
 <script setup>
+import AtaLicitantes from 'components/AtaLicitantes.vue';
 import { ref, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { api } from 'boot/axios';

@@ -137,9 +137,10 @@
                     Estimado pelo órgão: {{ brl2(i.valorEstimado) }}<span v-if="i.valorUnitario < i.valorEstimado"> · {{ pct(1 - i.valorUnitario / i.valorEstimado) }} abaixo</span>
                   </div>
                 </div>
+                <AtaLicitantes v-if="c.compra_controle" :compra="c.compra_controle" :destacar-cnpj="c.fornecedor_ni" />
                 <div class="text-caption text-grey-6 q-mt-sm">
                   Fonte: {{ itensAbertos[c.id].fonte }}.
-                  <span v-if="itensAbertos[c.id].semMarca">A marca só é publicada nas compras feitas pelo Compras.gov.br com item de catálogo; outros portais e o PNCP não informam a marca.</span>
+                  <span v-if="itensAbertos[c.id].semMarca">Sem marca nos dados abertos (só o Compras.gov.br com item de catálogo publica). Veja acima em "Todos os licitantes" se o órgão anexou a ata.</span>
                   <a v-if="itensAbertos[c.id].linkCompra" :href="itensAbertos[c.id].linkCompra" target="_blank" rel="noopener" class="text-primary q-ml-xs">Ver a licitação no PNCP</a>
                 </div>
               </template>
@@ -176,6 +177,7 @@
 </template>
 
 <script setup>
+import AtaLicitantes from 'components/AtaLicitantes.vue';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { api } from 'boot/axios';

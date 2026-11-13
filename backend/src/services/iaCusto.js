@@ -44,6 +44,7 @@ export function gastoDoMesUsd(db, uid) {
 const NOMES_TIPO = {
   resumo: 'Leitura do edital', pergunta: 'Pergunta ao edital', chat_pregoeiro: 'Chat do pregoeiro', juridico_analise: 'Análise jurídica',
   assistente: 'Assistente (chat no sistema)', juridico_esclarecimento: 'Pedido de esclarecimento', juridico_impugnacao: 'Impugnação', juridico_recurso: 'Recurso', juridico_contrarrazoes: 'Contrarrazões',
+  ata: 'Leitura da ata (licitantes e marcas)',
 };
 
 /** Painel "Uso da IA": hoje, mês, por dia, por tipo e cada uso com o edital/negócio. */
