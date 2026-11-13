@@ -13,6 +13,7 @@ import { enviarNotificacoesPorWhatsApp, processarFilaWhatsApp } from '../service
 import { resumirEdital } from '../services/editalIA.js';
 import { proximoDiaContratos, importarContratosDoDia, limparHistoricoAntigo, liberarEspaco } from '../services/historico.js';
 import { proximoDiaItens, importarItensDoDia, completarCabecalhos, limparItensAntigos, importarItensDasOportunidades } from '../services/itens.js';
+const esc = (t) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 const FUSO = 'America/Sao_Paulo';
 const HORA_COMPLETA = 3; // 3h da manhã
@@ -139,7 +140,6 @@ export async function executarAgentesAgendados(db, { log = console.log, ia = nul
   try { await processarFilaWhatsApp(db, { fetchImpl, log }); } catch (e) { log(`[agentes] whatsapp editais: ${e.message}`); }
   const tg = clienteTelegram();
   if (tg) {
-    try { await processarMensagensTelegram(db, tg, { log }); } catch (e) { log(`[agentes] telegram mensagens: ${e.message}`); }
     try { await enviarNotificacoesPorTelegram(db, { cliente: tg, querTelegram: querTelegram(db), log }); } catch (e) { log(`[agentes] telegram: ${e.message}`); }
     try { await processarFilaTelegram(db, { cliente: tg, fetchImpl, log }); } catch (e) { log(`[agentes] telegram editais: ${e.message}`); }
   }
@@ -217,5 +217,51 @@ export function iniciarAgendador(db, { log = console.log, intervaloMs = 5 * 60 *
   }
   const timer = setInterval(tick, intervaloMs);
   setTimeout(tick, 5000); // primeira verificação logo após subir
+  // Telegram: lê as mensagens e os botões a cada poucos segundos (o botão "Ler este edital" responde rápido).
+  const pararTelegram = iniciarEscutaTelegram(db, { log, ia });
+  return () => { clearInterval(timer); pararTelegram(); };
+}
+
+/** Lê o edital pedido pelo botão do Telegram (mesmo com o Agente Leitor desligado) e responde na conversa. */
+const lendoPeloTelegram = new Set();
+export async function lerEditalPeloTelegram(db, { uid, negocioId, chatId }, { cliente, ia, fetchImpl = fetch, appUrl = config.appUrl } = {}) {
+  if (lendoPeloTelegram.has(negocioId)) return;
+  lendoPeloTelegram.add(negocioId);
+  try {
+    const r = await executarLeitor(db, uid, { client: ia, fetchImpl, resumir: resumirEdital, negocioId });
+    if (r.aviso || r.erros?.length) {
+      await cliente.enviarTexto(chatId, `⚠️ Não consegui ler o edital: ${esc(r.aviso ?? r.erros[0])}`);
+      return;
+    }
+    const n = db.prepare("SELECT id, titulo, mensagem, link FROM notificacoes WHERE usuario_id = ? AND negocio_id = ? AND agente = 'leitor' ORDER BY id DESC LIMIT 1").get(uid, negocioId);
+    if (!n) return;
+    const link = n.link && /^https:\/\//.test(appUrl ?? '') ? `\n\n<a href="${esc(`${appUrl}/#${n.link}`)}">Ver o resumo completo</a>` : '';
+    await cliente.enviarTexto(chatId, `📖 <b>${esc(n.titulo)}</b>\n\n${esc(n.mensagem ?? '')}${link}`);
+    db.prepare('UPDATE notificacoes SET enviada_telegram = 1 WHERE id = ?').run(n.id); // não manda o aviso de novo
+  } catch (e) {
+    await cliente.enviarTexto(chatId, `⚠️ Não consegui ler o edital agora: ${esc(e.message)}`).catch(() => {});
+  } finally {
+    lendoPeloTelegram.delete(negocioId);
+  }
+}
+
+export function iniciarEscutaTelegram(db, { log = () => {}, ia = null, intervaloMs = 4000, cliente = clienteTelegram() } = {}) {
+  if (!cliente) return () => {};
+  let falhas = 0;
+  let proxima = 0;
+  const timer = setInterval(async () => {
+    if (Date.now() < proxima) return;
+    try {
+      await processarMensagensTelegram(db, cliente, {
+        log,
+        aoPedirLeitura: ia ? (pedido) => lerEditalPeloTelegram(db, pedido, { cliente, ia }) : null,
+      });
+      falhas = 0;
+    } catch (e) {
+      falhas++;
+      proxima = Date.now() + Math.min(300000, 5000 * 2 ** falhas); // Telegram fora: espera mais entre tentativas
+      if (falhas <= 3) log(`[telegram] escuta: ${e.message}`);
+    }
+  }, intervaloMs);
   return () => clearInterval(timer);
 }

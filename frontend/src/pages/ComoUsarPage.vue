@@ -105,6 +105,7 @@ const SECOES = [
     passos: [
       { icone: 'event', texto: '<b>Agenda</b>: sessões, prazos do pregoeiro e vencimento de documentos.', ir: { name: 'agenda' } },
       { icone: 'notifications', texto: 'O <b>sino</b> (no topo) e o <b>Telegram</b> trazem os avisos dos agentes.' },
+      { icone: 'send', texto: 'No <b>Telegram</b>, cada licitação que entra na triagem chega com o botão <b>Ler este edital com IA</b>: toque e o resumo chega na conversa.', ir: { name: 'agentes' } },
       { icone: 'paid', texto: '<b>Uso da IA</b>: quanto cada leitura custou e o limite de gasto do mês.', ir: { name: 'uso-ia' } },
     ],
   },

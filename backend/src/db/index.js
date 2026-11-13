@@ -513,6 +513,8 @@ const MIGRACOES = [
   'ALTER TABLE usuarios ADD COLUMN telegram_desde TEXT',
   'ALTER TABLE notificacoes ADD COLUMN enviada_telegram INTEGER NOT NULL DEFAULT 0',
   "ALTER TABLE whatsapp_fila ADD COLUMN canal TEXT NOT NULL DEFAULT 'whatsapp'",
+  'ALTER TABLE whatsapp_fila ADD COLUMN negocio_id INTEGER',
+  'ALTER TABLE whatsapp_fila ADD COLUMN com_pdf INTEGER NOT NULL DEFAULT 1',
   'ALTER TABLE empresas ADD COLUMN endereco TEXT',
   'ALTER TABLE empresas ADD COLUMN representante TEXT',
   'ALTER TABLE empresas ADD COLUMN representante_cpf TEXT',

@@ -28,13 +28,18 @@ export function clienteTelegram({ fetchImpl = fetch } = {}) {
       eu ??= await chamar('getMe');
       return eu.username;
     },
-    atualizacoes: (offset) => chamar('getUpdates', { offset, timeout: 0, allowed_updates: ['message'] }),
-    enviarTexto: (chatId, html) => chamar('sendMessage', { chat_id: chatId, text: corta(html, 4000), parse_mode: 'HTML', link_preview_options: { is_disabled: true } }),
-    enviarDocumento(chatId, { bytes, nomeArquivo, legenda }) {
+    atualizacoes: (offset) => chamar('getUpdates', { offset, timeout: 0, allowed_updates: ['message', 'callback_query'] }),
+    enviarTexto: (chatId, html, { teclado } = {}) => chamar('sendMessage', {
+      chat_id: chatId, text: corta(html, 4000), parse_mode: 'HTML', link_preview_options: { is_disabled: true },
+      ...(teclado ? { reply_markup: { inline_keyboard: teclado } } : {}),
+    }),
+    responderBotao: (id, texto) => chamar('answerCallbackQuery', { callback_query_id: id, text: corta(texto, 190) }),
+    enviarDocumento(chatId, { bytes, nomeArquivo, legenda, teclado }) {
       const form = new FormData();
       form.append('chat_id', String(chatId));
       form.append('caption', corta(legenda, 1000));
       form.append('parse_mode', 'HTML');
+      if (teclado) form.append('reply_markup', JSON.stringify({ inline_keyboard: teclado }));
       form.append('document', new Blob([bytes], { type: 'application/pdf' }), nomeArquivo);
       return chamar('sendDocument', form);
     },
@@ -49,13 +54,46 @@ export async function linkDeLigacao(db, cliente, uid) {
 }
 
 /** Lê as mensagens recebidas pelo robô: /start <código> liga a conta, /parar desliga. */
-export async function processarMensagensTelegram(db, cliente, { log = () => {} } = {}) {
-  if (!cliente) return 0;
+// Uma leitura de mensagens por vez (a escuta e o botão "verificar" da página podem coincidir).
+let lendoMensagens = null;
+export function processarMensagensTelegram(db, cliente, opcoes = {}) {
+  if (!cliente) return Promise.resolve(0);
+  lendoMensagens ??= lerMensagens(db, cliente, opcoes).finally(() => { lendoMensagens = null; });
+  return lendoMensagens;
+}
+
+/** Botão "Ler este edital com IA" de uma licitação (só para negócios do usuário). */
+export function tecladoDaLicitacao(negocioId, { appUrl = config.appUrl } = {}) {
+  const linhas = [];
+  if (negocioId) linhas.push([{ text: '📖 Ler este edital com IA', callback_data: `ler:${negocioId}` }]);
+  if (negocioId && /^https:\/\//.test(appUrl ?? '')) linhas.push([{ text: 'Abrir no Busca Pregão IA', url: `${appUrl}/#/negocios/${negocioId}` }]);
+  return linhas.length ? linhas : null;
+}
+
+async function tratarBotao(db, cliente, cb, { aoPedirLeitura, log }) {
+  const chatId = cb.message?.chat?.id;
+  const usr = chatId ? db.prepare('SELECT id FROM usuarios WHERE telegram_chat_id = ?').get(String(chatId)) : null;
+  const m = String(cb.data ?? '').match(/^ler:(\d+)$/);
+  if (!usr || !m) return cliente.responderBotao(cb.id, 'Esta conversa não está ligada a uma conta do Busca Pregão IA.');
+  const neg = db.prepare('SELECT id, titulo, oportunidade_id FROM negocios WHERE id = ? AND usuario_id = ?').get(Number(m[1]), usr.id);
+  if (!neg?.oportunidade_id) return cliente.responderBotao(cb.id, 'Não achei este negócio (pode ter sido apagado).');
+  if (!aoPedirLeitura) return cliente.responderBotao(cb.id, 'A leitura com IA não está disponível agora.');
+  await cliente.responderBotao(cb.id, '📖 Lendo o edital... o resultado chega aqui em 1 a 2 minutos.');
+  // Não espera: a leitura demora e as outras mensagens continuam sendo atendidas.
+  Promise.resolve(aoPedirLeitura({ uid: usr.id, negocioId: neg.id, chatId, titulo: neg.titulo }))
+    .catch((e) => log(`[telegram] leitura ${neg.id}: ${e.message}`));
+}
+
+async function lerMensagens(db, cliente, { log = () => {}, aoPedirLeitura = null } = {}) {
   const offset = Number(db.prepare("SELECT ultima_execucao FROM tarefas WHERE nome = 'telegram_offset'").get()?.ultima_execucao ?? 0);
   const ups = await cliente.atualizacoes(offset || undefined);
   let ligados = 0;
   for (const u of ups) {
     db.prepare("INSERT OR REPLACE INTO tarefas (nome, ultima_execucao) VALUES ('telegram_offset', ?)").run(String(u.update_id + 1));
+    if (u.callback_query) {
+      try { await tratarBotao(db, cliente, u.callback_query, { aoPedirLeitura, log }); } catch (e) { log(`[telegram] botão ${u.update_id}: ${e.message}`); }
+      continue;
+    }
     const m = u.message;
     if (!m?.text || !m.chat?.id) continue;
     const [cmd, arg] = m.text.trim().split(/\s+/);
@@ -86,16 +124,21 @@ export async function processarMensagensTelegram(db, cliente, { log = () => {} }
   return ligados;
 }
 
-export async function enviarEditalTelegram(db, cliente, uid, oportunidadeId, { fetchImpl = fetch, appUrl } = {}) {
+export async function enviarEditalTelegram(db, cliente, uid, oportunidadeId, { fetchImpl = fetch, appUrl, negocioId = null, comPdf = true, novo = false } = {}) {
   const u = db.prepare('SELECT telegram_chat_id, telegram_ativo FROM usuarios WHERE id = ?').get(uid);
   if (!u?.telegram_chat_id || !u.telegram_ativo) throw Object.assign(new Error('Conecte o Telegram na página Agentes primeiro.'), { statusCode: 400 });
-  const { op, titulo, texto, pdf } = await montarEnvioEdital(db, oportunidadeId, { fetchImpl, appUrl });
-  const legenda = `📄 <b>${esc(corta(titulo, 300))}</b>\n\n${esc(texto).replace(/ · /g, '\n')}`;
-  if (pdf) {
-    await cliente.enviarDocumento(u.telegram_chat_id, { bytes: pdf.bytes, nomeArquivo: pdf.nome, legenda });
+  // Licitação no funil: vai com o botão para ler o edital com IA.
+  const negocio = negocioId ?? db.prepare('SELECT id FROM negocios WHERE usuario_id = ? AND oportunidade_id = ?').get(uid, oportunidadeId)?.id ?? null;
+  const teclado = tecladoDaLicitacao(negocio, { appUrl: appUrl ?? config.appUrl });
+  const { op, titulo, texto, pdf } = await montarEnvioEdital(db, oportunidadeId, { fetchImpl, appUrl, semPdf: !comPdf });
+  const cabeca = novo ? '🆕 <b>Nova licitação na sua triagem</b>\n' : '';
+  const legenda = `${cabeca}📄 <b>${esc(corta(titulo, 300))}</b>\n\n${esc(texto).replace(/ · /g, '\n')}`;
+  if (pdf && comPdf) {
+    await cliente.enviarDocumento(u.telegram_chat_id, { bytes: pdf.bytes, nomeArquivo: pdf.nome, legenda, teclado });
     return { documento: true, arquivo: pdf.nome };
   }
-  await cliente.enviarTexto(u.telegram_chat_id, `${legenda}\n\nO edital não está em PDF no PNCP: ${esc(op.link_pncp ?? '')}`);
+  const rodape = comPdf ? `\n\nO edital não está em PDF no PNCP: ${esc(op.link_pncp ?? '')}` : (op.link_pncp ? `\n\n<a href="${esc(op.link_pncp)}">Edital no PNCP</a>` : '');
+  await cliente.enviarTexto(u.telegram_chat_id, `${legenda}${rodape}`, { teclado });
   return { documento: false };
 }
 
@@ -107,7 +150,7 @@ export async function processarFilaTelegram(db, { cliente = clienteTelegram(), f
   let n = 0;
   for (const f of pend) {
     try {
-      const r = await enviarEditalTelegram(db, cliente, f.usuario_id, f.oportunidade_id, { fetchImpl });
+      const r = await enviarEditalTelegram(db, cliente, f.usuario_id, f.oportunidade_id, { fetchImpl, negocioId: f.negocio_id, comPdf: f.com_pdf !== 0, novo: f.origem === 'prospector' });
       db.prepare("UPDATE whatsapp_fila SET enviado_em = datetime('now'), tentativas = tentativas + 1, resultado = ? WHERE id = ?").run(JSON.stringify(r), f.id);
       n++;
     } catch (e) {

@@ -81,11 +81,11 @@ export function detalhesDaLicitacao(op, appUrl = config.appUrl) {
 }
 
 /** Dados da licitação + PDF do edital (ou null), para enviar por qualquer canal. */
-export async function montarEnvioEdital(db, oportunidadeId, { fetchImpl = fetch, appUrl } = {}) {
+export async function montarEnvioEdital(db, oportunidadeId, { fetchImpl = fetch, appUrl, semPdf = false } = {}) {
   const op = db.prepare('SELECT * FROM oportunidades WHERE id = ?').get(oportunidadeId);
   if (!op) throw Object.assign(new Error('Licitação não encontrada.'), { statusCode: 404 });
   let pdf = null;
-  try { pdf = await primeiroPdfDoEdital(op, { fetchImpl }); } catch { pdf = null; }
+  if (!semPdf) { try { pdf = await primeiroPdfDoEdital(op, { fetchImpl }); } catch { pdf = null; } }
   return { op, titulo: op.objeto, texto: detalhesDaLicitacao(op, appUrl), pdf };
 }
 

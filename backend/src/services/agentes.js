@@ -165,10 +165,14 @@ export function executarProspector(db, uid, { agora = new Date() } = {}) {
       adicionadas.push({ negocioId: r.id, oportunidadeId: c.op.id, nota: c.nota, objeto: c.op.objeto });
     }
   });
-  if (adicionadas.length && cfg.whatsappEdital) {
-    // O edital de cada licitação nova vai para o celular (WhatsApp e/ou Telegram, conforme ativado).
-    const fila = db.prepare("INSERT INTO whatsapp_fila (usuario_id, oportunidade_id, origem, canal) VALUES (?, ?, 'prospector', ?)");
-    for (const canal of ['whatsapp', 'telegram'].filter((c) => cfg[c])) for (const a of adicionadas) fila.run(uid, a.oportunidadeId, canal);
+  if (adicionadas.length) {
+    // Cada licitação nova vai para o celular: no Telegram sempre (com o botão "Ler este edital"),
+    // com o PDF se a opção estiver ligada; no WhatsApp só com o PDF ligado.
+    const fila = db.prepare("INSERT INTO whatsapp_fila (usuario_id, oportunidade_id, origem, canal, negocio_id, com_pdf) VALUES (?, ?, 'prospector', ?, ?, ?)");
+    for (const a of adicionadas) {
+      if (cfg.telegram) fila.run(uid, a.oportunidadeId, 'telegram', a.negocioId, cfg.whatsappEdital ? 1 : 0);
+      if (cfg.whatsapp && cfg.whatsappEdital) fila.run(uid, a.oportunidadeId, 'whatsapp', a.negocioId, 1);
+    }
   }
   if (adicionadas.length) {
     notificar(db, {

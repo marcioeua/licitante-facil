@@ -34,6 +34,7 @@
               <q-select :model-value="a.config.empresaId" :options="empresas" option-value="id" option-label="razao_social" emit-value map-options clearable
                 outlined dense label="Empresa participante (opcional)" @update:model-value="(v) => salvar(a, { config: { empresaId: v ?? null } })" />
               <div class="text-caption text-grey-7">Usa os seus <router-link :to="{ name: 'alertas' }">alertas</router-link> para saber o que procurar.</div>
+              <div class="text-caption text-light-blue-9"><q-icon name="send" /> Com o Telegram conectado, cada licitação nova chega lá com o botão <b>"Ler este edital com IA"</b> (funciona mesmo com o Agente Leitor desligado).</div>
             </template>
             <template v-if="a.id === 'vigia'">
               <q-toggle :model-value="a.config.lembrete24h" label="Lembrar 24h antes da disputa" @update:model-value="(v) => salvar(a, { config: { lembrete24h: v } })" />

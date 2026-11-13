@@ -123,3 +123,54 @@ test('token colado com espaço, aspas ou "bot" na frente é limpo', async () => 
     delete process.env.TELEGRAM_BOT_TOKEN;
   }
 });
+
+test('Telegram: licitação nova chega com botão "Ler este edital" e o botão lê mesmo com o Leitor desligado', async () => {
+  const { lerEditalPeloTelegram } = await import('../src/jobs/agendador.js');
+  const db = openDatabase(':memory:');
+  const f = (d) => new Date(Date.now() + d * 86400000).toISOString().slice(0, 19);
+  upsertOportunidades(db, [mapContratacao({ numeroControlePNCP: '11222333000181-1-000046/2026', objetoCompra: 'Aquisição de material de limpeza', modalidadeId: 6,
+    modalidadeNome: 'Pregão - Eletrônico', anoCompra: 2026, numeroCompra: '90046', sequencialCompra: 46, srp: false, dataPublicacaoPncp: f(0),
+    dataEncerramentoProposta: f(10), valorTotalEstimado: 1000, orgaoEntidade: { cnpj: '11222333000181', razaoSocial: 'PREFEITURA' }, unidadeOrgao: { ufSigla: 'SP', municipioNome: 'Campinas' } })]);
+  const opId = db.prepare('SELECT id FROM oportunidades').get().id;
+  db.prepare("INSERT INTO usuarios (nome, email, senha_hash, telegram_chat_id, telegram_ativo) VALUES ('M', 'm@e.com', 'x', '777', 1)").run();
+  const uid = db.prepare('SELECT id FROM usuarios').get().id;
+  db.prepare("INSERT INTO alertas (usuario_id, nome, palavras) VALUES (?, 'Limpeza', 'material de limpeza')").run(uid);
+  // PDF desligado: no Telegram vai mesmo assim (texto + botão); WhatsApp não.
+  salvarConfig(db, uid, 'prospector', { ativo: true, config: { notaMinima: 0, whatsappEdital: false } });
+  executarProspector(db, uid);
+  const fila = db.prepare("SELECT canal, negocio_id, com_pdf FROM whatsapp_fila").all();
+  const negocioId = db.prepare('SELECT id FROM negocios').get().id;
+  assert.deepEqual(fila.map((x) => ({ ...x })), [{ canal: 'telegram', negocio_id: negocioId, com_pdf: 0 }]);
+
+  const enviados = [];
+  const respostas = [];
+  let updates = [];
+  const telegram = {
+    atualizacoes: async (offset) => updates.filter((u) => !offset || u.update_id >= offset),
+    enviarTexto: async (chat, html, op = {}) => { enviados.push({ chat, html, teclado: op.teclado }); },
+    enviarDocumento: async () => { throw new Error('não devia mandar PDF'); },
+    responderBotao: async (id, texto) => { respostas.push(texto); },
+  };
+  assert.equal(await processarFilaTelegram(db, { cliente: telegram, fetchImpl: async () => new Response(null, { status: 404 }) }), 1);
+  assert.match(enviados[0].html, /Nova licitação na sua triagem/);
+  assert.equal(enviados[0].teclado[0][0].callback_data, `ler:${negocioId}`);
+
+  // Toque no botão: responde na hora e pede a leitura.
+  const pedidos = [];
+  updates = [{ update_id: 50, callback_query: { id: 'cb1', data: `ler:${negocioId}`, message: { chat: { id: 777 } } } },
+    { update_id: 51, callback_query: { id: 'cb2', data: `ler:${negocioId}`, message: { chat: { id: 999 } } } }];
+  await processarMensagensTelegram(db, telegram, { aoPedirLeitura: (p) => pedidos.push(p) });
+  await new Promise((r) => setTimeout(r, 10));
+  assert.match(respostas[0], /Lendo o edital/);
+  assert.match(respostas[1], /não está ligada/, 'outra conversa não pode ler negócio alheio');
+  assert.deepEqual(pedidos.map((p) => [p.uid, p.negocioId]), [[uid, negocioId]]);
+
+  // A leitura (Agente Leitor desligado) manda o resultado na conversa.
+  db.prepare("INSERT INTO edital_resumos (oportunidade_id, resumo, modelo) VALUES (?, ?, 'teste')").run(opId, JSON.stringify({ resumo: 'Compra de limpeza', documentos_habilitacao: [{ grupo: 'fiscal_trabalhista', descricao: 'CND federal' }], pontos_atencao: ['Amostra em 3 dias'] }));
+  enviados.length = 0;
+  await lerEditalPeloTelegram(db, { uid, negocioId, chatId: 777 }, { cliente: telegram, ia: {}, appUrl: 'https://app.x' });
+  assert.match(enviados[0].html, /📖 <b>Edital lido/);
+  assert.match(enviados[0].html, /Amostra em 3 dias/);
+  assert.match(enviados[0].html, /oportunidades\/\d+\?ver=edital/);
+  assert.equal(db.prepare("SELECT enviada_telegram FROM notificacoes WHERE agente = 'leitor'").get().enviada_telegram, 1, 'não repete pelo aviso normal');
+});
