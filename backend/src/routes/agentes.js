@@ -1,4 +1,5 @@
 import { httpError, idParam } from '../http.js';
+import { processarFilaTelegram } from '../services/telegram.js';
 import { AGENTES, lerConfig, salvarConfig, executarProspector, executarVigia, executarLeitor } from '../services/agentes.js';
 import { resumirEdital } from '../services/editalIA.js';
 
@@ -23,7 +24,12 @@ export default async function (app) {
   // Executa o agente agora, só para o usuário logado.
   app.post('/:agente/executar', async (req) => {
     const a = agenteValido(req.params.agente);
-    if (a === 'prospector') return executarProspector(db, req.usuarioId);
+    if (a === 'prospector') {
+      const r = executarProspector(db, req.usuarioId);
+      // Manda já para o Telegram as licitações novas (sem esperar a próxima rodada do agendador).
+      if (r.adicionadas && app.telegram) processarFilaTelegram(db, { cliente: app.telegram, fetchImpl: app.fetchPncp }).catch(() => {});
+      return r;
+    }
     if (a === 'vigia') return executarVigia(db, req.usuarioId, { fetchImpl: app.fetchPncp });
     return executarLeitor(db, req.usuarioId, { client: app.ia, fetchImpl: app.fetchPncp, resumir: resumirEdital, negocioId: req.body?.negocioId ?? null });
   });
