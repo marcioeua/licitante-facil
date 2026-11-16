@@ -74,3 +74,21 @@ test('busca por item: ordem dos dias e itens das licitações abertas pelo PNCP'
   assert.ok(b.itens[0].oportunidadeId);
   assert.equal(await completarCabecalhos(db, { fetchImpl: fake }), 0);
 });
+
+test('Agente Fornecedor usa a base de itens guardada (funciona com o PNCP fora do ar)', async () => {
+  const { fornecedoresDoItem } = await import('../src/services/fornecedores.js');
+  const { gravarItens } = await import('../src/services/itens.js');
+  const db = openDatabase(':memory:');
+  const it = (n, ni, nome, valor) => ({ compra: `11111111000111-1-0000${n}/2026`, numero: 1, descricao: 'Papel A4 75g resma 500 folhas', material: 1, unidade: 'Resma',
+    quantidade: 10, estimado: 30, situacao: 'Homologado', criterio: null, beneficio: null, fornecedorNi: ni, fornecedorNome: nome, valorResultado: valor,
+    quantidadeResultado: 10, dataResultado: `2026-10-0${n}`, dataInclusao: '2026-09-01T10:00:00', orgaoCnpj: '11111111000111' });
+  gravarItens(db, [it(1, '22222222000122', 'PAPELARIA A', 21.5), it(2, '22222222000122', 'PAPELARIA A', 23), it(3, '33333333000133', 'COMERCIAL B', 25)]);
+  const pncpFora = async () => new Response('fora', { status: 503 });
+  const t = Date.now();
+  const r = await fornecedoresDoItem(db, 'Papel A4 sulfite 75g', { fetchImpl: pncpFora });
+  assert.ok(Date.now() - t < 5000, 'responde rápido');
+  assert.equal(r.q, 'papel a4');
+  assert.deepEqual(r.fornecedores.map((f) => [f.nome, f.vitorias, f.menorPreco]), [['PAPELARIA A', 2, 21.5], ['COMERCIAL B', 1, 25]]);
+  assert.equal(r.grupos[0].unidade, 'Resma');
+  assert.equal(r.grupos[0].mediana, 23);
+});
