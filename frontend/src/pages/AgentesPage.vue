@@ -27,6 +27,12 @@
 
           <q-card-section class="q-pt-none q-gutter-y-sm">
             <template v-if="a.id === 'prospector'">
+              <q-banner v-if="qtdAlertas === 0" rounded dense class="bg-orange-1 text-orange-10">
+                <template #avatar><q-icon name="notifications_off" /></template>
+                <b>Falta um alerta.</b> O Prospector procura as licitações pelas palavras dos seus alertas (ex.: "ventilador, notebook, material elétrico"). Sem alerta, ele não encontra nada.
+                <template #action><q-btn unelevated no-caps color="orange-9" icon="add_alert" label="Criar alerta" :to="{ name: 'alertas' }" /></template>
+              </q-banner>
+              <div v-else-if="qtdAlertas" class="text-caption text-grey-7"><q-icon name="notifications_active" /> Procurando pelas palavras de {{ qtdAlertas }} alerta(s). <router-link :to="{ name: 'alertas' }">Ver alertas</router-link></div>
               <div class="text-caption text-grey-7">Nota mínima para entrar no funil: <b>{{ a.config.notaMinima }}</b></div>
               <q-slider :model-value="a.config.notaMinima" :min="30" :max="95" :step="5" label @change="(v) => salvar(a, { config: { notaMinima: v } })" />
               <q-select :model-value="a.config.maxPorDia" :options="[5, 10, 20, 30]" outlined dense label="Máximo por dia"
@@ -69,7 +75,7 @@
               Última execução: {{ a.ultimaExecucao ? quando(a.ultimaExecucao) : 'nunca' }}
               <span v-if="a.ultimoResultado"> · {{ resumo(a) }}</span>
             </div>
-            <div v-if="a.ultimoResultado?.aviso" class="text-caption text-orange-9">{{ a.ultimoResultado.aviso }}</div>
+            <div v-if="a.ultimoResultado?.aviso && !(qtdAlertas > 0 && /alerta/i.test(a.ultimoResultado.aviso))" class="text-caption text-orange-9">{{ a.ultimoResultado.aviso }}</div>
             <q-list dense class="q-mt-xs">
               <q-item v-for="n in a.recentes" :key="n.id" dense class="q-px-none">
                 <q-item-section><q-item-label caption lines="2">• {{ n.titulo }}</q-item-label></q-item-section>
@@ -154,6 +160,7 @@ const empresas = ref([]);
 const executando = ref(null);
 const negocioParaLer = ref(null);
 const buscaFornecedor = ref('');
+const qtdAlertas = ref(null);
 const negociosLer = ref([]);
 const whats = ref(null);
 const tele = ref(null);
@@ -206,6 +213,7 @@ async function executar(a) {
 onMounted(async () => {
   await carregar();
   empresas.value = (await api.get('/empresas')).data;
+  api.get('/alertas', { silencioso: true }).then((r) => (qtdAlertas.value = r.data.length)).catch(() => {});
   negociosLer.value = (await api.get('/negocios')).data.filter((x) => x.oportunidade_id && !['ganho', 'perdido'].includes(x.etapa))
     .map((x) => ({ ...x, titulo: `${x.edital_lido ? '✓ ' : ''}${x.titulo}` }));
 });

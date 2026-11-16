@@ -107,7 +107,7 @@ export async function buildApp({ db, logger = false, serveFrontend = true, ia, f
     const q = String(req.query.q ?? '').trim();
     if (q.length < 3) return reply.code(400).send({ erro: 'Digite pelo menos 3 letras do produto.' });
     const uf = /^[A-Za-z]{2}$/.test(req.query.uf ?? '') ? req.query.uf.toUpperCase() : undefined;
-    return fornecedoresDoItem(db, q, { q, uf, fetchImpl: app.fetchPncp });
+    return fornecedoresDoItem(db, q, { q, uf, fetchImpl: app.fetchPncp, reduzir: true });
   });
   app.get('/api/historico/contratos/:id/itens', async (req) => itensDoContrato(db, Number(req.params.id), req.usuarioId, { fetchImpl: app.fetchPncp }));
   app.get('/api/historico/contratos', async (req) => consultarContratos(db, req.query));

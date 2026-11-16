@@ -30,6 +30,9 @@
           <span v-if="r.grupos?.[0]"> · preço mediano pago: <b>{{ brl2(r.grupos[0].mediana) }}</b> por {{ r.grupos[0].unidade.toLowerCase() }} ({{ r.grupos[0].quantidade }} compras)</span>
         </div>
       </div>
+      <div v-if="buscado && r.q && r.q.toLowerCase() !== buscado.toLowerCase()" class="text-caption text-grey-8 q-mb-sm">
+        <q-icon name="info" color="primary" /> Não achamos vendas de "<b>{{ buscado }}</b>"; mostrando os resultados para "<b>{{ r.q }}</b>".
+      </div>
       <q-banner v-if="r.incompleto" dense rounded class="bg-blue-1 text-blue-10 q-mb-sm">O PNCP está lento agora: mostrando o que já foi encontrado. Busque de novo em alguns minutos para ver mais.</q-banner>
       <div v-if="!r.fornecedores.length" class="text-grey-7 q-pa-md">Nenhum vencedor encontrado. Tente uma palavra mais curta (ex.: só o nome do produto).</div>
       <q-list v-else bordered separator class="lf-card bg-white">
@@ -76,6 +79,7 @@ const uf = ref(route.query.uf ?? null);
 const r = ref(null);
 const carregando = ref(false);
 const contatos = ref({});
+const buscado = ref('');
 const brl2 = (v) => (v == null ? '—' : Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: v < 1 ? 4 : 2 }));
 const telefone = (t) => (t ? String(t).replace(/^(\d{2})(\d{4,5})(\d{4})$/, '($1) $2-$3') : '');
 
@@ -84,6 +88,7 @@ async function buscar() {
   carregando.value = true;
   router.replace({ query: { q: q.value, uf: uf.value || undefined } });
   try {
+    buscado.value = q.value.trim();
     r.value = (await api.get('/fornecedores', { params: { q: q.value, uf: uf.value || undefined }, timeout: 90000 })).data;
   } finally {
     carregando.value = false;

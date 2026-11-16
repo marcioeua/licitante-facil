@@ -92,3 +92,17 @@ test('Agente Fornecedor usa a base de itens guardada (funciona com o PNCP fora d
   assert.equal(r.grupos[0].unidade, 'Resma');
   assert.equal(r.grupos[0].mediana, 23);
 });
+
+test('Fornecedores: busca digitada sem resultado tenta a palavra principal', async () => {
+  const { fornecedoresDoItem } = await import('../src/services/fornecedores.js');
+  const { gravarItens } = await import('../src/services/itens.js');
+  const db = openDatabase(':memory:');
+  gravarItens(db, [{ compra: '11111111000111-1-000001/2026', numero: 1, descricao: 'Ventilador de coluna 40cm', material: 1, unidade: 'Unidade', quantidade: 5, estimado: 300,
+    situacao: 'Homologado', criterio: null, beneficio: null, fornecedorNi: '22222222000122', fornecedorNome: 'LOJA A', valorResultado: 250, quantidadeResultado: 5,
+    dataResultado: '2026-10-01', dataInclusao: '2026-09-01T10:00:00', orgaoCnpj: '11111111000111' }]);
+  const fora = async () => new Response('fora', { status: 503 });
+  const exato = await fornecedoresDoItem(db, 'ventilador de parede 60cm', { q: 'ventilador de parede 60cm', fetchImpl: fora });
+  assert.equal(exato.fornecedores.length, 0, 'sem reduzir, respeita o que foi digitado');
+  const r = await fornecedoresDoItem(db, 'ventilador de parede 60cm', { q: 'ventilador de parede 60cm', fetchImpl: fora, reduzir: true });
+  assert.deepEqual([r.q, r.fornecedores[0]?.nome], ['ventilador', 'LOJA A']);
+});

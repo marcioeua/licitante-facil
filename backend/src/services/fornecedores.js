@@ -65,7 +65,7 @@ function gruposPorUnidade(itens) {
 }
 
 /** Fornecedores que venceram itens parecidos, com preços homologados. */
-export async function fornecedoresDoItem(db, descricao, { q, uf, objeto, fetchImpl } = {}) {
+export async function fornecedoresDoItem(db, descricao, { q, uf, objeto, fetchImpl, reduzir = false } = {}) {
   let busca = String(q ?? termosDoItem(descricao)).trim();
   if (busca.length < 3) return { q: busca, fornecedores: [], grupos: [] };
   const assunto = assuntoDoObjeto(objeto);
@@ -90,7 +90,8 @@ export async function fornecedoresDoItem(db, descricao, { q, uf, objeto, fetchIm
   };
   let r = await pesquisar(busca);
   const primeira = busca.split(' ')[0];
-  if (!q && !r.itens.length && primeira !== busca && primeira.length >= 4) {
+  // Sem resultado: tenta só pela palavra principal ("ventilador de parede 60cm" → "ventilador").
+  if ((!q || reduzir) && !r.itens.length && primeira !== busca && primeira.length >= 4) {
     busca = primeira;
     r = await pesquisar(busca);
   }
