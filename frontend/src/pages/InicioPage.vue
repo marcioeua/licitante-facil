@@ -1,8 +1,13 @@
 <template>
   <q-page padding>
     <div class="text-h5 text-weight-bold q-mb-md">Olá, {{ auth.usuario?.nome?.split(' ')[0] }}</div>
-    <div v-if="!d" class="row q-col-gutter-md"><div v-for="i in 4" :key="i" class="col-12 col-md-3"><q-skeleton height="96px" /></div></div>
-    <template v-else>
+    <q-banner v-if="erro" rounded class="bg-red-1 text-red-10 q-mb-md">
+      <template #avatar><q-icon name="cloud_off" /></template>
+      Não foi possível carregar o painel agora (sem internet ou o servidor está reiniciando).
+      <template #action><q-btn flat no-caps color="red-10" icon="refresh" label="Tentar de novo" :loading="carregando" @click="carregar" /></template>
+    </q-banner>
+    <div v-else-if="!d" class="row q-col-gutter-md"><div v-for="i in 4" :key="i" class="col-12 col-md-3"><q-skeleton height="96px" /></div></div>
+    <template v-if="d">
       <div class="row q-col-gutter-md q-mb-md">
         <div class="col-6 col-md-3" v-for="k in kpis" :key="k.nome">
           <q-card flat bordered class="lf-card full-height cursor-pointer" @click="$router.push(k.to)">
@@ -41,7 +46,10 @@
                   <q-item-label lines="2">{{ n.titulo }}</q-item-label>
                   <q-item-label caption>{{ n.orgao_nome }}</q-item-label>
                 </q-item-section>
-                <q-item-section side><q-badge color="orange-8" :label="dataHora(n.data_disputa)" /></q-item-section>
+                <q-item-section side class="text-right">
+                  <q-badge color="orange-8" :label="dataHora(n.data_disputa)" />
+                  <div class="text-caption text-weight-bold q-mt-xs" :class="falta(n.data_disputa).cor">{{ falta(n.data_disputa).texto }}</div>
+                </q-item-section>
               </q-item>
               <q-item v-if="!d.proximasDisputas.length"><q-item-section class="text-grey-7">Nenhuma disputa agendada.</q-item-section></q-item>
             </q-list>
@@ -74,6 +82,18 @@ import OportunidadeCard from 'components/OportunidadeCard.vue';
 
 const auth = useAuth();
 const d = ref(null);
+const erro = ref(false);
+const carregando = ref(false);
+// "Hoje", "Amanhã" ou "Em X dias" (dias de calendário no horário de Brasília).
+function falta(quando) {
+  if (!quando) return { texto: '', cor: '' };
+  const dia = (x) => Math.floor((new Date(x).getTime() - 3 * 3600000) / 86400000);
+  const n = dia(quando) - dia(Date.now());
+  if (n < 0) return { texto: 'Já passou', cor: 'text-grey-6' };
+  if (n === 0) return { texto: 'Hoje', cor: 'text-negative' };
+  if (n === 1) return { texto: 'Amanhã', cor: 'text-orange-9' };
+  return { texto: `Em ${n} dias`, cor: 'text-grey-7' };
+}
 const ativos = (f) => ['triagem', 'analise', 'proposta', 'disputa'].reduce((s, e) => s + (f[e] ?? 0), 0);
 const kpis = computed(() => [
   { nome: 'Licitações abertas', valor: d.value.totalOportunidadesAbertas.toLocaleString('pt-BR'), icone: 'travel_explore', to: { name: 'oportunidades' } },
@@ -82,7 +102,16 @@ const kpis = computed(() => [
   { nome: 'Ganhos', valor: d.value.funil.ganho ?? 0, icone: 'emoji_events', to: { name: 'negocios' } },
 ]);
 
-onMounted(async () => {
-  d.value = (await api.get('/dashboard')).data;
-});
+async function carregar() {
+  carregando.value = true;
+  try {
+    d.value = (await api.get('/dashboard', { silencioso: true })).data;
+    erro.value = false;
+  } catch {
+    erro.value = !d.value;
+  } finally {
+    carregando.value = false;
+  }
+}
+onMounted(carregar);
 </script>
