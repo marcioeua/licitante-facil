@@ -5,6 +5,7 @@ export default [
     children: [
       { path: '', name: 'inicio', component: () => import('pages/InicioPage.vue') },
       { path: 'oportunidades', name: 'oportunidades', component: () => import('pages/OportunidadesPage.vue') },
+      { path: 'fornecedores', name: 'fornecedores', component: () => import('pages/FornecedoresPage.vue') },
       { path: 'calculadora', name: 'calculadora', component: () => import('pages/CalculadoraPage.vue') },
       { path: 'itens', name: 'itens', component: () => import('pages/ItensPage.vue') },
       { path: 'oportunidades/:id', name: 'oportunidade', component: () => import('pages/OportunidadePage.vue') },

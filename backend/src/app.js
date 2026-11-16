@@ -18,6 +18,7 @@ import { consultarContratos, pesquisarPrecos, disco } from './services/historico
 import { buscarItens } from './services/itens.js';
 import { itensDoContrato } from './services/contratoItens.js';
 import { lerAta } from './services/atas.js';
+import { fornecedoresDoItem } from './services/fornecedores.js';
 import { analisarMercado, analisarEmpresa, rankingMercado } from './services/mercado.js';
 import { sugerirEmpresas, perfilEmpresa, compararEmpresas } from './services/empresas.js';
 import { vitoriasDoFornecedor } from './services/vitorias.js';
@@ -101,6 +102,13 @@ export async function buildApp({ db, logger = false, serveFrontend = true, ia, f
   // Ata da sessão: GET só diz se existe (ou devolve a já lida); POST lê com IA.
   app.get('/api/compras/ata', async (req) => lerAta(db, req.usuarioId, String(req.query.controle ?? ''), { fetchImpl: app.fetchPncp, somenteCache: true }));
   app.post('/api/compras/ata', async (req) => lerAta(db, req.usuarioId, String(req.body?.controle ?? ''), { client: app.ia, fetchImpl: app.fetchPncp }));
+  // Agente Fornecedor sem precisar de negócio: quem vende o produto ao governo.
+  app.get('/api/fornecedores', async (req, reply) => {
+    const q = String(req.query.q ?? '').trim();
+    if (q.length < 3) return reply.code(400).send({ erro: 'Digite pelo menos 3 letras do produto.' });
+    const uf = /^[A-Za-z]{2}$/.test(req.query.uf ?? '') ? req.query.uf.toUpperCase() : undefined;
+    return fornecedoresDoItem(db, q, { q, uf, fetchImpl: app.fetchPncp });
+  });
   app.get('/api/historico/contratos/:id/itens', async (req) => itensDoContrato(db, Number(req.params.id), req.usuarioId, { fetchImpl: app.fetchPncp }));
   app.get('/api/historico/contratos', async (req) => consultarContratos(db, req.query));
   app.get('/api/historico/precos', async (req, reply) => {

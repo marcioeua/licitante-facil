@@ -7,6 +7,7 @@ Registro das melhorias feitas por conta própria (rodada diária e ajustes), em 
 - **Início — aviso quando a tela não carrega:** se o servidor ou a internet falharem, aparece um aviso com o botão "Tentar de novo" (antes ficavam só blocos cinza).
 - **Início — contagem de dias nas disputas:** em "Próximas disputas" aparece "Hoje" (vermelho), "Amanhã" (laranja) ou "Em X dias".
   (Estas duas foram feitas pela rodada diária de 15/11, que não conseguiu publicar por falta de permissão no GitHub, e refeitas aqui.)
+- **Nova página "Fornecedores" (menu):** digite um produto e veja quem já vendeu para o governo, por quanto e o contato, sem precisar abrir um negócio. O cartão do Agente Fornecedor (Agentes) agora tem um campo de busca que leva direto para ela.
 
 ## Ideias para conversar
 - Liberar a rotina diária para publicar sozinha (permissão de envio do repositório na rotina).

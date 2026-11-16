@@ -119,8 +119,11 @@
             <q-avatar color="purple-6" text-color="white" icon="local_shipping" size="48px" class="q-mr-md" />
             <div class="col"><div class="text-subtitle1 text-weight-bold">Agente Fornecedor</div><q-badge color="positive" label="Disponível" /></div>
           </q-card-section>
-          <q-card-section class="q-pt-none text-body2 text-grey-8 col">Mostra quem vendeu cada item ao governo e por quanto, com o contato público, e monta a planilha e o e-mail de cotação. Abra um negócio → <b>Sala de disputa</b> → <b>4. Fornecedores</b>.</q-card-section>
-          <q-card-actions><q-btn unelevated no-caps color="primary" icon="view_kanban" label="Ir para Meus negócios" :to="{ name: 'negocios' }" /></q-card-actions>
+          <q-card-section class="q-pt-none text-body2 text-grey-8 col">Digite um produto e veja quem já vendeu para o governo, por quanto e o contato público. Na Sala de disputa (aba 4. Fornecedores) ele também monta a planilha e o e-mail de cotação.</q-card-section>
+          <q-card-actions>
+            <q-input v-model="buscaFornecedor" dense outlined class="col" placeholder="Produto (ex.: ventilador)" @keyup.enter="buscaFornecedor && $router.push({ name: 'fornecedores', query: { q: buscaFornecedor } })" />
+            <q-btn unelevated no-caps color="primary" icon="person_search" label="Buscar" @click="$router.push({ name: 'fornecedores', query: buscaFornecedor ? { q: buscaFornecedor } : {} })" />
+          </q-card-actions>
         </q-card>
       </div>
       <div v-for="e in EM_BREVE" :key="e.nome" class="col-12 col-md-4">
@@ -150,6 +153,7 @@ const agentes = ref([]);
 const empresas = ref([]);
 const executando = ref(null);
 const negocioParaLer = ref(null);
+const buscaFornecedor = ref('');
 const negociosLer = ref([]);
 const whats = ref(null);
 const tele = ref(null);
