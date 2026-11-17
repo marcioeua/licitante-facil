@@ -156,10 +156,11 @@
               <div class="text-caption text-grey-7">Mesmo custo e mesma venda, comparando o preço mínimo e o lucro em {{ brl(analise.preco) }}.</div>
             </q-card-section>
             <q-markup-table flat dense class="tabela">
-              <thead><tr><th class="text-left">Regime</th><th class="text-right">Preço mínimo</th><th class="text-right">Impostos no preço</th><th class="text-right">Lucro em {{ brl(analise.preco) }}</th></tr></thead>
+              <thead><tr><th class="text-left">Regime</th><th class="text-right">Mínimo</th><th class="text-right">Impostos</th><th class="text-right">Lucro</th></tr></thead>
               <tbody>
                 <tr v-for="r in comparacao" :key="r.regime" :class="{ 'text-weight-bold': r.regime === e.regime }">
-                  <td>{{ r.nome }}<span v-if="r.regime === 'simples' && !e.rbt12" class="text-caption text-grey-6"> (1ª faixa: informe o faturamento)</span><q-badge v-if="r.melhor" color="positive" class="q-ml-xs" label="menor preço" /></td>
+                  <td class="regime-cel">{{ r.nome }}<q-badge v-if="r.melhor" color="positive" class="q-ml-xs" label="menor preço" />
+                    <div v-if="r.regime === 'simples' && !e.rbt12" class="text-caption text-grey-6 text-weight-regular">1ª faixa: informe o faturamento</div></td>
                   <td class="text-right">{{ brl(r.minimo) }}</td><td class="text-right">{{ pctTxt(r.impostosPct) }}</td>
                   <td class="text-right" :class="r.lucro < 0 ? 'text-negative' : ''">{{ brlL(r.lucro) }}</td>
                 </tr>
@@ -223,7 +224,7 @@ const brl = (v) => (v == null || !Number.isFinite(v) ? '—' : Number(v).toLocal
 // Lucro e totais: 2 casas, e quase zero vira zero.
 const brlL = (v) => (v == null || !Number.isFinite(v) ? '—' : (Math.abs(v) < 0.005 ? 0 : v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }));
 const num = (v) => Number(v || 0).toLocaleString('pt-BR');
-const pctTxt = (v) => `${((v ?? 0) * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`;
+const pctTxt = (v) => `${(Math.abs(v ?? 0) < 0.0005 ? 0 : (v ?? 0) * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`;
 const foraDoSimples = computed(() => e.regime === 'presumido' || e.regime === 'real');
 const estrut = computed(() => estrutura(e));
 const interestadual = computed(() => e.tipo === 'mercadoria' && estrut.value.inter != null && e.regime !== 'mei');
@@ -316,6 +317,7 @@ onMounted(async () => {
 .ponto { display: inline-block; width: 10px; height: 10px; border-radius: 3px; vertical-align: middle; }
 .tabela { background: transparent; }
 .tabela tr.total td { font-weight: 800; border-top: 2px solid rgba(100, 116, 139, 0.4); }
+.regime-cel { white-space: normal; }
 .linha-alvo { background: rgba(29, 78, 216, 0.08); }
 .barra-margem { display: inline-block; width: 50px; vertical-align: middle; margin-right: 6px; }
 .resumo-celular { position: fixed; left: 12px; right: 84px; bottom: 16px; z-index: 2000; background: #1d4ed8; color: #fff; border-radius: 14px; padding: 8px 14px; box-shadow: 0 6px 20px rgba(0,0,0,.25); }

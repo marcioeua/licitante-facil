@@ -2,6 +2,11 @@
 
 Registro das melhorias feitas por conta própria (rodada diária e ajustes), em linguagem simples.
 
+## 17/11/2026 (rodada diária, 19h43)
+- **Calculadora de preço — preço mínimo arredondado para cima:** antes o centavo era arredondado para baixo, e o lance mínimo da tabela mostrava "-0%" e um prejuízo de centavos no total do lote. Agora o preço mínimo e o preço com margem sobem para o centavo seguinte, então o lance mínimo nunca dá prejuízo.
+- **Calculadora — tabela "E se fosse outro regime?":** as colunas da direita ficavam cortadas; títulos mais curtos e o aviso do Simples em uma linha separada.
+- Conferidas no tema escuro as páginas novas (Calculadora, Fornecedores, Busca por item): sem problemas de leitura.
+
 ## 16/11/2026 (rodada diária, 19h43)
 - **Agentes → Agente Prospector:** quando não há nenhum alerta cadastrado, aparece um aviso laranja "Falta um alerta" com o botão **Criar alerta** (antes era só uma frase pequena, fácil de não ver). Com alertas, mostra quantos estão sendo usados.
 - **Fornecedores:** se a busca digitada não achar vendas (ex.: "ventilador de parede 60cm"), tenta sozinha pela palavra principal ("ventilador") e avisa na tela que fez isso.

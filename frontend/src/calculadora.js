@@ -113,13 +113,17 @@ export function estrutura(e) {
   return { linhas, avisos, sobrePreco, fixo, ir34, inter, difal, retencao };
 }
 
-/** Preço que dá a margem líquida pedida (margem = lucro ÷ preço). margem 0 = preço mínimo sem prejuízo. */
+/**
+ * Preço que dá a margem líquida pedida (margem = lucro ÷ preço). margem 0 = preço mínimo sem prejuízo.
+ * Arredondado PARA CIMA no centavo: arredondar para baixo daria prejuízo de centavos no lance mínimo.
+ */
 export function precoParaMargem(e, margemPct = 0) {
   const s = estrutura(e);
   const m = pct(margemPct);
   const divisor = 1 - s.sobrePreco - (s.ir34 ? m / 0.66 : m);
   if (divisor <= 0) return null;
-  return s.fixo / divisor;
+  const exato = s.fixo / divisor;
+  return Math.ceil(exato * 100 - 1e-9) / 100;
 }
 
 /** Resultado de vender por um preço: impostos, despesas e lucro por unidade e no total. */
@@ -150,7 +154,8 @@ export function tabelaDeLances(e, de, ate, passos = 10) {
   if (!(a > 0) || !(b > 0) || a <= b) return [];
   const passo = (a - b) / passos;
   return Array.from({ length: passos + 1 }, (_, i) => {
-    const preco = Math.round((a - passo * i) * 100) / 100;
+    // O último lance é exatamente o mínimo (já arredondado para cima).
+    const preco = i === passos ? b : Math.round((a - passo * i) * 100) / 100;
     const r = analisarPreco(e, preco);
     return { preco, lucro: r.lucro, margem: r.margem };
   });

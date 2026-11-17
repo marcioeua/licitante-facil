@@ -29,9 +29,15 @@ test('Lucro Presumido com DIFAL: preço mínimo e preço com margem fecham a con
   perto(s.inter, 0.07, 1e-9);
   perto(s.difal, 0.135, 1e-9); // base única: 20,5% − 7%
   const minimo = c.precoParaMargem(e, 0);
-  perto(c.analisarPreco(e, minimo).lucro, 0, 1e-6);
+  const lucroMin = c.analisarPreco(e, minimo).lucro;
+  assert.ok(lucroMin >= 0 && lucroMin < 0.01, `no mínimo o lucro é zero ou centavos, nunca prejuízo (${lucroMin})`);
+  assert.equal(Math.round(minimo * 100), minimo * 100, 'centavos exatos');
   const p20 = c.precoParaMargem(e, 20);
-  perto(c.analisarPreco(e, p20).margem, 0.20, 1e-9);
+  const m20 = c.analisarPreco(e, p20).margem;
+  assert.ok(m20 >= 0.20 && m20 < 0.2005, `margem atingida (${m20})`);
+  const lances = c.tabelaDeLances(e, 180, minimo, 8);
+  assert.equal(lances.at(-1).preco, minimo);
+  assert.ok(lances.at(-1).lucro >= 0, 'último lance (o mínimo) sem prejuízo');
   // Base dupla é maior que a base única.
   assert.ok(c.estrutura({ ...e, difalMetodo: 'dupla' }).difal > s.difal);
 });
@@ -42,8 +48,10 @@ test('Simples não paga DIFAL (ADI 5464) e Lucro Real tributa o lucro', () => {
   assert.ok(simples.avisos.some((a) => /ADI 5464/.test(a)));
   const real = { regime: 'real', tipo: 'mercadoria', custo: 100, ufOrigem: 'SP', ufDestino: 'SP', icmsInternoOrigem: 18, icmsCreditoCompra: 18 };
   const p = c.precoParaMargem(real, 15);
-  perto(c.analisarPreco(real, p).margem, 0.15, 1e-9);
-  perto(c.analisarPreco(real, c.precoParaMargem(real, 0)).lucro, 0, 1e-6);
+  const m = c.analisarPreco(real, p).margem;
+  assert.ok(m >= 0.15 && m < 0.1505, `margem no Real (${m})`);
+  const lucroMin = c.analisarPreco(real, c.precoParaMargem(real, 0)).lucro;
+  assert.ok(lucroMin >= 0 && lucroMin < 0.01);
   // Retenção federal só fora do Simples.
   perto(c.analisarPreco({ ...real, orgaoFederal: true }, 1000).retencao, 58.5, 1e-9);
   assert.equal(c.analisarPreco({ regime: 'simples', tipo: 'mercadoria', custo: 1, orgaoFederal: true }, 1000).retencao, 0);
