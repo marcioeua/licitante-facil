@@ -245,23 +245,32 @@ export async function lerEditalPeloTelegram(db, { uid, negocioId, chatId }, { cl
   }
 }
 
-export function iniciarEscutaTelegram(db, { log = () => {}, ia = null, intervaloMs = 4000, cliente = clienteTelegram() } = {}) {
+/**
+ * Escuta do Telegram com "espera longa": cada pergunta fica aberta até 25 s e volta assim que chega
+ * uma mensagem ou um toque de botão. Responde na hora e quase não gasta servidor (antes: 1 pergunta a cada 4 s).
+ */
+export function iniciarEscutaTelegram(db, { log = () => {}, ia = null, esperaSeg = 25, cliente = clienteTelegram(), pausaMs = 1000 } = {}) {
   if (!cliente) return () => {};
+  let ligado = true;
   let falhas = 0;
-  let proxima = 0;
-  const timer = setInterval(async () => {
-    if (Date.now() < proxima) return;
-    try {
-      await processarMensagensTelegram(db, cliente, {
-        log,
-        aoPedirLeitura: ia ? (pedido) => lerEditalPeloTelegram(db, pedido, { cliente, ia }) : null,
-      });
-      falhas = 0;
-    } catch (e) {
-      falhas++;
-      proxima = Date.now() + Math.min(300000, 5000 * 2 ** falhas); // Telegram fora: espera mais entre tentativas
-      if (falhas <= 3) log(`[telegram] escuta: ${e.message}`);
+  const dormir = (ms) => new Promise((r) => setTimeout(r, ms).unref?.());
+  (async () => {
+    await dormir(pausaMs);
+    while (ligado) {
+      try {
+        await processarMensagensTelegram(db, cliente, {
+          log,
+          esperaSeg,
+          aoPedirLeitura: ia ? (pedido) => lerEditalPeloTelegram(db, pedido, { cliente, ia }) : null,
+        });
+        falhas = 0;
+        await dormir(pausaMs); // folga curta entre perguntas
+      } catch (e) {
+        falhas++;
+        if (falhas <= 3) log(`[telegram] escuta: ${e.message}`);
+        await dormir(Math.min(300000, 5000 * 2 ** falhas)); // Telegram fora: espera mais entre tentativas
+      }
     }
-  }, intervaloMs);
-  return () => clearInterval(timer);
+  })();
+  return () => { ligado = false; };
 }

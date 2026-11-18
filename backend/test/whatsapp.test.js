@@ -54,8 +54,8 @@ test('cliente da API oficial: modelo de aviso e documento com upload da mídia',
 test('WhatsApp no sistema: ativação, teste, edital em PDF, avisos dos agentes e fila', async () => {
   const db = openDatabase(':memory:');
   upsertOportunidades(db, [mapContratacao({ numeroControlePNCP: '11222333000181-1-000045/2026', objetoCompra: 'Aquisição de material de limpeza', modalidadeId: 6,
-    modalidadeNome: 'Pregão - Eletrônico', anoCompra: 2026, numeroCompra: '90045', sequencialCompra: 45, srp: false, dataPublicacaoPncp: '2026-11-01T10:00:00',
-    dataEncerramentoProposta: '2026-11-18T09:00:00', valorTotalEstimado: 48000, orgaoEntidade: { cnpj: '11222333000181', razaoSocial: 'PREFEITURA DE TESTE' },
+    modalidadeNome: 'Pregão - Eletrônico', anoCompra: 2026, numeroCompra: '90045', sequencialCompra: 45, srp: false, dataPublicacaoPncp: new Date(Date.now() - 5 * 86400000).toISOString().slice(0, 19),
+    dataEncerramentoProposta: new Date(Date.now() + 20 * 86400000).toISOString().slice(0, 19), valorTotalEstimado: 48000, orgaoEntidade: { cnpj: '11222333000181', razaoSocial: 'PREFEITURA DE TESTE' },
     unidadeOrgao: { ufSigla: 'SP', municipioNome: 'Campinas' } })]);
   const opId = db.prepare('SELECT id FROM oportunidades').get().id;
   const enviados = [];

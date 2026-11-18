@@ -28,7 +28,8 @@ export function clienteTelegram({ fetchImpl = fetch } = {}) {
       eu ??= await chamar('getMe');
       return eu.username;
     },
-    atualizacoes: (offset) => chamar('getUpdates', { offset, timeout: 0, allowed_updates: ['message', 'callback_query'] }),
+    // esperaSeg > 0 = "espera longa": o Telegram só responde quando chega mensagem (ou ao fim da espera).
+    atualizacoes: (offset, esperaSeg = 0) => chamar('getUpdates', { offset, timeout: esperaSeg, allowed_updates: ['message', 'callback_query'] }),
     enviarTexto: (chatId, html, { teclado } = {}) => chamar('sendMessage', {
       chat_id: chatId, text: corta(html, 4000), parse_mode: 'HTML', link_preview_options: { is_disabled: true },
       ...(teclado ? { reply_markup: { inline_keyboard: teclado } } : {}),
@@ -84,9 +85,9 @@ async function tratarBotao(db, cliente, cb, { aoPedirLeitura, log }) {
     .catch((e) => log(`[telegram] leitura ${neg.id}: ${e.message}`));
 }
 
-async function lerMensagens(db, cliente, { log = () => {}, aoPedirLeitura = null } = {}) {
+async function lerMensagens(db, cliente, { log = () => {}, aoPedirLeitura = null, esperaSeg = 0 } = {}) {
   const offset = Number(db.prepare("SELECT ultima_execucao FROM tarefas WHERE nome = 'telegram_offset'").get()?.ultima_execucao ?? 0);
-  const ups = await cliente.atualizacoes(offset || undefined);
+  const ups = await cliente.atualizacoes(offset || undefined, esperaSeg);
   let ligados = 0;
   for (const u of ups) {
     db.prepare("INSERT OR REPLACE INTO tarefas (nome, ultima_execucao) VALUES ('telegram_offset', ?)").run(String(u.update_id + 1));

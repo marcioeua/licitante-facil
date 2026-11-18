@@ -15,9 +15,12 @@ test('prazo de impugnação: 3 dias úteis antes da abertura (pula fim de semana
 
 test('agente jurídico: análise do edital, rascunhos de peças, edição e isolamento entre usuários', async () => {
   const db = openDatabase(':memory:');
+  // Datas relativas a hoje (o prazo de propostas precisa estar no futuro para entrar no funil).
+  const dia = (n) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
+  const sessao = `${dia(20)}T09:00:00`;
   upsertOportunidades(db, [mapContratacao({ numeroControlePNCP: '11222333000181-1-000045/2026', objetoCompra: 'Material de limpeza', modalidadeId: 6,
-    modalidadeNome: 'Pregão - Eletrônico', anoCompra: 2026, numeroCompra: '90045', sequencialCompra: 45, srp: false, dataPublicacaoPncp: '2026-11-01T10:00:00',
-    dataAberturaProposta: '2026-11-04T08:00:00', dataEncerramentoProposta: '2026-11-18T09:00:00', valorTotalEstimado: 5000,
+    modalidadeNome: 'Pregão - Eletrônico', anoCompra: 2026, numeroCompra: '90045', sequencialCompra: 45, srp: false, dataPublicacaoPncp: `${dia(-5)}T10:00:00`,
+    dataAberturaProposta: `${dia(-2)}T08:00:00`, dataEncerramentoProposta: sessao, valorTotalEstimado: 5000,
     orgaoEntidade: { cnpj: '11222333000181', razaoSocial: 'PREFEITURA DE TESTE' }, unidadeOrgao: { ufSigla: 'SP', municipioNome: 'Campinas' } })]);
   const opId = db.prepare('SELECT id FROM oportunidades').get().id;
   db.prepare("INSERT INTO edital_arquivos (oportunidade_id, ordem, nome, tipo, file_id, paginas, tamanho, expira_em) VALUES (?, 0, 'Edital.pdf', 'pdf', 'file_1', 20, 1000, datetime('now', '+10 days'))").run(opId);
@@ -38,7 +41,7 @@ test('agente jurídico: análise do edital, rascunhos de peças, edição e isol
   await req('PATCH', `/api/negocios/${neg.id}`, { empresa_id: emp.id });
 
   let info = (await req('GET', `/api/juridico?negocio=${neg.id}`)).json();
-  assert.equal(info.negocio.prazo_impugnacao, '2026-11-13');
+  assert.equal(info.negocio.prazo_impugnacao, prazoImpugnacao(sessao));
   assert.equal(info.iaDisponivel, true);
 
   let r = await req('POST', '/api/juridico/analise', { negocio_id: neg.id });

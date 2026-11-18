@@ -2,6 +2,10 @@
 
 Registro das melhorias feitas por conta própria (rodada diária e ajustes), em linguagem simples.
 
+## 18/11/2026 (rodada diária, 19h43)
+- **Servidor gastando menos (Railway):** a escuta do Telegram perguntava "chegou mensagem?" a cada 4 segundos, umas 21 mil vezes por dia. Agora usa a "espera longa" oficial do Telegram: a pergunta fica aberta até 25 s e volta na hora quando chega mensagem ou toque no botão "Ler este edital". São cerca de 6 vezes menos perguntas, e a resposta ficou até mais rápida.
+- **Testes que venciam com o tempo:** dois testes automáticos usavam uma licitação com prazo fixo em 18/11/2026 e quebraram hoje (o sistema, corretamente, não deixa entrar no funil licitação com prazo vencido). Agora usam datas contadas a partir do dia atual.
+
 ## 17/11/2026 (rodada diária, 19h43)
 - **Calculadora de preço — preço mínimo arredondado para cima:** antes o centavo era arredondado para baixo, e o lance mínimo da tabela mostrava "-0%" e um prejuízo de centavos no total do lote. Agora o preço mínimo e o preço com margem sobem para o centavo seguinte, então o lance mínimo nunca dá prejuízo.
 - **Calculadora — tabela "E se fosse outro regime?":** as colunas da direita ficavam cortadas; títulos mais curtos e o aviso do Simples em uma linha separada.
