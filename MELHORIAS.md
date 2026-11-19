@@ -2,6 +2,9 @@
 
 Registro das melhorias feitas por conta própria (rodada diária e ajustes), em linguagem simples.
 
+## 19/11/2026 (rodada diária, 19h43)
+- **Pesquisa de preços (Histórico de compras) com singular e plural:** a busca achava os itens pela raiz da palavra, mas depois filtrava de novo pela palavra exata e descartava resultados: "copos descartáveis" perdia os itens escritos "Copo descartável", e "material" perdia "materiais". Agora os dois filtros usam a mesma regra. Também melhora o Agente Fornecedor, que usa essa pesquisa.
+
 ## 19/11/2026
 - **Segurança do login:** depois de 5 senhas erradas para o mesmo e-mail (ou 20 do mesmo endereço de internet) em 15 minutos, o login fica bloqueado por 15 minutos. Impede que alguém fique tentando adivinhar a senha.
 - **Cabeçalhos de segurança:** o site não pode mais ser aberto escondido dentro de outro site (golpe do clique escondido), o navegador sempre usa HTTPS e não vaza o endereço das páginas para outros sites.

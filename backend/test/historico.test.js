@@ -197,3 +197,17 @@ test('itens do contrato: o que o fornecedor venceu, com valor e marca', async ()
   assert.match(r.linkCompra, /editais\/33333333000133\/2026\/55$/);
   await assert.rejects(itensDoContrato(db, 999, 0, { fetchImpl: fake }), /não encontrado/);
 });
+
+test('pesquisa de preços acha singular e plural ("copos descartáveis" acha "Copo descartável")', async () => {
+  const db = openDatabase(':memory:');
+  const compra = '33333333000133-1-000088/2026';
+  gravarContratos(db, [mapContrato(contrato(88, 'Aquisição de copos descartáveis', FA, P1, 900, compra))]);
+  const fake = async (url) => (String(url).includes('dadosabertos')
+    ? Response.json({ resultado: [{ numeroItemPncp: 1, descricaodetalhada: 'Copo descartável 200 ml, pacote com 100', unidadeMedida: 'Pacote',
+      temResultado: true, codFornecedor: FA[0], nomeFornecedor: FA[1], valorUnitarioResultado: 4.2, quantidadeResultado: 50, valorTotalResultado: 210, dataResultado: '2026-10-05 00:00:00' }] })
+    : new Response('fora', { status: 503 }));
+  const r = await pesquisarPrecos(db, { q: 'copos descartaveis' }, { fetchImpl: fake, prazoMs: 20000 });
+  assert.equal(r.itens.length, 1);
+  assert.equal(r.itens[0].valorUnitario, 4.2);
+  _pncpVoltou();
+});

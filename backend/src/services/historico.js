@@ -6,7 +6,7 @@ import { statfsSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { config } from '../config.js';
 import { tx } from '../db/index.js';
-import { ftsQuery } from './busca.js';
+import { ftsQuery, raiz } from './busca.js';
 
 const PAGE_SIZE = 50;
 export const DIAS_HISTORICO = Number(process.env.HISTORICO_DIAS ?? 365);
@@ -217,9 +217,10 @@ function partesCompra(controle) {
   return m ? { cnpj: m[1], seq: Number(m[2]), ano: Number(m[3]) } : null;
 }
 
+// Confere as palavras pela raiz (singular e plural): "copos" acha "copo", "material" acha "materiais".
 const temTodosOsTermos = (texto, termos) => {
   const t = norm(texto);
-  return termos.every((x) => t.includes(x));
+  return termos.every((x) => t.includes(raiz(x)));
 };
 
 const DADOS_ABERTOS = process.env.DADOS_ABERTOS_URL ?? 'https://dadosabertos.compras.gov.br';
