@@ -168,9 +168,17 @@ test('Telegram: licitação nova chega com botão "Ler este edital" e o botão l
   // A leitura (Agente Leitor desligado) manda o resultado na conversa.
   db.prepare("INSERT INTO edital_resumos (oportunidade_id, resumo, modelo) VALUES (?, ?, 'teste')").run(opId, JSON.stringify({ resumo: 'Compra de limpeza', documentos_habilitacao: [{ grupo: 'fiscal_trabalhista', descricao: 'CND federal' }], pontos_atencao: ['Amostra em 3 dias'] }));
   enviados.length = 0;
-  await lerEditalPeloTelegram(db, { uid, negocioId, chatId: 777 }, { cliente: telegram, ia: {}, appUrl: 'https://app.x' });
+  const pncpItens = async (url) => (String(url).includes('/compras/2026/46/itens')
+    ? Response.json([{ numeroItem: 1, descricao: 'Detergente líquido neutro, 500 ml', unidadeMedida: 'Frasco', quantidade: 200, valorUnitarioEstimado: 2.5 },
+      { numeroItem: 2, descricao: 'Papel higiênico folha dupla', unidadeMedida: 'Fardo', quantidade: 50, valorUnitarioEstimado: 89.9 },
+      { numeroItem: 3, descricao: 'Vassoura de pelo', unidadeMedida: 'Unidade', quantidade: 10, orcamentoSigiloso: true }])
+    : new Response(null, { status: 404 }));
+  await lerEditalPeloTelegram(db, { uid, negocioId, chatId: 777 }, { cliente: telegram, ia: {}, appUrl: 'https://app.x', fetchImpl: pncpItens });
   assert.match(enviados[0].html, /📖 <b>Edital lido/);
   assert.match(enviados[0].html, /Amostra em 3 dias/);
+  assert.match(enviados[0].html, /3 item\(ns\) · o órgão estima pagar R\$\s?4\.995,00 no total \(1 com valor sigiloso\)/);
+  assert.match(enviados[0].html, /Item 2: Papel higiênico folha dupla — 50 fardo × R\$\s?89,90/);
+  assert.match(enviados[0].html, /Item 3: Vassoura de pelo — 10 unidade \(valor sigiloso\)/);
   assert.match(enviados[0].html, /oportunidades\/\d+\?ver=edital/);
   assert.equal(db.prepare("SELECT enviada_telegram FROM notificacoes WHERE agente = 'leitor'").get().enviada_telegram, 1, 'não repete pelo aviso normal');
 });

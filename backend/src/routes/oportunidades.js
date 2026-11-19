@@ -2,6 +2,7 @@ import { buscarOportunidades, sugerirMunicipios } from '../services/busca.js';
 import { MODALIDADES } from '../services/pncp.js';
 import { pagometroDaOportunidade } from '../services/capag.js';
 import { httpError, idParam } from '../http.js';
+import { itensDaLicitacao } from '../services/itensOficiais.js';
 import { resumirEdital, perguntarEdital, historico, infoArquivos, comMensagensClaras, MODELO } from '../services/editalIA.js';
 
 export const UFS = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'];
@@ -27,6 +28,9 @@ export default async function (app) {
     return op;
   };
   const opcoesIA = () => ({ client: app.ia, fetchImpl: app.fetchPncp });
+
+  // Itens oficiais (PNCP) com o valor unitário que o órgão estima pagar.
+  app.get('/:id/itens', async (req) => itensDaLicitacao(db, carregar(req.params.id), { fetchImpl: app.fetchPncp }));
 
   // Estado da leitura com IA: resumo (se já existe), arquivos lidos e perguntas do usuário.
   app.get('/:id/edital', async (req) => {

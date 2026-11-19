@@ -65,7 +65,26 @@
               <q-btn v-if="negocioId" outline no-caps color="primary" icon="playlist_add" label="Adicionar ao checklist do negócio" :loading="addChecklist" @click="adicionarChecklist" />
             </q-card-section>
           </q-expansion-item>
-          <q-expansion-item v-if="r.itens_principais?.length" icon="inventory_2" :label="`Itens principais (${r.itens_principais.length})`">
+          <q-expansion-item v-if="oficiais?.itens?.length" default-opened icon="inventory_2" header-class="text-weight-medium"
+            :label="`Itens e valores que o órgão estima pagar (${oficiais.itens.length})`" :caption="oficiais.total ? `Total estimado: ${brl2(oficiais.total)}` : 'Valores sigilosos ou não informados'">
+            <q-markup-table flat dense class="q-mx-md q-mb-sm itens-oficiais">
+              <thead><tr><th class="text-left">Item</th><th class="text-left">Descrição</th><th class="text-right">Qtd.</th><th class="text-right">Valor unit.</th><th class="text-right">Total</th></tr></thead>
+              <tbody>
+                <tr v-for="it in oficiais.itens.slice(0, mostrarItens)" :key="it.numero">
+                  <td class="text-left">{{ it.numero }}</td>
+                  <td class="text-left desc">{{ it.descricao }}<div v-if="it.beneficio && /ME\/EPP/.test(it.beneficio)" class="text-caption text-teal-8">{{ it.beneficio }}</div></td>
+                  <td class="text-right">{{ num(it.quantidade) }} <span class="text-caption text-grey-7">{{ it.unidade }}</span></td>
+                  <td class="text-right text-weight-bold">{{ it.valorUnitario != null ? brl2(it.valorUnitario) : 'sigiloso' }}</td>
+                  <td class="text-right">{{ it.valorTotal != null ? brl2(it.valorTotal) : '—' }}</td>
+                </tr>
+              </tbody>
+            </q-markup-table>
+            <div class="q-px-md q-pb-md row items-center q-gutter-sm">
+              <q-btn v-if="oficiais.itens.length > mostrarItens" flat dense no-caps color="primary" :label="`Ver todos os ${oficiais.itens.length} itens`" @click="mostrarItens = 9999" />
+              <span class="text-caption text-grey-7">Valores estimados pelo órgão, publicados no PNCP (fonte oficial). Use a <router-link :to="{ name: 'calculadora' }">Calculadora de preço</router-link> para ver se compensa.</span>
+            </div>
+          </q-expansion-item>
+          <q-expansion-item v-else-if="r.itens_principais?.length" icon="inventory_2" :label="`Itens principais (${r.itens_principais.length})`">
             <q-markup-table flat dense class="q-mx-md q-mb-md">
               <thead><tr><th class="text-left">Descrição</th><th class="text-right">Qtd.</th><th class="text-right">Valor estimado</th></tr></thead>
               <tbody>
@@ -130,6 +149,10 @@ import { api } from 'boot/axios';
 
 const props = defineProps({ oportunidadeId: { type: [Number, String], required: true }, negocioId: { type: Number, default: null } });
 const estado = ref(null);
+const oficiais = ref(null);
+const mostrarItens = ref(15);
+const num = (v) => (v == null ? '—' : Number(v).toLocaleString('pt-BR'));
+const brl2 = (v) => (v == null ? '—' : Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: v < 1 ? 4 : 2 }));
 const lendo = ref(false);
 const perguntando = ref(false);
 const addChecklist = ref(false);
@@ -162,6 +185,7 @@ const docsPorGrupo = computed(() => (r.value.documentos_habilitacao ?? []).reduc
 
 async function carregar() {
   estado.value = (await api.get(`/oportunidades/${props.oportunidadeId}/edital`)).data;
+  api.get(`/oportunidades/${props.oportunidadeId}/itens`, { silencioso: true, timeout: 30000 }).then((r) => (oficiais.value = r.data)).catch(() => {});
 }
 
 async function resumir() {
@@ -206,3 +230,7 @@ async function adicionarChecklist() {
 onMounted(carregar);
 onBeforeUnmount(() => clearInterval(timer));
 </script>
+
+<style scoped>
+.itens-oficiais .desc { white-space: normal; min-width: 220px; }
+</style>

@@ -3,6 +3,7 @@
 // - vigia: acompanha as licitações do funil e avisa quando algo muda no PNCP;
 // - leitor: lê com IA o edital das licitações que entram no funil e completa o checklist.
 import { config } from '../config.js';
+import { itensDaLicitacao, resumoDosItens } from './itensOficiais.js';
 import { tx } from '../db/index.js';
 import { buscarOportunidades } from './busca.js';
 import { pagometroDaOportunidade } from './capag.js';
@@ -322,10 +323,12 @@ export async function executarLeitor(db, uid, { client, fetchImpl = fetch, resum
       tx(db, () => docs.map((d) => `Documento: ${d.descricao}`.slice(0, 500)).filter((t) => !existe.get(n.negocio_id, t))
         .forEach((t, i) => ins.run(n.negocio_id, t, pos + i)));
       const habil = resumoHabilitacao(habilitacaoDoNegocio(db, uid, n.negocio_id));
+      // Itens oficiais do PNCP com o valor que o órgão estima pagar.
+      const itensTxt = resumoDosItens(await itensDaLicitacao(db, n, { fetchImpl }).catch(() => null));
       notificar(db, {
         usuarioId: uid, agente: 'leitor', tipo: 'edital_lido', negocioId: n.negocio_id, oportunidadeId: n.id,
         titulo: `Edital lido: "${n.titulo.slice(0, 80)}"`,
-        mensagem: [habil, resumo.resumo, docs.length ? `${docs.length} documento(s) de habilitação adicionados ao checklist.` : null,
+        mensagem: [habil, resumo.resumo, itensTxt.length ? itensTxt.join('\n') : null, docs.length ? `${docs.length} documento(s) de habilitação adicionados ao checklist.` : null,
           ...(resumo.pontos_atencao ?? []).slice(0, 3).map((p) => `Atenção: ${p}`)].filter(Boolean).join('\n'),
         link: `/oportunidades/${n.id}?ver=edital`,
       });
