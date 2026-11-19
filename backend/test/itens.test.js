@@ -106,3 +106,12 @@ test('Fornecedores: busca digitada sem resultado tenta a palavra principal', asy
   const r = await fornecedoresDoItem(db, 'ventilador de parede 60cm', { q: 'ventilador de parede 60cm', fetchImpl: fora, reduzir: true });
   assert.deepEqual([r.q, r.fornecedores[0]?.nome], ['ventilador', 'LOJA A']);
 });
+
+test('busca entende singular e plural (material/materiais, papel/papéis, licitação/licitações)', async () => {
+  const { ftsQuery, raiz } = await import('../src/services/busca.js');
+  assert.equal(raiz('materiais'), raiz('material'));
+  assert.equal(raiz('papeis'), raiz('papel'));
+  assert.equal(raiz('licitacoes'), raiz('licitacao'));
+  assert.equal(raiz('copos'), 'copo');
+  assert.equal(ftsQuery('Material de Limpeza'), '"materi"* "de"* "limpeza"*');
+});

@@ -2,6 +2,10 @@
 
 Registro das melhorias feitas por conta própria (rodada diária e ajustes), em linguagem simples.
 
+## 19/11/2026
+- **Busca entende singular e plural:** procurar "material de limpeza" não achava as licitações escritas "materiais de limpeza" (e o mesmo com papel/papéis, licitação/licitações, copo/copos). Agora acha as duas formas. Com a base de teste, "material de limpeza" passou de 112 para 445 licitações (dispensas: de 17 para 47). Vale em Oportunidades, Alertas, Agente Prospector, Busca por item, Histórico e Busca no Chat.
+- **Aviso de documentos perto de vencer** no sino e no Telegram (30, 15, 7, 3 e 1 dia antes, no dia e se vencer).
+
 ## 18/11/2026 (rodada diária, 19h43)
 - **Servidor gastando menos (Railway):** a escuta do Telegram perguntava "chegou mensagem?" a cada 4 segundos, umas 21 mil vezes por dia. Agora usa a "espera longa" oficial do Telegram: a pergunta fica aberta até 25 s e volta na hora quando chega mensagem ou toque no botão "Ler este edital". São cerca de 6 vezes menos perguntas, e a resposta ficou até mais rápida.
 - **Testes que venciam com o tempo:** dois testes automáticos usavam uma licitação com prazo fixo em 18/11/2026 e quebraram hoje (o sistema, corretamente, não deixa entrar no funil licitação com prazo vencido). Agora usam datas contadas a partir do dia atual.

@@ -2,6 +2,23 @@ import { nivelRisco } from './capag.js';
 // Busca de oportunidades com texto livre (FTS5) e filtros.
 
 /** Transforma o texto digitado em consulta FTS5 segura: cada termo vira prefixo. */
+/**
+ * Raiz da palavra para buscar singular e plural juntos (busca por prefixo):
+ * "materiais"/"material" → "materi", "papéis"/"papel" → "pap", "licitações"/"licitação" → "licitac", "copos" → "copo".
+ */
+export function raiz(t) {
+  if (t.length <= 3 || /\d/.test(t)) return t;
+  let r = t;
+  const tirar = (re) => { const x = r.replace(re, ''); if (x.length >= 3 && x !== r) { r = x; return true; } return false; };
+  // Plural primeiro (ões, ais, eis, ...), depois o fim do singular que muda no plural (al/el/il/ol, ão).
+  if (!tirar(/(oes|aes|ais|eis|ois|is)$/)) if (!tirar(/es$/) || r.length < 4) tirar(/s$/);
+  if (!/(oes|aes|ais|eis|ois)$/.test(t)) {
+    if (/[aeio]l$/.test(r)) tirar(/[aeio]l$/);
+    else if (/ao$/.test(r) && r.length >= 6) tirar(/ao$/);
+  }
+  return r;
+}
+
 export function ftsQuery(texto) {
   const termos = String(texto ?? '')
     .toLowerCase()
@@ -9,7 +26,7 @@ export function ftsQuery(texto) {
     .replace(/[̀-ͯ]/g, '')
     .match(/[a-z0-9]+/g);
   if (!termos?.length) return null;
-  return termos.map((t) => `"${t}"*`).join(' ');
+  return termos.map((t) => `"${raiz(t)}"*`).join(' ');
 }
 
 /** Palavras de um alerta: separadas por vírgula; qualquer uma delas basta (OU). */
