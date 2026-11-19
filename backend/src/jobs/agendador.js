@@ -11,6 +11,7 @@ import { arquivarVencidas, usuariosCom, executarVigia, executarProspector, execu
 import { clienteTelegram, processarMensagensTelegram, enviarNotificacoesPorTelegram, processarFilaTelegram } from '../services/telegram.js';
 import { enviarNotificacoesPorWhatsApp, processarFilaWhatsApp } from '../services/whatsapp.js';
 import { resumirEdital } from '../services/editalIA.js';
+import { avisarDocumentosVencendo } from '../services/avisosDocumentos.js';
 import { proximoDiaContratos, importarContratosDoDia, limparHistoricoAntigo, liberarEspaco } from '../services/historico.js';
 import { proximoDiaItens, importarItensDoDia, completarCabecalhos, limparItensAntigos, importarItensDasOportunidades } from '../services/itens.js';
 const esc = (t) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -110,6 +111,15 @@ export async function executarAgentesAgendados(db, { log = console.log, ia = nul
       log(`[orgaos] ${atualizarOrgaos(db)} órgão(s) atualizados`);
     }
   } catch (e) { log(`[orgaos] ${e.message}`); }
+  // Documentos perto de vencer: uma vez por dia, a partir das 8h (horário de Brasília).
+  try {
+    const br = agoraBrasilia(agora);
+    if (br.hora >= 8 && ultimaTarefa(db, 'avisos_documentos') !== br.data) {
+      marcarTarefa(db, 'avisos_documentos', br.data);
+      const n = avisarDocumentosVencendo(db, br.data);
+      if (n) log(`[documentos] avisos de vencimento para ${n} usuário(s)`);
+    }
+  } catch (e) { log(`[documentos] ${e.message}`); }
   try { const n = arquivarVencidas(db); if (n) log(`[agentes] ${n} licitação(ões) vencida(s) saíram da triagem`); } catch (e) { log(`[agentes] arquivar vencidas: ${e.message}`); }
   const passou = (nome, ms) => {
     const u = ultimaTarefa(db, nome);

@@ -7,6 +7,10 @@
       <q-btn unelevated no-caps color="primary" icon="upload_file" label="Adicionar documento" @click="abrirNovo()" />
     </div>
 
+    <div class="text-body2 text-grey-7 q-mb-sm">
+      <q-icon name="notifications_active" color="primary" /> Avisamos quando um documento estiver perto de vencer: <b>30, 15, 7, 3 e 1 dia antes, no dia e se vencer</b>,
+      no sino e no Telegram (se conectado em <router-link :to="{ name: 'agentes' }">Agentes</router-link>). Para isso, preencha a <b>validade</b> de cada documento.
+    </div>
     <q-table flat bordered class="lf-card" :rows="docs" :columns="colunas" row-key="id" :pagination="{ rowsPerPage: 25 }"
       no-data-label="Nenhum documento. Adicione certidões, contrato social e atestados para não perder prazos.">
       <template #body-cell-status="p">

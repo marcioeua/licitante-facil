@@ -56,7 +56,7 @@ const SECOES = [
     titulo: 'Configure uma vez', resumo: 'Para o sistema trabalhar sozinho por você.', cor: 'blue-grey-7',
     passos: [
       { icone: 'business', texto: 'Cadastre a sua <b>empresa</b> (razão social e CNPJ).', ir: { name: 'empresas' } },
-      { icone: 'folder_shared', texto: 'Cadastre seus <b>documentos com a data de validade</b> (certidões, contrato social, atestados).', dica: 'É com eles que o sistema diz se você está apto.', ir: { name: 'documentos' } },
+      { icone: 'folder_shared', texto: 'Cadastre seus <b>documentos com a data de validade</b> (certidões, contrato social, atestados).', dica: 'É com eles que o sistema diz se você está apto, e ele avisa no sino e no Telegram quando algum estiver perto de vencer.', ir: { name: 'documentos' } },
       { icone: 'notifications_active', texto: 'Crie <b>alertas</b> com as palavras do que você vende (ex.: material de limpeza, detergente).', ir: { name: 'alertas' } },
       { icone: 'smart_toy', texto: 'Ligue os <b>agentes</b> Prospector, Vigia e Leitor, e conecte o <b>Telegram</b> para receber os editais no celular.', ir: { name: 'agentes' } },
     ],

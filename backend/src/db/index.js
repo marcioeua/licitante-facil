@@ -436,6 +436,9 @@ CREATE TABLE IF NOT EXISTS empresas_cadastro (cnpj TEXT PRIMARY KEY, dados TEXT 
 -- Vitórias por fornecedor (Compras.gov.br Dados Abertos), por janela de 365 dias.
 CREATE TABLE IF NOT EXISTS vitorias_cache (cnpj TEXT NOT NULL, janela TEXT NOT NULL, dados TEXT NOT NULL, buscado_em TEXT NOT NULL, PRIMARY KEY (cnpj, janela));
 
+-- Avisos de vencimento já enviados (um por documento em cada marco: 30, 15, 7, 3, 1, 0 dias e vencido).
+CREATE TABLE IF NOT EXISTS documento_avisos (documento_id INTEGER NOT NULL REFERENCES documentos(id) ON DELETE CASCADE, marco INTEGER NOT NULL, enviado_em TEXT NOT NULL, PRIMARY KEY (documento_id, marco));
+
 -- Atas de sessão lidas pela IA (todos os licitantes, marcas e valores), compartilhadas entre usuários.
 CREATE TABLE IF NOT EXISTS atas_lidas (compra_controle TEXT PRIMARY KEY, arquivo TEXT, dados TEXT NOT NULL, modelo TEXT, criado_em TEXT NOT NULL DEFAULT (datetime('now')));
 
