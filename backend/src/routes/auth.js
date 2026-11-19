@@ -10,6 +10,16 @@ const cookieOpts = () => ({
   maxAge: config.sessionDays * 86400,
 });
 
+// Proteção contra adivinhar senha: no máximo 5 erros em 15 minutos por e-mail e 20 por endereço de internet (IP).
+const JANELA_MS = 15 * 60 * 1000;
+const erros = new Map(); // chave -> lista de horários dos erros
+function contar(chave, agora) {
+  const lista = (erros.get(chave) ?? []).filter((t) => agora - t < JANELA_MS);
+  erros.set(chave, lista);
+  return lista;
+}
+export function _limparTentativas() { erros.clear(); }
+
 export default async function (app) {
   const { db } = app;
 
@@ -55,10 +65,18 @@ export default async function (app) {
       },
     },
   }, async (req, reply) => {
-    const u = db.prepare('SELECT * FROM usuarios WHERE email = ?').get(req.body.email.trim());
+    const agora = Date.now();
+    const email = req.body.email.trim().toLowerCase();
+    const chaves = [`e:${email}`, `ip:${req.ip}`];
+    if (contar(chaves[0], agora).length >= 5 || contar(chaves[1], agora).length >= 20) {
+      throw httpError(429, 'Muitas tentativas de login erradas. Por segurança, espere 15 minutos e tente de novo.');
+    }
+    const u = db.prepare('SELECT * FROM usuarios WHERE email = ? COLLATE NOCASE').get(req.body.email.trim());
     if (!u || !conferirSenha(req.body.senha, u.senha_hash)) {
+      for (const c of chaves) contar(c, agora).push(agora);
       throw httpError(401, 'E-mail ou senha incorretos.');
     }
+    erros.delete(chaves[0]);
     reply.setCookie(COOKIE, criarToken(u.id), cookieOpts());
     return { id: u.id, nome: u.nome, email: u.email };
   });

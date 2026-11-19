@@ -3,6 +3,8 @@
 Registro das melhorias feitas por conta própria (rodada diária e ajustes), em linguagem simples.
 
 ## 19/11/2026
+- **Segurança do login:** depois de 5 senhas erradas para o mesmo e-mail (ou 20 do mesmo endereço de internet) em 15 minutos, o login fica bloqueado por 15 minutos. Impede que alguém fique tentando adivinhar a senha.
+- **Cabeçalhos de segurança:** o site não pode mais ser aberto escondido dentro de outro site (golpe do clique escondido), o navegador sempre usa HTTPS e não vaza o endereço das páginas para outros sites.
 - **Leitura do edital com os itens e valores oficiais:** a leitura agora mostra o quadro "Itens e valores que o órgão estima pagar", com todos os itens do PNCP (quantidade, unidade, valor unitário e total). O aviso do Agente Leitor no sino e no Telegram também traz quantos itens são, o total estimado e os 5 itens de maior valor.
 - **Busca entende singular e plural:** procurar "material de limpeza" não achava as licitações escritas "materiais de limpeza" (e o mesmo com papel/papéis, licitação/licitações, copo/copos). Agora acha as duas formas. Com a base de teste, "material de limpeza" passou de 112 para 445 licitações (dispensas: de 17 para 47). Vale em Oportunidades, Alertas, Agente Prospector, Busca por item, Histórico e Busca no Chat.
 - **Aviso de documentos perto de vencer** no sino e no Telegram (30, 15, 7, 3 e 1 dia antes, no dia e se vencer).

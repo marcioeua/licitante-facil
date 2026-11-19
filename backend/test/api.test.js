@@ -223,3 +223,22 @@ test('alterar senha: exige a senha atual e passa a valer a nova', async () => {
   assert.equal((await login('senha-antiga-1')).statusCode, 401);
   assert.equal((await login('nova-senha-123')).statusCode, 200);
 });
+
+test('segurança: limite de tentativas de login e cabeçalhos de proteção', async () => {
+  const { _limparTentativas } = await import('../src/routes/auth.js');
+  _limparTentativas();
+  const db = openDatabase(':memory:');
+  const app = await buildApp({ db, serveFrontend: false, ia: null });
+  await app.inject({ method: 'POST', url: '/api/auth/cadastro', payload: { nome: 'Dono', email: 'dono@e.com', senha: 'senha-segura-1' } });
+  const login = (senha, ip = '1.1.1.1') => app.inject({ method: 'POST', url: '/api/auth/login', payload: { email: 'dono@e.com', senha }, headers: { 'x-forwarded-for': ip } });
+  for (let i = 0; i < 5; i++) assert.equal((await login('errada')).statusCode, 401);
+  const bloqueado = await login('senha-segura-1');
+  assert.equal(bloqueado.statusCode, 429, 'depois de 5 erros, nem a senha certa entra por 15 min');
+  assert.match(bloqueado.json().erro, /espere 15 minutos/);
+  _limparTentativas();
+  const ok = await login('senha-segura-1', '2.2.2.2');
+  assert.equal(ok.statusCode, 200);
+  assert.equal(ok.headers['x-frame-options'], 'DENY');
+  assert.equal(ok.headers['x-content-type-options'], 'nosniff');
+  assert.match(ok.headers['set-cookie'], /HttpOnly/i);
+});

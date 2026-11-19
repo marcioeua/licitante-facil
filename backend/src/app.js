@@ -39,7 +39,8 @@ import { clienteTelegram } from './services/telegram.js';
 import { COOKIE } from './http.js';
 
 export async function buildApp({ db, logger = false, serveFrontend = true, ia, fetchImpl = fetch, fetchCnpj, fetchDadosAbertos, whatsapp, telegram } = {}) {
-  const app = Fastify({ logger });
+  // trustProxy: no Railway há um intermediário na frente; o IP real de quem acessa vem no cabeçalho X-Forwarded-For.
+  const app = Fastify({ logger, trustProxy: true });
   app.decorate('db', db);
   // Cliente da IA (Claude) e fetch do PNCP: injetáveis nos testes.
   app.decorate('ia', ia === undefined ? clienteIA() : ia);
@@ -57,6 +58,13 @@ export async function buildApp({ db, logger = false, serveFrontend = true, ia, f
   // Por enquanto o site não deve aparecer em buscadores (Google, Bing etc.).
   app.addHook('onSend', async (req, reply) => {
     reply.header('x-robots-tag', 'noindex, nofollow, noarchive');
+    // Cabeçalhos de segurança: o site não pode ser aberto dentro de outro site (golpe de "clique escondido"),
+    // o navegador não "adivinha" o tipo dos arquivos, sempre usa HTTPS e não vaza o endereço completo para outros sites.
+    reply.header('x-frame-options', 'DENY');
+    reply.header('x-content-type-options', 'nosniff');
+    reply.header('referrer-policy', 'strict-origin-when-cross-origin');
+    reply.header('permissions-policy', 'camera=(), geolocation=(), payment=()');
+    if (process.env.NODE_ENV === 'production') reply.header('strict-transport-security', 'max-age=15552000');
   });
 
   app.decorateRequest('usuarioId', null);
