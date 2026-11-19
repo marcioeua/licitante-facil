@@ -77,6 +77,9 @@ Para retomar, é só abrir a conversa e dizer qual item quer fazer.
 - [ ] Relatórios de desempenho (taxa de vitória, valores ganhos).
 - [ ] App para celular (Android/iPhone).
 - [ ] Equipe com permissões.
-- [ ] Planos e cobrança, se for vender o sistema para outras empresas.
+- [ ] Planos e cobrança, se for vender o sistema para outras empresas. Combinado em 19/11/2026 (fazer depois):
+      (1) planos com franquia mensal de IA + compra de créditos extras (o painel Uso da IA já mede o gasto por usuário
+      e já existe limite mensal); pagamento por Pix/cartão (Mercado Pago, Asaas ou Stripe) — decidir preços e meio de pagamento;
+      (2) opção "usar minha própria chave da Anthropic" por cliente (chave guardada criptografada), para quem usa muito.
 - [ ] Antes de vender: trocar o nome "Pagômetro" (mesmo nome do concorrente; pode ser marca registrada).
       Sugestões: Termômetro de Pagamento, Risco de Pagamento, Bom Pagador, PagoCerto.
