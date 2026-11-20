@@ -55,6 +55,19 @@
               <div class="col"><q-input v-model.number="form.valor_min" type="number" outlined label="Valor mínimo (R$)" /></div>
               <div class="col"><q-input v-model.number="form.valor_max" type="number" outlined label="Valor máximo (R$)" /></div>
             </div>
+            <div v-if="(form.palavras ?? '').trim().length >= 3" class="previa">
+              <div v-if="previa.carregando" class="row items-center q-gutter-sm text-grey-7"><q-spinner-dots color="primary" size="20px" /><span>Contando licitações abertas...</span></div>
+              <template v-else-if="previa.total != null">
+                <div class="text-body2" :class="previa.total ? 'text-positive' : 'text-orange-9'">
+                  <q-icon :name="previa.total ? 'check_circle' : 'info'" />
+                  <b>Hoje este alerta encontraria {{ previa.total.toLocaleString('pt-BR') }} licitação(ões) aberta(s).</b>
+                </div>
+                <div v-if="!previa.total" class="text-caption text-grey-8">Tente palavras mais gerais (ex.: "limpeza" em vez de "detergente neutro 500ml") ou tire filtros de estado e valor.</div>
+                <ul v-else class="q-my-xs q-pl-md text-caption text-grey-8">
+                  <li v-for="o in previa.exemplos" :key="o.id" class="ellipsis">{{ o.objeto }}<span class="text-grey-6"> · {{ o.municipio }}/{{ o.uf }}</span></li>
+                </ul>
+              </template>
+            </div>
             <q-toggle v-model="form.email_ativo" label="Receber por e-mail" />
           </q-card-section>
           <q-card-actions align="right">
@@ -68,7 +81,7 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue';
+import { onMounted, reactive, ref, watch } from 'vue';
 import { useQuasar } from 'quasar';
 import { api } from 'boot/axios';
 import { useFiltros } from 'stores/filtros';
@@ -91,6 +104,29 @@ function abrir(a) {
     : { nome: '', palavras: '', ufs: [], municipios: [], modalidades: [], valor_min: null, valor_max: null, email_ativo: true });
   dialogo.value = true;
 }
+// Prévia: quantas licitações abertas o alerta acharia hoje (mesma busca usada pelos alertas e pelo Prospector).
+const previa = reactive({ total: null, exemplos: [], carregando: false });
+let espera = null;
+watch(() => [dialogo.value, form.palavras, form.ufs, form.municipios, form.modalidades, form.valor_min, form.valor_max], () => {
+  clearTimeout(espera);
+  if (!dialogo.value || (form.palavras ?? '').trim().length < 3) { previa.total = null; return; }
+  previa.carregando = true;
+  espera = setTimeout(async () => {
+    try {
+      const { data } = await api.get('/oportunidades', { silencioso: true, params: {
+        palavrasOu: form.palavras, uf: (form.ufs ?? []).join(',') || undefined, municipio: (form.municipios ?? []).join(',') || undefined,
+        modalidade: (form.modalidades ?? []).join(',') || undefined, valorMin: form.valor_min || undefined, valorMax: form.valor_max || undefined,
+        ordem: 'publicacao', tamanho: 3,
+      } });
+      previa.total = data.total;
+      previa.exemplos = data.itens;
+    } catch {
+      previa.total = null;
+    } finally {
+      previa.carregando = false;
+    }
+  }, 600);
+}, { deep: true });
 async function salvar(a, fechar = false) {
   const body = {
     nome: a.nome, palavras: a.palavras, ufs: a.ufs, municipios: a.municipios ?? [], modalidades: a.modalidades,
@@ -111,3 +147,7 @@ function remover(a) {
 }
 onMounted(() => Promise.all([carregar(), filtros.carregar()]));
 </script>
+
+<style scoped>
+.previa { border-radius: 8px; padding: 8px 12px; background: rgba(29, 78, 216, 0.06); }
+</style>

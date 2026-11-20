@@ -2,6 +2,9 @@
 
 Registro das melhorias feitas por conta própria (rodada diária e ajustes), em linguagem simples.
 
+## 20/11/2026 (rodada diária, 19h43)
+- **Alertas — prévia na hora:** ao criar ou editar um alerta, enquanto você digita as palavras aparece "Hoje este alerta encontraria X licitações abertas", com 3 exemplos. Se der zero, mostra dica para usar palavras mais gerais. Ajuda a montar alertas que o Agente Prospector consegue usar.
+
 ## 19/11/2026 (rodada diária, 19h43)
 - **Pesquisa de preços (Histórico de compras) com singular e plural:** a busca achava os itens pela raiz da palavra, mas depois filtrava de novo pela palavra exata e descartava resultados: "copos descartáveis" perdia os itens escritos "Copo descartável", e "material" perdia "materiais". Agora os dois filtros usam a mesma regra. Também melhora o Agente Fornecedor, que usa essa pesquisa.
 
