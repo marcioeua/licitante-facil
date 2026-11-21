@@ -189,7 +189,7 @@ function salvarAlerta() {
         nome: nome || f.q, palavras: f.q, ufs: f.uf, municipios: f.municipio, modalidades: f.modalidade,
         valor_min: f.valorMin || null, valor_max: f.valorMax || null,
       });
-      $q.notify({ type: 'positive', message: 'Alerta criado. Você receberá as novidades por e-mail.' });
+      $q.notify({ type: 'positive', message: 'Alerta criado. As novidades aparecem no Início e o Agente Prospector usa este alerta para achar licitações.' });
     });
 }
 

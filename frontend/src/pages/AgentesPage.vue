@@ -59,7 +59,7 @@
                 @update:model-value="(v) => salvar(a, { config: { maxPorDia: v } })" />
               <div v-if="!a.iaDisponivel" class="text-caption text-orange-9">Ative a chave da IA (ANTHROPIC_API_KEY) no Railway para ligar este agente.</div>
             </template>
-            <q-toggle :model-value="a.config.email" label="Avisar também por e-mail" @update:model-value="(v) => salvar(a, { config: { email: v } })" />
+            <q-toggle :model-value="a.config.email" :label="emailServidor === false ? 'Avisar também por e-mail (e-mail ainda não configurado no servidor)' : 'Avisar também por e-mail'" @update:model-value="(v) => salvar(a, { config: { email: v } })" />
             <q-toggle v-if="'whatsapp' in a.config" :model-value="a.config.whatsapp" :disable="!whats?.ativo" label="Avisar também pelo WhatsApp"
               @update:model-value="(v) => salvar(a, { config: { whatsapp: v } })"><q-tooltip v-if="!whats?.ativo">Ative o WhatsApp no topo da página</q-tooltip></q-toggle>
             <q-toggle v-if="'telegram' in a.config" :model-value="a.config.telegram" :disable="!tele?.ativo" label="Avisar também pelo Telegram"
@@ -161,6 +161,7 @@ const executando = ref(null);
 const negocioParaLer = ref(null);
 const buscaFornecedor = ref('');
 const qtdAlertas = ref(null);
+const emailServidor = ref(null);
 const negociosLer = ref([]);
 const whats = ref(null);
 const tele = ref(null);
@@ -213,6 +214,7 @@ async function executar(a) {
 onMounted(async () => {
   await carregar();
   empresas.value = (await api.get('/empresas')).data;
+  api.get('/saude', { silencioso: true }).then((r) => (emailServidor.value = !!r.data.email)).catch(() => {});
   api.get('/alertas', { silencioso: true }).then((r) => (qtdAlertas.value = r.data.length)).catch(() => {});
   negociosLer.value = (await api.get('/negocios')).data.filter((x) => x.oportunidade_id && !['ganho', 'perdido'].includes(x.etapa))
     .map((x) => ({ ...x, titulo: `${x.edital_lido ? '✓ ' : ''}${x.titulo}` }));

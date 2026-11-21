@@ -2,6 +2,9 @@
 
 Registro das melhorias feitas por conta própria (rodada diária e ajustes), em linguagem simples.
 
+## 21/11/2026 (rodada diária, 19h43)
+- **Telas sem promessa de e-mail que não sai:** Alertas e Agentes diziam que o resumo e os avisos iam por e-mail, mas o envio de e-mail ainda não está configurado no servidor. Agora as telas avisam isso e explicam onde as novidades aparecem (Início, Meus negócios e Telegram). Quando o e-mail for configurado, os avisos somem sozinhos.
+
 ## 20/11/2026 (rodada diária, 19h43)
 - **Alertas — prévia na hora:** ao criar ou editar um alerta, enquanto você digita as palavras aparece "Hoje este alerta encontraria X licitações abertas", com 3 exemplos. Se der zero, mostra dica para usar palavras mais gerais. Ajuda a montar alertas que o Agente Prospector consegue usar.
 

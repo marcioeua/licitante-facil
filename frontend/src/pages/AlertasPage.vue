@@ -5,7 +5,8 @@
       <q-btn unelevated no-caps color="primary" icon="add" label="Novo alerta" @click="abrir()" />
     </div>
     <div class="text-body2 text-grey-7 q-mb-md">
-      Cada alerta procura licitações novas com as palavras que você escolher e envia um resumo por e-mail todos os dias.
+      Cada alerta procura licitações novas com as palavras que você escolher. As melhores aparecem no Início, e o <router-link :to="{ name: 'agentes' }">Agente Prospector</router-link> coloca as de nota alta em Meus negócios e manda no Telegram.
+      <span v-if="emailServidor === false" class="text-orange-9">O envio de e-mail ainda não está configurado no servidor: por enquanto o resumo diário por e-mail não sai.</span><span v-else-if="emailServidor">Também envia um resumo por e-mail todos os dias.</span>
     </div>
 
     <div v-if="!alertas.length" class="text-center text-grey-7 q-pa-xl">
@@ -68,7 +69,7 @@
                 </ul>
               </template>
             </div>
-            <q-toggle v-model="form.email_ativo" label="Receber por e-mail" />
+            <q-toggle v-model="form.email_ativo" :label="emailServidor === false ? 'Receber por e-mail (quando o e-mail for configurado)' : 'Receber por e-mail'" />
           </q-card-section>
           <q-card-actions align="right">
             <q-btn flat no-caps label="Cancelar" v-close-popup />
@@ -93,6 +94,8 @@ const filtros = useFiltros();
 const alertas = ref([]);
 const dialogo = ref(false);
 const form = reactive({});
+const emailServidor = ref(null);
+api.get('/saude', { silencioso: true }).then((r) => (emailServidor.value = !!r.data.email)).catch(() => {});
 
 async function carregar() {
   alertas.value = (await api.get('/alertas')).data;

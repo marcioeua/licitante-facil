@@ -93,7 +93,7 @@ export async function buildApp({ db, logger = false, serveFrontend = true, ia, f
     const d = disco();
     const hist = db.prepare('SELECT min(dia) AS de, count(*) AS dias FROM contratos_dias').get();
     return {
-      ok: true, ultimaSincronizacao: u?.finalizado_em ?? null, ia: !!app.ia,
+      ok: true, ultimaSincronizacao: u?.finalizado_em ?? null, ia: !!app.ia, email: !!config.smtp?.host,
       disco: d ? { totalMb: Math.round(d.total), livreMb: Math.round(d.livre), usoPct: Math.round(d.usoPct * 100) } : null,
       historico: { desde: hist.de, dias: hist.dias },
     };
