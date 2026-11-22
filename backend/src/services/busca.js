@@ -19,14 +19,18 @@ export function raiz(t) {
   return r;
 }
 
+// Palavrinhas que não ajudam a achar nada ("material DE limpeza") e só deixam a busca lenta.
+const PALAVRAS_VAZIAS = new Set(['a', 'o', 'as', 'os', 'e', 'de', 'da', 'do', 'das', 'dos', 'em', 'no', 'na', 'nos', 'nas', 'para', 'pra', 'com', 'por', 'um', 'uma', 'ou', 'ao', 'aos', 'que']);
+
 export function ftsQuery(texto) {
-  const termos = String(texto ?? '')
+  const todos = String(texto ?? '')
     .toLowerCase()
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '')
     .match(/[a-z0-9]+/g);
-  if (!termos?.length) return null;
-  return termos.map((t) => `"${raiz(t)}"*`).join(' ');
+  if (!todos?.length) return null;
+  const uteis = todos.filter((t) => !PALAVRAS_VAZIAS.has(t));
+  return (uteis.length ? uteis : todos).map((t) => `"${raiz(t)}"*`).join(' ');
 }
 
 /** Palavras de um alerta: separadas por vírgula; qualquer uma delas basta (OU). */

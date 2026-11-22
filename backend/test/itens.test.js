@@ -113,5 +113,6 @@ test('busca entende singular e plural (material/materiais, papel/papéis, licita
   assert.equal(raiz('papeis'), raiz('papel'));
   assert.equal(raiz('licitacoes'), raiz('licitacao'));
   assert.equal(raiz('copos'), 'copo');
-  assert.equal(ftsQuery('Material de Limpeza'), '"materi"* "de"* "limpeza"*');
+  assert.equal(ftsQuery('Material de Limpeza'), '"materi"* "limpeza"*', 'ignora "de"');
+  assert.equal(ftsQuery('de'), '"de"*', 'só palavrinha: mantém');
 });

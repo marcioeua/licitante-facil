@@ -2,6 +2,10 @@
 
 Registro das melhorias feitas por conta própria (rodada diária e ajustes), em linguagem simples.
 
+## 22/11/2026 (rodada diária, 19h43)
+- **Busca mais rápida e mais certeira:** palavrinhas como "de", "a", "para" e "com" eram tratadas como palavras importantes (a busca procurava tudo que começa com "de" ou com "a"). Agora são ignoradas. Na base de teste a busca ficou de 6 a 14 vezes mais rápida e algumas trazem mais resultados ("aquisição de material de expediente para a secretaria": de 65 para 81).
+- Revisão automática de 23 páginas no tamanho de celular: nenhuma vaza para os lados e nenhuma tem erro escondido.
+
 ## 21/11/2026 (rodada diária, 19h43)
 - **Telas sem promessa de e-mail que não sai:** Alertas e Agentes diziam que o resumo e os avisos iam por e-mail, mas o envio de e-mail ainda não está configurado no servidor. Agora as telas avisam isso e explicam onde as novidades aparecem (Início, Meus negócios e Telegram). Quando o e-mail for configurado, os avisos somem sozinhos.
 
