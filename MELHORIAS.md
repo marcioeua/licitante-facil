@@ -2,6 +2,9 @@
 
 Registro das melhorias feitas por conta própria (rodada diária e ajustes), em linguagem simples.
 
+## 23/11/2026 (rodada diária, 19h43)
+- **Itens e valores antes de ler o edital:** na página da licitação, o quadro "Itens e valores que o órgão estima pagar" (dados oficiais do PNCP, sem custo) agora aparece mesmo antes da leitura com IA. Dá para ver os itens e o valor e decidir se vale gastar IA lendo o edital.
+
 ## 22/11/2026 (rodada diária, 19h43)
 - **Busca mais rápida e mais certeira:** palavrinhas como "de", "a", "para" e "com" eram tratadas como palavras importantes (a busca procurava tudo que começa com "de" ou com "a"). Agora são ignoradas. Na base de teste a busca ficou de 6 a 14 vezes mais rápida e algumas trazem mais resultados ("aquisição de material de expediente para a secretaria": de 65 para 81).
 - Revisão automática de 23 páginas no tamanho de celular: nenhuma vaza para os lados e nenhuma tem erro escondido.
