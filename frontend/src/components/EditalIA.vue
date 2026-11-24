@@ -125,7 +125,7 @@
           <q-expansion-item v-if="oficiais?.itens?.length" default-opened icon="inventory_2" header-class="text-weight-medium"
         :label="`Itens e valores que o órgão estima pagar (${oficiais.itens.length})`" :caption="oficiais.total ? `Total estimado: ${brl2(oficiais.total)}` : 'Valores sigilosos ou não informados'">
         <q-markup-table flat dense class="q-mx-md q-mb-sm itens-oficiais">
-          <thead><tr><th class="text-left">Item</th><th class="text-left">Descrição</th><th class="text-right">Qtd.</th><th class="text-right">Valor unit.</th><th class="text-right">Total</th></tr></thead>
+          <thead><tr><th class="text-left">Item</th><th class="text-left">Descrição</th><th class="text-right">Qtd.</th><th class="text-right">Valor unit.</th><th class="text-right">Total</th><th></th></tr></thead>
           <tbody>
             <tr v-for="it in oficiais.itens.slice(0, mostrarItens)" :key="it.numero">
               <td class="text-left">{{ it.numero }}</td>
@@ -133,6 +133,12 @@
               <td class="text-right">{{ num(it.quantidade) }} <span class="text-caption text-grey-7">{{ it.unidade }}</span></td>
               <td class="text-right text-weight-bold">{{ it.valorUnitario != null ? brl2(it.valorUnitario) : 'sigiloso' }}</td>
               <td class="text-right">{{ it.valorTotal != null ? brl2(it.valorTotal) : '—' }}</td>
+              <td class="text-right q-pl-none">
+                <q-btn flat round dense size="sm" icon="calculate" color="primary"
+                  :to="{ name: 'calculadora', query: { oportunidade: oportunidadeId, estimado: it.valorUnitario ?? undefined, qtd: it.quantidade ?? undefined, descricao: `Item ${it.numero} — ${String(it.descricao).slice(0, 80)}` } }">
+                  <q-tooltip>Calcular se este item compensa (impostos, DIFAL e lucro)</q-tooltip>
+                </q-btn>
+              </td>
             </tr>
           </tbody>
         </q-markup-table>

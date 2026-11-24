@@ -2,6 +2,9 @@
 
 Registro das melhorias feitas por conta própria (rodada diária e ajustes), em linguagem simples.
 
+## 24/11/2026 (rodada diária, 19h43)
+- **Calcular cada item da licitação:** no quadro "Itens e valores que o órgão estima pagar", cada item tem um botão 🧮 que abre a Calculadora de preço já preenchida com o item, o órgão, o estado (para o DIFAL), a quantidade e o valor que o órgão estima pagar. É só colocar o seu custo para ver se compensa.
+
 ## 23/11/2026 (rodada diária, 19h43)
 - **Itens e valores antes de ler o edital:** na página da licitação, o quadro "Itens e valores que o órgão estima pagar" (dados oficiais do PNCP, sem custo) agora aparece mesmo antes da leitura com IA. Dá para ver os itens e o valor e decidir se vale gastar IA lendo o edital.
 

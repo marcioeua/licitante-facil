@@ -297,7 +297,8 @@ onMounted(async () => {
       const op = (await api.get(`/oportunidades/${q.oportunidade}`, { silencioso: true })).data;
       e.ufDestino = op.uf ?? e.ufDestino;
       e.orgaoFederal = op.esfera === 'F';
-      contexto.value = `${op.orgao_nome ?? ''}${op.uf ? ` (${op.uf})` : ''}`;
+      const orgao = `${op.orgao_nome ?? ''}${op.uf ? ` (${op.uf})` : ''}`;
+      contexto.value = contexto.value ? `${contexto.value} · ${orgao}` : orgao;
     } catch { /* licitação não encontrada */ }
   }
 });
