@@ -151,8 +151,13 @@ test('Telegram: licitação nova chega com botão "Ler este edital" e o botão l
     enviarDocumento: async () => { throw new Error('não devia mandar PDF'); },
     responderBotao: async (id, texto) => { respostas.push(texto); },
   };
-  assert.equal(await processarFilaTelegram(db, { cliente: telegram, fetchImpl: async () => new Response(null, { status: 404 }) }), 1);
+  const itensPncp = async (url) => (String(url).includes('/compras/2026/46/itens')
+    ? Response.json([{ numeroItem: 1, descricao: 'Detergente líquido neutro, 500 ml', unidadeMedida: 'Frasco', quantidade: 200, valorUnitarioEstimado: 2.5 }])
+    : new Response(null, { status: 404 }));
+  assert.equal(await processarFilaTelegram(db, { cliente: telegram, fetchImpl: itensPncp }), 1);
   assert.match(enviados[0].html, /Nova licitação na sua triagem/);
+  assert.match(enviados[0].html, /1 item\(ns\) · o órgão estima pagar R\$\s?500,00 no total/);
+  assert.match(enviados[0].html, /Item 1: Detergente líquido neutro — 200 frasco × R\$\s?2,50/);
   assert.equal(enviados[0].teclado[0][0].callback_data, `ler:${negocioId}`);
 
   // Toque no botão: responde na hora e pede a leitura.
@@ -173,6 +178,7 @@ test('Telegram: licitação nova chega com botão "Ler este edital" e o botão l
       { numeroItem: 2, descricao: 'Papel higiênico folha dupla', unidadeMedida: 'Fardo', quantidade: 50, valorUnitarioEstimado: 89.9 },
       { numeroItem: 3, descricao: 'Vassoura de pelo', unidadeMedida: 'Unidade', quantidade: 10, orcamentoSigiloso: true }])
     : new Response(null, { status: 404 }));
+  db.prepare('DELETE FROM itens_licitacao').run(); // a leitura busca de novo no PNCP (a lista de 3 itens abaixo)
   await lerEditalPeloTelegram(db, { uid, negocioId, chatId: 777 }, { cliente: telegram, ia: {}, appUrl: 'https://app.x', fetchImpl: pncpItens });
   assert.match(enviados[0].html, /📖 <b>Edital lido/);
   assert.match(enviados[0].html, /Amostra em 3 dias/);

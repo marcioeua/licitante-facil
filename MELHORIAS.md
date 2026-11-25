@@ -2,6 +2,9 @@
 
 Registro das melhorias feitas por conta própria (rodada diária e ajustes), em linguagem simples.
 
+## 25/11/2026 (rodada diária, 19h43)
+- **Telegram — licitação nova com os itens:** a mensagem "🆕 Nova licitação na sua triagem" agora traz quantos itens são, o total que o órgão estima pagar e os 3 itens de maior valor (dados oficiais do PNCP, sem custo de IA). Dá para decidir pelo celular se vale abrir. Os itens ficam guardados, então a leitura do edital depois não busca de novo.
+
 ## 24/11/2026 (rodada diária, 19h43)
 - **Calcular cada item da licitação:** no quadro "Itens e valores que o órgão estima pagar", cada item tem um botão 🧮 que abre a Calculadora de preço já preenchida com o item, o órgão, o estado (para o DIFAL), a quantidade e o valor que o órgão estima pagar. É só colocar o seu custo para ver se compensa.
 

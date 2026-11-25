@@ -4,6 +4,7 @@
 import { randomBytes } from 'node:crypto';
 import { config } from '../config.js';
 import { montarEnvioEdital } from './whatsapp.js';
+import { itensDaLicitacao, resumoDosItens } from './itensOficiais.js';
 
 const esc = (t) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const corta = (t, max) => (t.length > max ? `${t.slice(0, max - 1)}…` : t);
@@ -133,7 +134,9 @@ export async function enviarEditalTelegram(db, cliente, uid, oportunidadeId, { f
   const teclado = tecladoDaLicitacao(negocio, { appUrl: appUrl ?? config.appUrl });
   const { op, titulo, texto, pdf } = await montarEnvioEdital(db, oportunidadeId, { fetchImpl, appUrl, semPdf: !comPdf });
   const cabeca = novo ? '🆕 <b>Nova licitação na sua triagem</b>\n' : '';
-  const legenda = `${cabeca}📄 <b>${esc(corta(titulo, 300))}</b>\n\n${esc(texto).replace(/ · /g, '\n')}`;
+  // Licitação nova: junta os principais itens com o valor que o órgão estima pagar (dados oficiais do PNCP).
+  const itens = novo ? resumoDosItens(await itensDaLicitacao(db, op, { fetchImpl }).catch(() => null), 3) : [];
+  const legenda = `${cabeca}📄 <b>${esc(corta(titulo, 300))}</b>\n\n${esc(texto).replace(/ · /g, '\n')}${itens.length ? `\n\n${esc(itens.join('\n'))}` : ''}`;
   if (pdf && comPdf) {
     await cliente.enviarDocumento(u.telegram_chat_id, { bytes: pdf.bytes, nomeArquivo: pdf.nome, legenda, teclado });
     return { documento: true, arquivo: pdf.nome };
