@@ -1,5 +1,5 @@
 import { httpError, idParam } from '../http.js';
-import { linkDeLigacao, processarMensagensTelegram, enviarEditalTelegram } from '../services/telegram.js';
+import { linkDeLigacao, processarMensagensTelegram, enviarEditalTelegram, escutaOcupada } from '../services/telegram.js';
 
 export default async function (app) {
   const { db } = app;
@@ -33,6 +33,12 @@ export default async function (app) {
 
   // Confere se o usuário já apertou "Começar" no robô.
   app.post('/verificar', async (req) => {
+    const ligado = () => !!db.prepare('SELECT telegram_chat_id FROM usuarios WHERE id = ?').get(req.usuarioId)?.telegram_chat_id;
+    if (escutaOcupada()) {
+      // A escuta já está esperando mensagens do Telegram: só confere a conta por alguns segundos (não espera os 25 s).
+      for (let i = 0; i < 12 && !ligado(); i++) await new Promise((r) => setTimeout(r, 500));
+      return estado(req.usuarioId);
+    }
     try {
       await processarMensagensTelegram(db, cliente(), { log: (m) => req.log.warn(m) });
     } catch (e) { traduzir(e); }

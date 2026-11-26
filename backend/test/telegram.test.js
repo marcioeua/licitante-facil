@@ -188,3 +188,22 @@ test('Telegram: licitação nova chega com botão "Ler este edital" e o botão l
   assert.match(enviados[0].html, /oportunidades\/\d+\?ver=edital/);
   assert.equal(db.prepare("SELECT enviada_telegram FROM notificacoes WHERE agente = 'leitor'").get().enviada_telegram, 1, 'não repete pelo aviso normal');
 });
+
+test('Telegram: "Verificar" responde rápido mesmo com a escuta em espera longa', async () => {
+  const db = openDatabase(':memory:');
+  let soltar;
+  const telegram = {
+    nomeDoRobo: async () => 'BuscaPregaoBot',
+    atualizacoes: () => new Promise((res) => { soltar = () => res([]); }), // espera longa que não volta sozinha
+    enviarTexto: async () => {},
+  };
+  const app = await buildApp({ db, serveFrontend: false, ia: null, whatsapp: null, telegram });
+  const cookie = (await app.inject({ method: 'POST', url: '/api/auth/cadastro', payload: { nome: 'Marcio', email: 'v@e.com', senha: 'senha-segura-1' } })).headers['set-cookie'].split(';')[0];
+  const escuta = processarMensagensTelegram(db, telegram, { esperaSeg: 25 }); // como a escuta do servidor
+  const t = Date.now();
+  const r = await app.inject({ method: 'POST', url: '/api/telegram/verificar', headers: { cookie } });
+  assert.equal(r.statusCode, 200);
+  assert.ok(Date.now() - t < 8000, `respondeu em ${Date.now() - t} ms`);
+  assert.equal(r.json().conectado, false);
+  soltar(); await escuta;
+});

@@ -2,6 +2,9 @@
 
 Registro das melhorias feitas por conta própria (rodada diária e ajustes), em linguagem simples.
 
+## 26/11/2026 (rodada diária, 19h43)
+- **Conectar o Telegram sem demora:** desde a economia de servidor do dia 18, o botão "Verificar" (Agentes → Telegram) podia ficar até 25 segundos rodando se apertado antes de mandar "Começar" ao robô. Agora responde em poucos segundos.
+
 ## 25/11/2026 (rodada diária, 19h43)
 - **Telegram — licitação nova com os itens:** a mensagem "🆕 Nova licitação na sua triagem" agora traz quantos itens são, o total que o órgão estima pagar e os 3 itens de maior valor (dados oficiais do PNCP, sem custo de IA). Dá para decidir pelo celular se vale abrir. Os itens ficam guardados, então a leitura do edital depois não busca de novo.
 

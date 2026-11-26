@@ -58,6 +58,9 @@ export async function linkDeLigacao(db, cliente, uid) {
 /** Lê as mensagens recebidas pelo robô: /start <código> liga a conta, /parar desliga. */
 // Uma leitura de mensagens por vez (a escuta e o botão "verificar" da página podem coincidir).
 let lendoMensagens = null;
+/** A escuta (espera longa) está com uma pergunta aberta ao Telegram neste momento? */
+export function escutaOcupada() { return !!lendoMensagens; }
+
 export function processarMensagensTelegram(db, cliente, opcoes = {}) {
   if (!cliente) return Promise.resolve(0);
   lendoMensagens ??= lerMensagens(db, cliente, opcoes).finally(() => { lendoMensagens = null; });
