@@ -90,3 +90,15 @@ test('filtro produtos ou serviços: itens oficiais primeiro, palavras do objeto 
   assert.deepEqual(nums('produto'), [1, 3]);
   assert.deepEqual(nums('servico'), [2, 4], 'obra "com fornecimento de materiais" é serviço');
 });
+
+test('alerta com "só produtos" vale para a busca do alerta e do Prospector', async () => {
+  const { filtrosDoAlerta, parseAlerta } = await import('../src/routes/alertas.js');
+  const db = openDatabase(':memory:');
+  const app = await buildApp({ db, serveFrontend: false, ia: null, whatsapp: null, telegram: null });
+  const cookie = (await app.inject({ method: 'POST', url: '/api/auth/cadastro', payload: { nome: 'Teste', email: 'a@e.com', senha: 'senha-segura-1' } })).headers['set-cookie'].split(';')[0];
+  const r = await app.inject({ method: 'POST', url: '/api/alertas', headers: { cookie }, payload: { nome: 'Limpeza', palavras: 'limpeza', tipo_objeto: 'produto' } });
+  assert.equal(r.statusCode, 201);
+  assert.equal(r.json().tipo_objeto, 'produto');
+  assert.equal(filtrosDoAlerta(parseAlerta(db.prepare('SELECT * FROM alertas').get())).tipoObjeto, 'produto');
+  assert.equal((await app.inject({ method: 'POST', url: '/api/alertas', headers: { cookie }, payload: { nome: 'X', palavras: 'xx', tipo_objeto: 'outro' } })).statusCode, 400);
+});

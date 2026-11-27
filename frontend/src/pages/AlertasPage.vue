@@ -22,6 +22,7 @@
             </div>
             <div class="q-gutter-xs q-mt-xs">
               <q-chip v-for="p in a.palavras.split(',')" :key="p" dense color="blue-1" text-color="primary">{{ p.trim() }}</q-chip>
+              <q-chip v-if="a.tipo_objeto" dense color="teal-1" text-color="teal-9" :icon="a.tipo_objeto === 'produto' ? 'inventory_2' : 'engineering'">{{ a.tipo_objeto === 'produto' ? 'Só produtos' : 'Só serviços' }}</q-chip>
             </div>
             <div class="text-caption text-grey-7 q-mt-xs">
               {{ a.municipios?.length ? a.municipios.map((m) => m.split(':').reverse().join('/')).join(', ') : a.ufs.length ? a.ufs.join(', ') : 'Todo o Brasil' }} ·
@@ -52,6 +53,9 @@
             <CidadesSelect v-model="form.municipios" :ufs="form.ufs" label="Cidades (vazio = todas)" />
             <q-select v-model="form.modalidades" :options="filtros.modalidades" option-value="id" option-label="nome" emit-value map-options
               multiple use-chips outlined label="Modalidades (vazio = todas)" />
+            <q-btn-toggle :model-value="form.tipo_objeto ?? null" spread no-caps unelevated toggle-color="primary" color="grey-2" text-color="grey-9"
+              :options="[{ label: 'Produtos e serviços', value: null }, { label: 'Só produtos', value: 'produto' }, { label: 'Só serviços', value: 'servico' }]"
+              @update:model-value="(v) => (form.tipo_objeto = v)" />
             <div class="row q-col-gutter-sm">
               <div class="col"><q-input v-model.number="form.valor_min" type="number" outlined label="Valor mínimo (R$)" /></div>
               <div class="col"><q-input v-model.number="form.valor_max" type="number" outlined label="Valor máximo (R$)" /></div>
@@ -104,13 +108,13 @@ function abrir(a) {
   Object.keys(form).forEach((k) => delete form[k]);
   Object.assign(form, a
     ? { ...a, ufs: [...a.ufs], modalidades: [...a.modalidades], municipios: [...(a.municipios ?? [])] }
-    : { nome: '', palavras: '', ufs: [], municipios: [], modalidades: [], valor_min: null, valor_max: null, email_ativo: true });
+    : { nome: '', palavras: '', ufs: [], municipios: [], modalidades: [], valor_min: null, valor_max: null, email_ativo: true, tipo_objeto: null });
   dialogo.value = true;
 }
 // Prévia: quantas licitações abertas o alerta acharia hoje (mesma busca usada pelos alertas e pelo Prospector).
 const previa = reactive({ total: null, exemplos: [], carregando: false });
 let espera = null;
-watch(() => [dialogo.value, form.palavras, form.ufs, form.municipios, form.modalidades, form.valor_min, form.valor_max], () => {
+watch(() => [dialogo.value, form.palavras, form.ufs, form.municipios, form.modalidades, form.valor_min, form.valor_max, form.tipo_objeto], () => {
   clearTimeout(espera);
   if (!dialogo.value || (form.palavras ?? '').trim().length < 3) { previa.total = null; return; }
   previa.carregando = true;
@@ -118,7 +122,7 @@ watch(() => [dialogo.value, form.palavras, form.ufs, form.municipios, form.modal
     try {
       const { data } = await api.get('/oportunidades', { silencioso: true, params: {
         palavrasOu: form.palavras, uf: (form.ufs ?? []).join(',') || undefined, municipio: (form.municipios ?? []).join(',') || undefined,
-        modalidade: (form.modalidades ?? []).join(',') || undefined, valorMin: form.valor_min || undefined, valorMax: form.valor_max || undefined,
+        modalidade: (form.modalidades ?? []).join(',') || undefined, valorMin: form.valor_min || undefined, valorMax: form.valor_max || undefined, tipoObjeto: form.tipo_objeto || undefined,
         ordem: 'publicacao', tamanho: 3,
       } });
       previa.total = data.total;
@@ -134,7 +138,7 @@ async function salvar(a, fechar = false) {
   const body = {
     nome: a.nome, palavras: a.palavras, ufs: a.ufs, municipios: a.municipios ?? [], modalidades: a.modalidades,
     valor_min: a.valor_min === '' ? null : a.valor_min ?? null, valor_max: a.valor_max === '' ? null : a.valor_max ?? null,
-    email_ativo: a.email_ativo,
+    email_ativo: a.email_ativo, tipo_objeto: a.tipo_objeto ?? null,
   };
   if (a.id) await api.put(`/alertas/${a.id}`, body);
   else await api.post('/alertas', body);

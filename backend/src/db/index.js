@@ -506,6 +506,7 @@ CREATE TABLE IF NOT EXISTS ia_uso (
 
 // Colunas adicionadas depois da primeira versão (bancos já existentes).
 const MIGRACOES = [
+  'ALTER TABLE alertas ADD COLUMN tipo_objeto TEXT',
   'ALTER TABLE itens_compras ADD COLUMN link_origem TEXT',
   'ALTER TABLE ia_uso ADD COLUMN cache_write_tokens INTEGER',
   'ALTER TABLE ia_uso ADD COLUMN modelo TEXT',

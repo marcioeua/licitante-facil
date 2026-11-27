@@ -2,6 +2,9 @@
 
 Registro das melhorias feitas por conta própria (rodada diária e ajustes), em linguagem simples.
 
+## 27/11/2026 (rodada diária, 19h43)
+- **Alertas com "Produtos ou serviços":** cada alerta pode ser "Só produtos" ou "Só serviços" (botões na janela do alerta, com a prévia atualizando na hora). Vale para o resumo do alerta e para o Agente Prospector: quem só vende produtos não recebe serviços de limpeza na triagem, por exemplo.
+
 ## 27/11/2026
 - **Filtro "Produtos ou serviços"** em Oportunidades, Busca por item e Licitações desertas. Usa a marcação oficial de cada item no PNCP (material ou serviço); quando os itens ainda não foram guardados, usa as palavras do objeto (obra, execução, serviço, manutenção = serviço; aquisição, fornecimento, materiais = produto). Obra "com fornecimento de materiais" conta como serviço.
 - **Nova página "Licitações desertas" (menu):** itens em que ninguém participou (deserto) ou ninguém foi aprovado (fracassado), agrupados por licitação, com quantidade, valor que o órgão estimava pagar, filtro por produto, estado e tipo, e atalhos para a página do órgão (licitações abertas) e para "Quem vende isso". Fonte: situação oficial dos itens nos Dados Abertos do Compras.gov.br.
