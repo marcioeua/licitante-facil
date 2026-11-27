@@ -7,6 +7,7 @@ export default [
       { path: 'oportunidades', name: 'oportunidades', component: () => import('pages/OportunidadesPage.vue') },
       { path: 'fornecedores', name: 'fornecedores', component: () => import('pages/FornecedoresPage.vue') },
       { path: 'calculadora', name: 'calculadora', component: () => import('pages/CalculadoraPage.vue') },
+      { path: 'desertas', name: 'desertas', component: () => import('pages/DesertasPage.vue') },
       { path: 'itens', name: 'itens', component: () => import('pages/ItensPage.vue') },
       { path: 'oportunidades/:id', name: 'oportunidade', component: () => import('pages/OportunidadePage.vue') },
       { path: 'negocios', name: 'negocios', component: () => import('pages/NegociosPage.vue') },

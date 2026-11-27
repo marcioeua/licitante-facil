@@ -116,3 +116,21 @@ test('busca entende singular e plural (material/materiais, papel/papéis, licita
   assert.equal(ftsQuery('Material de Limpeza'), '"materi"* "limpeza"*', 'ignora "de"');
   assert.equal(ftsQuery('de'), '"de"*', 'só palavrinha: mantém');
 });
+
+test('licitações desertas e fracassadas agrupadas por compra', async () => {
+  const { listarDesertas } = await import('../src/services/desertas.js');
+  const { gravarItens } = await import('../src/services/itens.js');
+  const db = openDatabase(':memory:');
+  const it = (compra, n, desc, situacao) => ({ compra, numero: n, descricao: desc, material: 1, unidade: 'Unidade', quantidade: 10, estimado: 50, situacao,
+    criterio: null, beneficio: null, fornecedorNi: null, fornecedorNome: null, valorResultado: null, quantidadeResultado: null, dataResultado: '2026-11-10', dataInclusao: '2026-10-01T10:00:00', orgaoCnpj: compra.slice(0, 14) });
+  gravarItens(db, [it(C1, 1, 'Ventilador de parede', 'Deserto'), it(C1, 2, 'Ventilador de teto', 'Fracassado'), it(C1, 3, 'Extensão', 'Homologado'), it(C2, 1, 'Papel A4', 'Deserto')]);
+  db.prepare("INSERT INTO itens_compras (controle, orgao, uf, modalidade, numero, ano, buscado_em) VALUES (?, 'COMANDO DA MARINHA', 'RJ', 'Pregão - Eletrônico', '90010', 2026, datetime('now')), (?, 'PREFEITURA X', 'MG', 'Dispensa', '5', 2026, datetime('now'))").run(C1, C2);
+  let r = await listarDesertas(db, {}, { fetchImpl: async () => new Response(null, { status: 404 }) });
+  assert.equal(r.total, 2);
+  const marinha = r.compras.find((c) => c.controle === C1);
+  assert.deepEqual([marinha.desertos, marinha.fracassados, marinha.totalItensCompra, marinha.valorTotal, marinha.uf], [1, 1, 3, 1000, 'RJ']);
+  r = await listarDesertas(db, { q: 'ventiladores', tipo: 'deserto' });
+  assert.deepEqual(r.compras.map((c) => [c.controle, c.itens.length]), [[C1, 1]]);
+  r = await listarDesertas(db, { uf: 'MG' });
+  assert.deepEqual(r.compras.map((c) => c.controle), [C2]);
+});

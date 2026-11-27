@@ -102,6 +102,7 @@ const itens = [
   { to: 'chat', nome: 'Busca no Chat', icone: 'forum' },
   { to: 'oportunidades', nome: 'Oportunidades', icone: 'travel_explore' },
   { to: 'itens', nome: 'Busca por item', icone: 'manage_search' },
+  { to: 'desertas', nome: 'Licitações desertas', icone: 'do_not_disturb_on' },
   { to: 'negocios', nome: 'Meus negócios', icone: 'view_kanban' },
   { to: 'salas', nome: 'Sala de disputa', icone: 'gavel' },
   { to: 'calculadora', nome: 'Calculadora de preço', icone: 'calculate' },

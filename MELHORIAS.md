@@ -2,6 +2,10 @@
 
 Registro das melhorias feitas por conta própria (rodada diária e ajustes), em linguagem simples.
 
+## 27/11/2026
+- **Nova página "Licitações desertas" (menu):** itens em que ninguém participou (deserto) ou ninguém foi aprovado (fracassado), agrupados por licitação, com quantidade, valor que o órgão estimava pagar, filtro por produto, estado e tipo, e atalhos para a página do órgão (licitações abertas) e para "Quem vende isso". Fonte: situação oficial dos itens nos Dados Abertos do Compras.gov.br.
+- **Busca por item — "Maior valor":** o botão de ordenação pedia a ordem antiga ao servidor (era preciso clicar duas vezes). Corrigido.
+
 ## 26/11/2026 (rodada diária, 19h43)
 - **Conectar o Telegram sem demora:** desde a economia de servidor do dia 18, o botão "Verificar" (Agentes → Telegram) podia ficar até 25 segundos rodando se apertado antes de mandar "Começar" ao robô. Agora responde em poucos segundos.
 

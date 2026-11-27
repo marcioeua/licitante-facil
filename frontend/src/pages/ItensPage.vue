@@ -25,7 +25,7 @@
 
     <div v-if="dados" class="row items-center q-mb-sm">
       <div class="col text-body2 text-grey-7">{{ num(dados.total) }} resultado(s)</div>
-      <q-btn-toggle v-model="ordem" no-caps unelevated dense toggle-color="primary" color="grey-2" text-color="grey-9" @update:model-value="buscar(1)"
+      <q-btn-toggle :model-value="ordem" no-caps unelevated dense toggle-color="primary" color="grey-2" text-color="grey-9" @update:model-value="(v) => { ordem = v; buscar(1); }"
         :options="[{ label: 'Mais recentes', value: 'data' }, { label: 'Maior valor', value: 'valor' }]" />
     </div>
     <div v-if="erro" class="text-grey-7 q-pa-md">{{ erro }}</div>
