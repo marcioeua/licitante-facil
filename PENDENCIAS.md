@@ -34,6 +34,9 @@ Para retomar, é só abrir a conversa e dizer qual item quer fazer.
 - [ ] WhatsApp: o número de teste da Meta (+1 555) não envia para o Brasil (erro 130497). Falta um número
       brasileiro próprio (chip pré-pago ou fixo que não esteja no WhatsApp). App "Busca Pregao IA" já criado
       (Phone Number ID de teste 1518217504707319, conta 2673262883091773).
+      27/11/2026: o dono já tem um número novo (pode ser dos EUA, +1, desde que receba SMS/ligação e não esteja
+      em nenhum WhatsApp). Próximos passos quando ele quiser: cadastrar o número no app da Meta, criar e aprovar os
+      2 modelos de mensagem, gerar token permanente e colocar WHATSAPP_TOKEN/WHATSAPP_PHONE_ID no Railway.
 - Não usar serviços não oficiais (Z-API, Evolution API etc.): risco de bloqueio do número.
 
 ## 3. Agentes — etapas 2 e 3
