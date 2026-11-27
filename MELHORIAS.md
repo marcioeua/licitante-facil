@@ -3,6 +3,7 @@
 Registro das melhorias feitas por conta própria (rodada diária e ajustes), em linguagem simples.
 
 ## 27/11/2026
+- **Filtro "Produtos ou serviços"** em Oportunidades, Busca por item e Licitações desertas. Usa a marcação oficial de cada item no PNCP (material ou serviço); quando os itens ainda não foram guardados, usa as palavras do objeto (obra, execução, serviço, manutenção = serviço; aquisição, fornecimento, materiais = produto). Obra "com fornecimento de materiais" conta como serviço.
 - **Nova página "Licitações desertas" (menu):** itens em que ninguém participou (deserto) ou ninguém foi aprovado (fracassado), agrupados por licitação, com quantidade, valor que o órgão estimava pagar, filtro por produto, estado e tipo, e atalhos para a página do órgão (licitações abertas) e para "Quem vende isso". Fonte: situação oficial dos itens nos Dados Abertos do Compras.gov.br.
 - **Busca por item — "Maior valor":** o botão de ordenação pedia a ordem antiga ao servidor (era preciso clicar duas vezes). Corrigido.
 

@@ -10,7 +10,7 @@
 
     <q-card flat bordered class="lf-card q-mb-md">
       <q-card-section class="row q-col-gutter-sm items-center">
-        <div class="col-12 col-md-5">
+        <div class="col-12 col-md-4">
           <q-input v-model="q" outlined dense clearable placeholder="Ex.: ventilador, papel A4, detergente" @keyup.enter="buscar(1)" @clear="dados = null">
             <template #prepend><q-icon name="search" /></template>
           </q-input>
@@ -19,7 +19,8 @@
         <div class="col-6 col-md-3">
           <q-select v-model="situacao" :options="SITUACOES" emit-value map-options outlined dense label="Situação" @update:model-value="buscarSeTiver" />
         </div>
-        <div class="col-12 col-md-2"><q-btn unelevated no-caps color="primary" icon="search" label="Buscar" class="full-width" :loading="carregando" @click="buscar(1)" /></div>
+        <div class="col-6 col-md-2"><q-select :model-value="tipoObjeto" :options="TIPOS" emit-value map-options outlined dense label="Produtos ou serviços" @update:model-value="(v) => { tipoObjeto = v; buscarSeTiver(); }" /></div>
+        <div class="col-6 col-md-2"><q-btn unelevated no-caps color="primary" icon="search" label="Buscar" class="full-width" :loading="carregando" @click="buscar(1)" /></div>
       </q-card-section>
     </q-card>
 
@@ -109,6 +110,8 @@ const router = useRouter();
 const q = ref(String(route.query.q ?? ''));
 const uf = ref(route.query.uf ?? null);
 const situacao = ref(route.query.situacao ?? null);
+const tipoObjeto = ref(route.query.tipoObjeto ?? null);
+const TIPOS = [{ label: 'Todos', value: null }, { label: 'Só produtos', value: 'produto' }, { label: 'Só serviços', value: 'servico' }];
 const ordem = ref('data');
 const pagina = ref(1);
 const dados = ref(null);
@@ -137,9 +140,9 @@ async function buscar(p = pagina.value) {
   erro.value = '';
   pagina.value = p;
   carregando.value = true;
-  router.replace({ query: { q: q.value, uf: uf.value || undefined, situacao: situacao.value || undefined } });
+  router.replace({ query: { q: q.value, uf: uf.value || undefined, situacao: situacao.value || undefined, tipoObjeto: tipoObjeto.value || undefined } });
   try {
-    dados.value = (await api.get('/itens', { params: { q: q.value, uf: uf.value || undefined, situacao: situacao.value || undefined, ordem: ordem.value, pagina: p }, timeout: 60000 })).data;
+    dados.value = (await api.get('/itens', { params: { q: q.value, uf: uf.value || undefined, situacao: situacao.value || undefined, tipoObjeto: tipoObjeto.value || undefined, ordem: ordem.value, pagina: p }, timeout: 60000 })).data;
     if (p > 1) window.scrollTo({ top: 0, behavior: 'smooth' });
   } finally {
     carregando.value = false;

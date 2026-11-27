@@ -11,7 +11,7 @@
 
     <q-card flat bordered class="lf-card q-mb-md">
       <q-card-section class="row q-col-gutter-sm items-center">
-        <div class="col-12 col-md-5">
+        <div class="col-12 col-md-3">
           <q-input v-model="q" outlined dense clearable placeholder="Produto (opcional). Ex.: ventilador, limpeza" @keyup.enter="buscar(1)" @clear="buscar(1)">
             <template #prepend><q-icon name="search" /></template>
           </q-input>
@@ -21,7 +21,8 @@
           <q-btn-toggle :model-value="tipo" spread no-caps unelevated dense toggle-color="deep-orange-7" color="grey-2" text-color="grey-9" @update:model-value="(v) => { tipo = v; buscar(1); }"
             :options="[{ label: 'Todos', value: 'ambos' }, { label: 'Desertos', value: 'deserto' }, { label: 'Fracassados', value: 'fracassado' }]" />
         </div>
-        <div class="col-12 col-md-2"><q-btn unelevated no-caps color="primary" icon="search" label="Buscar" class="full-width" :loading="carregando" @click="buscar(1)" /></div>
+        <div class="col-6 col-md-2"><q-select :model-value="tipoObjeto" :options="TIPOS" emit-value map-options outlined dense label="Produtos ou serviços" @update:model-value="(v) => { tipoObjeto = v; buscar(1); }" /></div>
+        <div class="col-6 col-md-2"><q-btn unelevated no-caps color="primary" icon="search" label="Buscar" class="full-width" :loading="carregando" @click="buscar(1)" /></div>
       </q-card-section>
     </q-card>
 
@@ -83,6 +84,8 @@ const router = useRouter();
 const q = ref(String(route.query.q ?? ''));
 const uf = ref(route.query.uf ?? null);
 const tipo = ref(route.query.tipo ?? 'ambos');
+const tipoObjeto = ref(route.query.tipoObjeto ?? null);
+const TIPOS = [{ label: 'Todos', value: null }, { label: 'Só produtos', value: 'produto' }, { label: 'Só serviços', value: 'servico' }];
 const pagina = ref(1);
 const dados = ref(null);
 const carregando = ref(false);
@@ -93,9 +96,9 @@ const termo = (d) => String(d ?? '').split(/[,;:(]/)[0].trim().split(/\s+/).slic
 async function buscar(p = pagina.value) {
   pagina.value = p;
   carregando.value = true;
-  router.replace({ query: { q: q.value || undefined, uf: uf.value || undefined, tipo: tipo.value !== 'ambos' ? tipo.value : undefined } });
+  router.replace({ query: { q: q.value || undefined, uf: uf.value || undefined, tipo: tipo.value !== 'ambos' ? tipo.value : undefined, tipoObjeto: tipoObjeto.value || undefined } });
   try {
-    dados.value = (await api.get('/desertas', { params: { q: q.value || undefined, uf: uf.value || undefined, tipo: tipo.value, pagina: p }, timeout: 60000 })).data;
+    dados.value = (await api.get('/desertas', { params: { q: q.value || undefined, uf: uf.value || undefined, tipo: tipo.value, tipoObjeto: tipoObjeto.value || undefined, pagina: p }, timeout: 60000 })).data;
     if (p > 1) window.scrollTo({ top: 0, behavior: 'smooth' });
   } finally {
     carregando.value = false;

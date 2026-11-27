@@ -215,8 +215,8 @@ export async function buscarItens(db, q = {}, { fetchImpl = fetch } = {}) {
   } else if (q.situacao === 'homologados') where.push("i.situacao = 'Homologado'");
   else if (q.situacao === 'andamento') where.push("i.situacao = 'Em andamento'");
   else if (q.situacao === 'sem_sucesso') where.push("i.situacao IN ('Deserto', 'Fracassado', 'Anulado/Revogado/Cancelado')");
-  if (q.tipo === 'material') where.push('i.material = 1');
-  else if (q.tipo === 'servico') where.push('i.material = 0');
+  if (q.tipo === 'material' || q.tipoObjeto === 'produto') where.push('i.material = 1');
+  else if (q.tipo === 'servico' || q.tipoObjeto === 'servico') where.push('i.material = 0');
   const precisaCab = Boolean(p.uf || p.agora);
   const join = `FROM itens_licitacao_fts f JOIN itens_licitacao i ON i.id = f.rowid ${precisaCab ? '' : 'LEFT '}JOIN itens_compras ic ON ic.controle = i.compra_controle`;
   const total = db.prepare(`SELECT count(*) AS n ${join} WHERE ${where.join(' AND ')}`).get(p).n;

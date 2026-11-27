@@ -99,6 +99,18 @@ export function buscarOportunidades(db, filtros = {}, usuarioId = null) {
     params.encDepois = new Date(new Date(filtros.encerraDepoisDe).getTime() - 3 * 3600000).toISOString().slice(0, 19);
   }
   if (filtros.comResumo) where.push('o.id IN (SELECT oportunidade_id FROM edital_resumos)');
+  // Produto ou serviço: pelos itens oficiais do PNCP (material/serviço) quando já guardados; senão, pelas palavras do objeto.
+  if (filtros.tipoObjeto === 'produto' || filtros.tipoObjeto === 'servico') {
+    const temItem = (m) => `EXISTS (SELECT 1 FROM itens_licitacao il WHERE il.compra_controle = o.numero_controle_pncp AND il.material = ${m})`;
+    const semItens = 'NOT EXISTS (SELECT 1 FROM itens_licitacao il WHERE il.compra_controle = o.numero_controle_pncp AND il.material IS NOT NULL)';
+    const palavrasProduto = "(o.objeto LIKE '%aquisi%' OR o.objeto LIKE '%fornecimento%' OR o.objeto LIKE '%compra de%' OR o.objeto LIKE '%material%' OR o.objeto LIKE '%materiais%' OR o.objeto LIKE '%equipamento%' OR o.objeto LIKE '%medicamento%' OR o.objeto LIKE '%genero%' OR o.objeto LIKE '%gênero%')";
+    const palavrasServico = "(o.objeto LIKE '%servi%' OR o.objeto LIKE '%obra%' OR o.objeto LIKE '%execu%' OR o.objeto LIKE '%manuten%' OR o.objeto LIKE '%reforma%' OR o.objeto LIKE '%constru%' OR o.objeto LIKE '%consultoria%' OR o.objeto LIKE '%transporte%' OR o.objeto LIKE '%pavimenta%' OR o.objeto LIKE '%engenharia%' OR o.objeto LIKE '%empreitada%' OR o.objeto LIKE '%locação%' OR o.objeto LIKE '%LOCAÇÃO%')";
+    // Obra/serviço "com fornecimento de materiais" continua sendo serviço; só conta também como produto se falar em aquisição.
+    const produtoPorPalavra = `(${palavrasProduto} AND (NOT ${palavrasServico} OR o.objeto LIKE '%aquisi%'))`;
+    where.push(filtros.tipoObjeto === 'produto'
+      ? `(${temItem(1)} OR (${semItens} AND ${produtoPorPalavra}))`
+      : `(${temItem(0)} OR (${semItens} AND ${palavrasServico}))`);
+  }
   // Período: escolhe qual data (prazo das propostas, abertura ou publicação). Datas no horário de Brasília, AAAA-MM-DD.
   const colData = { encerramento: 'o.data_encerramento', abertura: 'o.data_abertura', publicacao: 'o.data_publicacao' }[filtros.dataTipo ?? 'encerramento'] ?? 'o.data_encerramento';
   const dia = (v) => (/^\d{4}-\d{2}-\d{2}$/.test(String(v ?? '')) ? String(v) : null);

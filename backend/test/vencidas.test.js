@@ -73,3 +73,20 @@ test('filtro de data em Oportunidades: prazo, abertura e publicação', async ()
   assert.deepEqual(nums({ dataTipo: 'abertura', dataDe: '2099-03-02' }), ['B2', 'B3']);
   assert.deepEqual(nums({ dataDe: 'xx' }), ['B1', 'B2', 'B3'], 'data inválida é ignorada');
 });
+
+test('filtro produtos ou serviços: itens oficiais primeiro, palavras do objeto quando não há itens', async () => {
+  const { buscarOportunidades } = await import('../src/services/busca.js');
+  const { gravarItens } = await import('../src/services/itens.js');
+  const db = openDatabase(':memory:');
+  const op = (n, objeto) => ({ numeroControlePNCP: `11222333000181-1-00000${n}/2099`, objetoCompra: objeto, modalidadeId: 6, modalidadeNome: 'Pregão - Eletrônico',
+    anoCompra: 2099, sequencialCompra: n, srp: false, dataPublicacaoPncp: '2099-01-01T08:00:00', dataEncerramentoProposta: '2099-02-01T09:00:00',
+    valorTotalEstimado: 1000, orgaoEntidade: { cnpj: '11222333000181', razaoSocial: 'P' }, unidadeOrgao: { ufSigla: 'SP', municipioNome: 'Campinas' } });
+  upsertOportunidades(db, [op(1, 'Aquisição de material de limpeza'), op(2, 'Contratação de empresa para execução de obra com fornecimento de materiais'),
+    op(3, 'Registro de preços diversos'), op(4, 'Prestação de serviços de vigilância')].map(mapContratacao));
+  // A 3 não diz nada no objeto, mas os itens oficiais dizem que é material.
+  gravarItens(db, [{ compra: '11222333000181-1-000003/2099', numero: 1, descricao: 'Caneta', material: 1, unidade: 'Un', quantidade: 1, estimado: 1, situacao: 'Em andamento',
+    criterio: null, beneficio: null, fornecedorNi: null, fornecedorNome: null, valorResultado: null, quantidadeResultado: null, dataResultado: null, dataInclusao: '2099-01-01T08:00:00', orgaoCnpj: '11222333000181' }]);
+  const nums = (t) => buscarOportunidades(db, { tipoObjeto: t }).itens.map((o) => Number(o.numero_controle_pncp.slice(-6, -5))).sort();
+  assert.deepEqual(nums('produto'), [1, 3]);
+  assert.deepEqual(nums('servico'), [2, 4], 'obra "com fornecimento de materiais" é serviço');
+});

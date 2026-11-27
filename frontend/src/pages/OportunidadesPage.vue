@@ -31,6 +31,9 @@
         <div class="col-6 col-md-2"><q-input v-model.number="f.valorMin" type="number" outlined dense label="Valor mín. (R$)" debounce="500" /></div>
         <div class="col-6 col-md-2"><q-input v-model.number="f.valorMax" type="number" outlined dense label="Valor máx. (R$)" debounce="500" /></div>
         <div class="col-6 col-md-2">
+          <q-select v-model="f.tipoObjeto" :options="tiposObjeto" emit-value map-options outlined dense label="Produtos ou serviços" />
+        </div>
+        <div class="col-6 col-md-2">
           <q-select v-model="f.dataTipo" :options="tiposData" emit-value map-options outlined dense label="Filtrar pela data de" />
         </div>
         <div class="col-6 col-md-3">
@@ -101,6 +104,7 @@ const f = reactive({
   valorMax: route.query.valorMax ?? null,
   srp: route.query.srp === 'true',
   ordem: route.query.ordem ?? 'encerramento',
+  tipoObjeto: route.query.tipoObjeto ?? null,
   dataTipo: route.query.dataTipo ?? 'encerramento',
   dataDe: route.query.dataDe ?? null,
   dataAte: route.query.dataAte ?? null,
@@ -111,6 +115,11 @@ const ordens = [
   { label: 'Mais recentes', value: 'publicacao' },
   { label: 'Maior valor', value: 'valor' },
   { label: 'Relevância', value: 'relevancia' },
+];
+const tiposObjeto = [
+  { label: 'Produtos e serviços', value: null },
+  { label: 'Só produtos (compras)', value: 'produto' },
+  { label: 'Só serviços e obras', value: 'servico' },
 ];
 const tiposData = [
   { label: 'Prazo das propostas', value: 'encerramento' },
@@ -176,7 +185,7 @@ async function buscar() {
   }
 }
 
-watch(() => [f.q, f.uf, f.municipio, f.modalidade, f.valorMin, f.valorMax, f.srp, f.ordem, f.dataTipo, f.dataDe, f.dataAte], () => {
+watch(() => [f.q, f.uf, f.municipio, f.modalidade, f.valorMin, f.valorMax, f.srp, f.ordem, f.tipoObjeto, f.dataTipo, f.dataDe, f.dataAte], () => {
   if (f.pagina !== 1) f.pagina = 1;
   else buscar();
 }, { deep: true });

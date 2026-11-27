@@ -18,6 +18,8 @@ export async function listarDesertas(db, q = {}, { fetchImpl = fetch } = {}) {
   const fts = ftsQuery(q.q);
   if (fts) { join = 'JOIN itens_licitacao_fts f ON f.rowid = i.id'; where.push('itens_licitacao_fts MATCH :fts'); p.fts = fts; }
   if (/^[A-Za-z]{2}$/.test(q.uf ?? '')) { where.push('ic.uf = :uf'); p.uf = q.uf.toUpperCase(); }
+  if (q.tipoObjeto === 'produto') where.push('i.material = 1');
+  else if (q.tipoObjeto === 'servico') where.push('i.material = 0');
   const base = `FROM itens_licitacao i ${join} LEFT JOIN itens_compras ic ON ic.controle = i.compra_controle WHERE ${where.join(' AND ')}`;
   const total = db.prepare(`SELECT count(DISTINCT i.compra_controle) AS n ${base}`).get(p).n;
   const pag = { ...p, lim: tamanho, off: (pagina - 1) * tamanho };
